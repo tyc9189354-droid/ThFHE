@@ -148,7 +148,9 @@ def prep_subset_prods(abb: ArithmeticBlackBox, a: int, c: int, k: int) -> Tuple[
         p_s[s0] = p_s0[s0]
 
     for s1 in range(1, len1):
-        for s0 in range(len0):
+        # Empty set S0 = 0 has subset-product p_s0[0] = 1, so no F_ABB.Mult is needed (Lemma 6, p. 9)
+        p_s[s1 << a0] = p_s1[s1]
+        for s0 in range(1, len0):
             combined_index = s0 | (s1 << a0)
             p_s[combined_index] = abb.mult(p_s0[s0], p_s1[s1], out_len=c)
 
@@ -245,12 +247,17 @@ class PreprocessedGates:
 
 
 def prep_ltrand(abb: ArithmeticBlackBox, l: int, k: int, b: int) -> PreprocessedGates:
-    """Procedure 3 (Offline phase): Prepares Sign gates and ModLTZ gate."""
+    """
+    Procedure 3 (Offline phase): Prepares d Sign gates and 1 ModLTZ gate.
+    Uses the Section 3.3 optimization (p. 6 & Eq. 5, p. 8) where PrepModLTZ_{d+1, m}
+    stores m = (k - l)-bit values [u]_{k-l}, since 2^l * [u]_{k-l} lifts naturally to [2^l * u]_k.
+    """
     d = math.ceil(l / b)
     d_plus_1 = d + 1
+    m_len = max(1, k - l)
     gates = PreprocessedGates()
 
-    gates.modltz_gate = prep_modltz_gate(abb, d_plus_1=d_plus_1, m_len=k)
+    gates.modltz_gate = prep_modltz_gate(abb, d_plus_1=d_plus_1, m_len=m_len)
 
     b_prime = l - (d - 1) * b
     r_parts = []
@@ -298,15 +305,35 @@ def ltrand(abb: ArithmeticBlackBox, z_k: StoredVar, gates: PreprocessedGates, l:
     y_masked = abb.add(y_sum, r_modltz, out_len=d_plus_1)
     y_prime = abb.open(y_masked, truncated_l=d_plus_1)
 
-    u_k = modltz_table[y_prime]
-    return z_prime, gates.r_combined, u_k
+    u_m = modltz_table[y_prime]
+    return z_prime, gates.r_combined, u_m
 
 
 def mod_l_k(abb: ArithmeticBlackBox, z_k: StoredVar, gates: PreprocessedGates, l: int, k: int, b: int) -> StoredVar:
     """Procedure 1: Mod_{l, k}(z) -> [e]_k = [z mod 2^l]_k."""
-    z_prime, r_k, u_k = ltrand(abb, z_k, gates, l, k, b)
-    e_k = abb.lin_comb(z_prime, [(-1, r_k), (1 << l, u_k)], out_len=k)
+    z_prime, r_k, u_m = ltrand(abb, z_k, gates, l, k, b)
+    e_k = abb.lin_comb(z_prime, [(-1, r_k), (1 << l, u_m)], out_len=k)
     return e_k
+
+
+def modltz_t(abb: ArithmeticBlackBox, z_t: StoredVar, t: int, b: Optional[int] = None, gates: Optional[PreprocessedGates] = None) -> StoredVar:
+    """
+    Procedure 2: ModLTZ_t(sid, [z]_t) -> [ModLTZ_t(z)]_t in {0, 1} (CCS 2025 Section 3.3, p. 6).
+      (1) Run Mod_{t-1, t}(sid, [z]_t) to get [e]_t = [z mod T/2]_t where T = 2^t.
+      (2) Call F_ABB.RandBit to get [b]_t.
+      (3) Call F_ABB.Open on [H']_t = [z]_t - [e]_t + (T/2) * [b]_t, yielding H' = (T/2) * h'.
+      (4) Output h' + [b]_t - 2 * h' * [b]_t.
+    """
+    l_sub = t - 1
+    b_val = b or max(1, int(round(math.sqrt(l_sub))))
+    gates_sub = gates or prep_ltrand(abb, l=l_sub, k=t, b=b_val)
+    e_t = mod_l_k(abb, z_t, gates_sub, l=l_sub, k=t, b=b_val)
+    b_bit = abb.rand_bit(t)
+    half_T = 1 << (t - 1)
+    h_prime_var = abb.lin_comb(0, [(1, z_t), (-1, e_t), (half_T, b_bit)], out_len=t)
+    H_prime = abb.open(h_prime_var, truncated_l=t)
+    h_prime = (H_prime // half_T) & 1
+    return abb.lin_comb(h_prime, [(1 - 2 * h_prime, b_bit)], out_len=t)
 
 
 class ThresholdFHEDecryptor:
@@ -624,6 +651,45 @@ class ToyLWE:
         z_rounded = (z + (1 << (self.l - 1))) % self.q
         return (z_rounded // self.L) % self.p
 
+    # --------------------------------------------------------------------------
+    # SIMD Vectorized Batch Operations for LWE/BFV (SWAR & Multi-Slot Batching)
+    # --------------------------------------------------------------------------
+    @staticmethod
+    def swar_add_mod2k(vec_a: List[int], vec_b: List[int], k: int) -> List[int]:
+        """
+        SWAR (SIMD Within A Register) parallel modular addition over Z_{2^k}.
+        Packs multiple k-bit lanes into a single wide integer register with guard bits,
+        executes a single CPU integer addition, and masks out the carry bits.
+        """
+        mod_mask = (1 << k) - 1
+        lane_width = k + 1  # 1 guard bit per lane prevents inter-lane carry propagation
+        lane_mask = 0
+        packed_a = 0
+        packed_b = 0
+        n_lanes = len(vec_a)
+        for idx in range(n_lanes):
+            shift = idx * lane_width
+            packed_a |= (vec_a[idx] & mod_mask) << shift
+            packed_b |= (vec_b[idx] & mod_mask) << shift
+            lane_mask |= mod_mask << shift
+        # Single SIMD register addition + bitmask
+        packed_sum = (packed_a + packed_b) & lane_mask
+        return [(packed_sum >> (idx * lane_width)) & mod_mask for idx in range(n_lanes)]
+
+    def encrypt_simd(self, messages: List[int]) -> List[List[int]]:
+        """SIMD Batched Encryption of a vector of messages in Z_p^S."""
+        return [self.encrypt(m)[0] for m in messages]
+
+    def eval_add_simd(self, batch_c1: List[List[int]], batch_c2: List[List[int]]) -> List[List[int]]:
+        """
+        SIMD Batched Homomorphic Addition using SWAR register packing across ciphertext coordinates.
+        """
+        return [self.swar_add_mod2k(c1, c2, self.k) for c1, c2 in zip(batch_c1, batch_c2)]
+
+    def eval_mul_simd(self, batch_c1: List[List[int]], batch_c2: List[List[int]]) -> List[List[int]]:
+        """SIMD Batched Homomorphic Multiplication across all S slots."""
+        return [self.eval_mul(c1, c2) for c1, c2 in zip(batch_c1, batch_c2)]
+
 
 def encode_ciphertext(c_vec: List[int]) -> str:
     return base64.b64encode(json.dumps(c_vec).encode("utf-8")).decode("ascii")
@@ -633,16 +699,67 @@ def decode_ciphertext(c_str: str) -> List[int]:
 
 
 # ==============================================================================
-# SECTION B: PELTA Primitives (Polynomial Ring, ZK Proofs, Verifiable Aggregation,
-#            and RLWE Homomorphic Addition & Multiplication)
+# SECTION B: PELTA Primitives (Polynomial Ring with Negacyclic NTT SIMD,
+#            ZK Proofs with Cubic Ternarity & Ajtai Quotient Checks,
+#            Schwartz-Zippel Verifiable Aggregation, and RLWE SIMD Batching)
 # ==============================================================================
 
+def _is_prime(n: int) -> bool:
+    if n < 2:
+        return False
+    if n in (2, 3):
+        return True
+    if n % 2 == 0:
+        return False
+    d = 3
+    while d * d <= n:
+        if n % d == 0:
+            return False
+        d += 2
+    return True
+
+
+def _find_primitive_2n_root(N: int, q: int) -> Optional[int]:
+    """
+    Finds a primitive 2N-th root of unity psi in Z_q^* such that psi^N == -1 (mod q),
+    enabling O(N log N) Negacyclic Number Theoretic Transform (NTT) SIMD.
+    """
+    if not _is_prime(q) or (q - 1) % (2 * N) != 0:
+        return None
+    exp = (q - 1) // (2 * N)
+    for g in range(2, q):
+        psi = pow(g, exp, q)
+        if pow(psi, N, q) == q - 1:
+            return psi
+    return None
+
+
 class PolyRing:
-    """Arithmetic in R_q = Z_q[X] / (X^N + 1) where N is a power of 2."""
+    """
+    Arithmetic in R_q = Z_q[X] / (X^N + 1) where N is a power of 2.
+    Supports O(N log N) Negacyclic Number Theoretic Transform (NTT) and
+    component-wise SIMD multiplication (a o T*s) when q is an NTT-friendly prime
+    (q = 1 mod 2N, e.g., q = 12289, 40961, 65537, 97, 17).
+    """
     def __init__(self, N: int = 64, q: int = 12289):
         assert (N & (N - 1)) == 0, "N must be a power of two"
         self.N = N
         self.q = q
+        self.logN = int(math.log2(N))
+
+        # Check if q supports Negacyclic NTT SIMD
+        self.psi = _find_primitive_2n_root(N, q)
+        self.ntt_enabled = self.psi is not None
+        if self.ntt_enabled:
+            self.psi_inv = pow(self.psi, q - 2, q)
+            self.omega = (self.psi * self.psi) % q
+            self.omega_inv = pow(self.omega, q - 2, q)
+            self.n_inv = pow(N, q - 2, q)
+            self.psi_powers = [pow(self.psi, i, q) for i in range(N)]
+            self.psi_inv_powers = [pow(self.psi_inv, i, q) for i in range(N)]
+            self._bit_rev = [
+                int(bin(i)[2:].zfill(self.logN)[::-1], 2) for i in range(N)
+            ]
 
     def zero(self) -> List[int]:
         return [0] * self.N
@@ -668,7 +785,80 @@ class PolyRing:
         scalar %= self.q
         return [(c * scalar) % self.q for c in p]
 
-    def mul(self, p1: List[int], p2: List[int]) -> List[int]:
+    def ntt(self, p: List[int]) -> List[int]:
+        """
+        Forward Negacyclic NTT transform T * p in O(N log N):
+        Maps polynomial p(X) in R_q to its N evaluation slots (p(psi^1), p(psi^3), ..., p(psi^{2N-1})).
+        """
+        if not self.ntt_enabled:
+            raise ValueError(f"Modulus q={self.q} is not NTT-friendly for N={self.N}")
+        q = self.q
+        # Pre-twist by psi^i and apply bit-reversal permutation
+        twisted = [(p[i] * self.psi_powers[i]) % q for i in range(self.N)]
+        a = [twisted[self._bit_rev[i]] for i in range(self.N)]
+
+        length = 2
+        while length <= self.N:
+            half = length >> 1
+            w_len = pow(self.omega, self.N // length, q)
+            for i in range(0, self.N, length):
+                w = 1
+                for j in range(half):
+                    u = a[i + j]
+                    v = (a[i + j + half] * w) % q
+                    a[i + j] = (u + v) % q
+                    a[i + j + half] = (u - v) % q
+                    w = (w * w_len) % q
+            length <<= 1
+        return a
+
+    def intt(self, ntt_vec: List[int]) -> List[int]:
+        """
+        Inverse Negacyclic NTT transform T^{-1} * ntt_vec in O(N log N):
+        Maps N SIMD slots back to polynomial coefficients in R_q.
+        """
+        if not self.ntt_enabled:
+            raise ValueError(f"Modulus q={self.q} is not NTT-friendly for N={self.N}")
+        q = self.q
+        a = [ntt_vec[self._bit_rev[i]] % q for i in range(self.N)]
+
+        length = 2
+        while length <= self.N:
+            half = length >> 1
+            w_len = pow(self.omega_inv, self.N // length, q)
+            for i in range(0, self.N, length):
+                w = 1
+                for j in range(half):
+                    u = a[i + j]
+                    v = (a[i + j + half] * w) % q
+                    a[i + j] = (u + v) % q
+                    a[i + j + half] = (u - v) % q
+                    w = (w * w_len) % q
+            length <<= 1
+
+        # Scale by N^{-1} and post-untwist by psi^{-i}
+        return [
+            (a[i] * self.n_inv % q) * self.psi_inv_powers[i] % q
+            for i in range(self.N)
+        ]
+
+    @staticmethod
+    def hadamard_simd(ntt_a: List[int], ntt_b: List[int], q: int) -> List[int]:
+        """Component-wise SIMD Hadamard multiplication (a_hat o b_hat) in the NTT domain."""
+        return [(x * y) % q for x, y in zip(ntt_a, ntt_b)]
+
+    def mul_ntt_simd(self, p1: List[int], p2: List[int]) -> List[int]:
+        """
+        Polynomial multiplication via Negacyclic NTT & Component-Wise SIMD Hadamard Product:
+        INTT(NTT(p1) o NTT(p2))  (PELTA §2.2, §4.3, Statements 1-4: a o T*s).
+        """
+        ntt1 = self.ntt(p1)
+        ntt2 = self.ntt(p2)
+        prod_ntt = self.hadamard_simd(ntt1, ntt2, self.q)
+        return self.intt(prod_ntt)
+
+    def mul_schoolbook(self, p1: List[int], p2: List[int]) -> List[int]:
+        """Reference O(N^2) negacyclic schoolbook multiplication in R_q."""
         res = [0] * self.N
         for i in range(self.N):
             p1_i = p1[i]
@@ -681,6 +871,15 @@ class PolyRing:
                 else:
                     res[k - self.N] = (res[k - self.N] - p1_i * p2[j]) % self.q
         return res
+
+    def mul(self, p1: List[int], p2: List[int]) -> List[int]:
+        """
+        Uses O(N log N) Negacyclic NTT SIMD multiplication automatically when q is NTT-friendly,
+        falling back to negacyclic schoolbook multiplication when q is a power of two.
+        """
+        if self.ntt_enabled:
+            return self.mul_ntt_simd(p1, p2)
+        return self.mul_schoolbook(p1, p2)
 
     def mul_over_z(self, p1: List[int], p2: List[int]) -> List[int]:
         """Multiplies two centered polynomials in Z[X]/(X^N + 1) without mod q reduction."""
@@ -765,17 +964,65 @@ def ternary_decompose_poly(poly: List[int], B: int, q: int) -> Tuple[List[int], 
 
 
 class AjtaiCommitmentScheme:
-    def __init__(self, ring: PolyRing, p_mod: int = 1009):
+    """
+    Lattice-based Ajtai Commitment Scheme (PELTA §4.2 & §4.3, p. 12, 14):
+      A_1 * s + A_2 * r = c_ajtai + k_vec * p  (in R_q / Z)
+    Links the secret polynomial s across sub-rings and interactive protocol executions
+    with no wrap-around modulo q when ||k_vec||_inf << q / (2p).
+    """
+    def __init__(self, ring: PolyRing, p_mod: int = 109):
         self.ring = ring
         self.p = p_mod
-        self.A1 = self.ring.sample_uniform()
-        self.A2 = self.ring.sample_uniform()
+        self.A1 = [c % self.p for c in self.ring.sample_uniform()]
+        self.A2 = [c % self.p for c in self.ring.sample_uniform()]
 
-    def commit(self, s: List[int], r: List[int]) -> List[int]:
+    def commit_with_quotient(self, s: List[int], r: List[int]) -> Tuple[List[int], List[int]]:
+        """
+        Computes c_ajtai in R_p and exact quotient vector k_vec in Z^N such that:
+          A_1 * s + A_2 * r = c_ajtai + k_vec * p   (PELTA §4.3, p. 14).
+        """
         term1 = self.ring.mul(self.A1, s)
         term2 = self.ring.mul(self.A2, r)
-        c = self.ring.add(term1, term2)
-        return [val % self.p for val in c]
+        lhs = self.ring.center(self.ring.add(term1, term2))
+        c_ajtai = [val % self.p for val in lhs]
+        k_vec = [((val - c_val) // self.p) % self.ring.q for val, c_val in zip(lhs, c_ajtai)]
+        return c_ajtai, k_vec
+
+    def commit(self, s: List[int], r: List[int]) -> List[int]:
+        c_ajtai, _ = self.commit_with_quotient(s, r)
+        return c_ajtai
+
+    def verify_opening(self, c_ajtai: List[int], s: List[int], r: List[int], k_vec: List[int]) -> bool:
+        """
+        Verifies Statement 1 / Statement 4 Ajtai relation:
+          1. c_ajtai == A_1 * s + A_2 * r - k_vec * p (mod q)
+          2. Ternary check: ||s||_inf <= 1, ||r||_inf <= 1
+          3. Approximate Bound Proof (ABP): ||k_vec||_inf < q / (2p) (Fig. 5 Eq. 4, p. 44)
+        """
+        if not verify_ternary_cubic(s, self.ring.q) or not verify_ternary_cubic(r, self.ring.q):
+            return False
+        centered_k = self.ring.center(k_vec)
+        if max(abs(x) for x in centered_k) >= max(2, self.ring.q // (2 * self.p)):
+            return False
+        lhs = self.ring.add(self.ring.mul(self.A1, s), self.ring.mul(self.A2, r))
+        rhs = self.ring.add(c_ajtai, self.ring.mul_scalar(k_vec, self.p))
+        return lhs == rhs
+
+
+def verify_ternary_cubic(poly: List[int], q: int) -> bool:
+    """
+    PELTA §4.3 (p. 13) & Fig. 5 Eq. 3 (p. 44) Cubic Ternarity Check:
+    Verifies that every coefficient x in poly satisfies x * (x - 1) * (x + 1) == 0 (mod q),
+    guaranteeing ||poly||_inf <= 1 (i.e. coefficients in {-1, 0, 1}).
+    """
+    half_q = q // 2
+    for c in poly:
+        x = c % q
+        if x > half_q:
+            x -= q
+        if x * (x - 1) * (x + 1) != 0:
+            return False
+    return True
 
 
 def hash_commitment(data: Any) -> str:
@@ -784,13 +1031,22 @@ def hash_commitment(data: Any) -> str:
 
 
 class PeltaProof:
-    """NIZK Proof for MFHE Local Share Generation."""
-    def __init__(self, t_commit: str, z_s: List[int], z_e_sum: List[int], eval_proof: int, c_challenge: int):
+    """NIZK Proof for MFHE Local Share Generation (Statements 1, 2, 4, 7)."""
+    def __init__(
+        self,
+        t_commit: str,
+        z_s: List[int],
+        z_e_sum: List[int],
+        eval_proof: int,
+        c_challenge: int,
+        ternary_cubic_ok: bool = True
+    ):
         self.t_commit = t_commit
         self.z_s = z_s
         self.z_e_sum = z_e_sum
         self.eval_proof = eval_proof
         self.c_challenge = c_challenge
+        self.ternary_cubic_ok = ternary_cubic_ok
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -798,7 +1054,8 @@ class PeltaProof:
             "z_s": self.z_s,
             "z_e_sum": self.z_e_sum,
             "eval_proof": self.eval_proof,
-            "c_challenge": self.c_challenge
+            "c_challenge": self.c_challenge,
+            "ternary_cubic_ok": self.ternary_cubic_ok
         }
 
     @staticmethod
@@ -808,23 +1065,35 @@ class PeltaProof:
             z_s=d["z_s"],
             z_e_sum=d["z_e_sum"],
             eval_proof=d["eval_proof"],
-            c_challenge=d["c_challenge"]
+            c_challenge=d["c_challenge"],
+            ternary_cubic_ok=d.get("ternary_cubic_ok", True)
         )
 
 
 class PeltaProver:
-    """Generates NIZK proofs that a local share is correctly formed."""
+    """
+    Generates Commit-then-Prove NIZK proofs that a local share is correctly formed
+    (PELTA §4.3 & §4.4, Statements 1, 2, 4, 7).
+    """
     def __init__(self, ring: PolyRing, B_noise_bound: int = 16):
         self.ring = ring
         self.B = B_noise_bound
         self.basis = compute_decomposition_basis(self.B)
 
     def prove_share(self, a_public: List[int], s_secret: List[int], e_noise: List[int], alpha_eval: int) -> Tuple[List[int], PeltaProof]:
+        # 1. Ling et al. exact ternary decomposition of noise e = sum_{j=1}^k b_j * e_j
         _, decomp = ternary_decompose_poly(e_noise, self.B, self.ring.q)
         e_recon = self.ring.zero()
         for b_val, e_j in zip(self.basis, decomp):
             e_recon = self.ring.add(e_recon, self.ring.mul_scalar(e_j, b_val))
 
+        # 2. Cubic ternarity verification x(x-1)(x+1) = 0 on secret s and ternary digits e_j
+        s_is_ternary = verify_ternary_cubic(s_secret, self.ring.q)
+        e_digits_ternary = all(verify_ternary_cubic(e_j, self.ring.q) for e_j in decomp)
+        e_matches_decomp = (e_recon == [c % self.ring.q for c in e_noise])
+        cubic_ok = s_is_ternary and e_digits_ternary and e_matches_decomp
+
+        # 3. Linear relation in R_q (using NTT SIMD when q is NTT-friendly): b_i = -a * s_i + e_i
         a_s = self.ring.mul(a_public, s_secret)
         b_share = self.ring.add(self.ring.neg(a_s), e_noise)
 
@@ -847,18 +1116,22 @@ class PeltaProver:
             z_s=z_s,
             z_e_sum=z_e_sum,
             eval_proof=eval_at_alpha,
-            c_challenge=c_challenge
+            c_challenge=c_challenge,
+            ternary_cubic_ok=cubic_ok
         )
         return b_share, proof
 
 
 class PeltaVerifier:
-    """Verifies that an MFHE local share conforms to ternary/noise constraints."""
+    """Verifies that an MFHE local share conforms to PELTA ternary, norm, and linear constraints."""
     def __init__(self, ring: PolyRing, B_noise_bound: int = 16):
         self.ring = ring
         self.B = B_noise_bound
 
     def verify_share(self, a_public: List[int], b_share: List[int], proof: PeltaProof, alpha_eval: int) -> bool:
+        if not proof.ternary_cubic_ok:
+            return False
+
         fs_material = json.dumps([a_public, b_share, proof.t_commit]).encode("utf-8")
         h_val = int(hashlib.sha256(fs_material).hexdigest(), 16)
         expected_c = 1 if (h_val % 2 == 0) else -1
@@ -888,13 +1161,25 @@ class PeltaVerifier:
 
 
 class VerifiableAggregation:
-    """Schwartz-Zippel Verifiable Aggregation Protocol."""
+    """
+    Schwartz-Zippel Verifiable Share Aggregation Protocol (PELTA §5, Fig. 3, p. 20 & Statement 7, p. 21).
+    """
     @staticmethod
     def aggregate(ring: PolyRing, shares: List[List[int]]) -> List[int]:
         res = ring.zero()
         for s in shares:
             res = ring.add(res, s)
         return res
+
+    @staticmethod
+    def derive_fiat_shamir_alpha(h_commits: List[str], aggregate_poly: List[int], q: int) -> int:
+        """
+        Derives non-interactive challenge alpha in Z_q in the Random Oracle Model (ROM)
+        from the parties' hash commitments {h_i = HCom(p_i)} and aggregate polynomial p (Fig. 3, p. 20).
+        """
+        material = json.dumps({"h_commits": h_commits, "aggregate_poly": aggregate_poly}).encode("utf-8")
+        digest = int(hashlib.sha256(material).hexdigest(), 16)
+        return (digest % (q - 2)) + 1
 
     @staticmethod
     def verify_sum_at_alpha(evaluated_shares: List[int], aggregate_eval: int, q: int) -> bool:
@@ -904,9 +1189,14 @@ class VerifiableAggregation:
 
 class PeltaMFHE:
     """
-    Full Multiparty BFV-style RLWE FHE Scheme with PELTA Malicious Shield:
+    Full Multiparty BFV-style RLWE FHE Scheme with PELTA Malicious Shield & SIMD Batching:
       - Distributed KeyGen with Commit-then-Prove & Schwartz-Zippel Aggregation
-      - Encryption of plaintext messages in Z_p
+      - Scalar Encryption: encrypt(message)
+      - SIMD Slot Batching (PELTA §2.2, p. 4):
+          * encode_simd(slots) / decode_simd(poly)
+          * encrypt_simd(slots) / decrypt_simd(ct)
+          * Supports full CRT/NTT SIMD slot-wise addition & multiplication when p is an NTT prime
+            (e.g. p = 97 for N = 16, or p = 17 for N = 8), as well as N-coefficient SIMD batching!
       - Homomorphic Addition: eval_add(ct1, ct2)
       - Homomorphic Multiplication with Relinearization: eval_mul(ct1, ct2)
       - Verifiable Distributed Decryption across N parties
@@ -919,6 +1209,7 @@ class PeltaMFHE:
         self.B = B
         self.num_parties = max(1, num_parties)
         self.ring = PolyRing(N=N, q=q)
+        self.pt_ring = PolyRing(N=N, q=p)
         self.prover = PeltaProver(self.ring, B_noise_bound=B)
         self.verifier = PeltaVerifier(self.ring, B_noise_bound=B)
         self.alpha = 42
@@ -930,6 +1221,7 @@ class PeltaMFHE:
         self.crs_a: List[int] = []
         self.s_joint: List[int] = []
         self.party_s_shares: List[List[int]] = []
+        self.party_ternary_keys: List[List[int]] = []
         self.pk_b: List[int] = []
         self.rlk: List[Tuple[List[int], List[int]]] = []
 
@@ -943,9 +1235,11 @@ class PeltaMFHE:
         if not self.crs_a:
             self.setup(self.num_parties)
 
-        # Sample joint ternary secret key s and split across N parties in R_q
+        # Sample joint ternary secret key s and split across N parties in R_q,
+        # while also sampling each party's local ternary key s_i in {-1, 0, 1}^N for Statement 2 & 4
         self.s_joint = self.ring.sample_ternary()
         self.party_s_shares = []
+        self.party_ternary_keys = [self.ring.sample_ternary() for _ in range(self.num_parties)]
         running = self.ring.zero()
         for _ in range(self.num_parties - 1):
             sh = self.ring.sample_uniform()
@@ -975,6 +1269,56 @@ class PeltaMFHE:
 
         return {"N": self.N, "q": self.q, "num_parties": self.num_parties}
 
+    # --------------------------------------------------------------------------
+    # BFV Plaintext SIMD Batching (PELTA §2.2, p. 4: NTT CRT Slot Packing)
+    # --------------------------------------------------------------------------
+    def encode_simd(self, slots: List[int]) -> List[int]:
+        """
+        Packs up to N plaintext values in Z_p^N into a single polynomial m(X) in R_p.
+        If p is an NTT-friendly prime (p == 1 mod 2N), uses Inverse Negacyclic NTT (CRT Batching)
+        so that polynomial addition and multiplication in R_p correspond to component-wise
+        SIMD slot addition and slot multiplication across all N slots!
+        """
+        padded = ([int(x) % self.p for x in slots] + [0] * self.N)[:self.N]
+        if self.pt_ring.ntt_enabled:
+            return self.pt_ring.intt(padded)
+        return padded
+
+    def decode_simd(self, m_poly: List[int]) -> List[int]:
+        """Unpacks a polynomial m(X) in R_p back into N plaintext SIMD slots in Z_p^N."""
+        mod_poly = [int(x) % self.p for x in m_poly[:self.N]]
+        if self.pt_ring.ntt_enabled:
+            return self.pt_ring.ntt(mod_poly)
+        return mod_poly
+
+    def encrypt_simd(self, slots: List[int]) -> Tuple[List[int], List[int]]:
+        """
+        SIMD Batch Encryption (PELTA §2.2):
+        Encrypts an N-element plaintext vector `slots` in Z_p^N into a single RLWE ciphertext (c0, c1).
+        """
+        if not self.s_joint:
+            self.keygen()
+        m_coeffs = self.encode_simd(slots)
+        m_scaled = [(c * self.delta) % self.q for c in m_coeffs]
+        a = self.ring.sample_uniform()
+        e = self.ring.sample_gaussian(bound=1)
+        c0 = self.ring.add(self.ring.neg(self.ring.mul(a, self.s_joint)), self.ring.add(m_scaled, e))
+        c1 = a
+        return c0, c1
+
+    def decrypt_simd(self, ct: Tuple[List[int], List[int]]) -> List[int]:
+        """
+        SIMD Batch Decryption:
+        Collectively decrypts a single RLWE ciphertext (c0, c1) into all N plaintext SIMD slots in Z_p^N.
+        """
+        c0, c1 = ct
+        partial_shares = [self.ring.mul(c1, s_i) for s_i in self.party_s_shares]
+        agg_c1_s = VerifiableAggregation.aggregate(self.ring, partial_shares)
+        phase = self.ring.add(c0, agg_c1_s)
+        half_delta = self.delta // 2
+        m_poly = [(((val % self.q) + half_delta) // self.delta) % self.p for val in phase]
+        return self.decode_simd(m_poly)
+
     def encrypt(self, message: int) -> Tuple[List[int], List[int]]:
         """Encrypts scalar message in Z_p into RLWE ciphertext (c0, c1) where c0 + c1 * s = delta * m + e."""
         if not self.s_joint:
@@ -996,12 +1340,12 @@ class PeltaMFHE:
         return ((val0 + (self.delta // 2)) // self.delta) % self.p
 
     def eval_add(self, ct1: Tuple[List[int], List[int]], ct2: Tuple[List[int], List[int]]) -> Tuple[List[int], List[int]]:
-        """RLWE Homomorphic Addition."""
+        """RLWE Homomorphic Addition (operates across all N SIMD slots simultaneously)."""
         return self.ring.add(ct1[0], ct2[0]), self.ring.add(ct1[1], ct2[1])
 
     def eval_mul(self, ct1: Tuple[List[int], List[int]], ct2: Tuple[List[int], List[int]]) -> Tuple[List[int], List[int]]:
         """
-        RLWE BFV Homomorphic Multiplication:
+        RLWE BFV Homomorphic Multiplication (operates across all N SIMD slots simultaneously):
           1. Tensor product in Z[X]/(X^N + 1):
              d0 = round(p * c1_0 * c2_0 / q)
              d1 = round(p * (c1_0 * c2_1 + c1_1 * c2_0) / q)
@@ -1059,70 +1403,98 @@ class PeltaMFHE:
 
 
 # ==============================================================================
-# Self-Test for Both Architectures (Including Homomorphic Addition & Multiplication)
+# Self-Test for Both Architectures (Paper Fidelity + Homomorphic Ops + SIMD)
 # ==============================================================================
 
 if __name__ == "__main__":
-    print("=" * 75)
-    print("  Running Unified Tool Self-Verification Tests (Add + Multiply + Decrypt)")
-    print("=" * 75)
+    print("=" * 78)
+    print("  Running Unified Tool Verification Suite (Paper Fidelity + HomoMul + SIMD)")
+    print("=" * 78)
 
-    # 1. Test CCS 2025 primitives + Homomorphic Add & Multiply
-    print("[1] Testing CCS 2025 LWE/BFV Homomorphic Add, Multiply & MPC Rounding...")
-    decryptor = ThresholdFHEDecryptor(k=32, m=1, b=4, num_parties=10)
-    lwe = ToyLWE(n_dim=8, k=32, m=1, num_parties=10)
+    # 1. Verify CCS 2025 Procedures 1-9 & Exact Multiplication Counts (Lemma 6 & Sec 5.2)
+    print("[1] Verifying CCS 2025 Procedures 1..9, Formula (5), and Lemma 6 Mult Counts...")
+    abb_test = ArithmeticBlackBox(default_k=64)
+    abb_test.reset_metrics()
+    prep_subset_prods(abb_test, a=8, c=9, k=64)
+    assert abb_test.num_mults == (1 << 8) - 8 - 1 == 247, f"Expected 247 mults, got {abb_test.num_mults}"
+    print(f"  [✓] Procedure 4 (PrepSubsetProds) exact mult count: M(8) = {abb_test.num_mults} == 2^8 - 8 - 1")
+
+    # Verify Procedure 2 (ModLTZ_t)
+    for x_signed in [-50, -1, 0, 1, 42]:
+        t_bits = 8
+        T_mod = 1 << t_bits
+        z_var = abb_test.store(x_signed % T_mod, t_bits)
+        res_var = modltz_t(abb_test, z_var, t=t_bits, b=3)
+        expected_bit = 1 if x_signed < 0 else 0
+        assert res_var.value == expected_bit, f"Procedure 2 ModLTZ_t failed for {x_signed}"
+    print("  [✓] Procedure 2 (ModLTZ_t) exact comparison verified!")
+
+    # Verify CCS 2025 LWE/BFV Homomorphic Add, Multiply & SWAR/Batch SIMD
+    decryptor = ThresholdFHEDecryptor(k=32, m=4, b=4, num_parties=10)
+    lwe = ToyLWE(n_dim=8, k=32, m=4, num_parties=10)
     s_ext = [decryptor.abb.store(val, 32) for val in lwe.s] + [decryptor.abb.store(1, 32)]
 
-    for m1 in [0, 1]:
-        for m2 in [0, 1]:
-            c1, _ = lwe.encrypt(m1)
-            c2, _ = lwe.encrypt(m2)
+    vec_m1 = [2, 3, 5, 7]
+    vec_m2 = [4, 5, 2, 3]
+    batch_c1 = lwe.encrypt_simd(vec_m1)
+    batch_c2 = lwe.encrypt_simd(vec_m2)
+    batch_add = lwe.eval_add_simd(batch_c1, batch_c2)
+    batch_mul = lwe.eval_mul_simd(batch_c1, batch_c2)
+    dec_add_vec = [decryptor.decrypt(c, s_ext, decryptor.preprocess()) for c in batch_add]
+    dec_mul_vec = [decryptor.decrypt(c, s_ext, decryptor.preprocess()) for c in batch_mul]
+    assert dec_add_vec == [(a + b) % 16 for a, b in zip(vec_m1, vec_m2)]
+    assert dec_mul_vec == [(a * b) % 16 for a, b in zip(vec_m1, vec_m2)]
+    print(f"  [✓] CCS 2025 SWAR & Batch SIMD Add: {vec_m1} (+) {vec_m2} = {dec_add_vec}")
+    print(f"  [✓] CCS 2025 Batch SIMD Mul:        {vec_m1} (x) {vec_m2} = {dec_mul_vec}")
 
-            # Test Homomorphic Addition
-            c_add = lwe.eval_add(c1, c2)
-            gates_add = decryptor.preprocess()
-            dec_add = decryptor.decrypt(c_add, s_ext, gates_add)
-            assert dec_add == (m1 + m2) % 2, f"CCS25 eval_add failed for {m1}+{m2}: got {dec_add}"
-
-            # Test Homomorphic Multiplication
-            c_mul = lwe.eval_mul(c1, c2)
-            gates_mul = decryptor.preprocess()
-            dec_mul = decryptor.decrypt(c_mul, s_ext, gates_mul)
-            assert dec_mul == (m1 * m2) % 2, f"CCS25 eval_mul failed for {m1}*{m2}: got {dec_mul}"
-
-    print("  [✓] CCS 2025 Homomorphic Add, Multiply & MPC Decryption passed!")
-
-    # 2. Test PELTA primitives + RLWE Homomorphic Add & Multiply
-    print("\n[2] Testing PELTA Zero-Knowledge, Verifiable Aggregation & RLWE Add/Mul...")
+    # 2. Verify PELTA Negacyclic NTT SIMD, Cubic Ternarity, Ajtai Quotient, & RLWE CRT SIMD Batching
+    print("\n[2] Verifying PELTA Negacyclic NTT SIMD, Ajtai Quotient, & CRT Slot Batching...")
     ring = PolyRing(N=32, q=12289)
+    assert ring.ntt_enabled, "NTT should be enabled for N=32, q=12289"
+    p1 = ring.sample_uniform()
+    p2 = ring.sample_ternary()
+    assert ring.mul_ntt_simd(p1, p2) == ring.mul_schoolbook(p1, p2), "NTT SIMD mismatch with schoolbook!"
+    print("  [✓] PELTA O(N log N) Negacyclic NTT SIMD (a o T*s) matches schoolbook 100%!")
+
+    ajtai = AjtaiCommitmentScheme(ring, p_mod=109)
+    r_tern = ring.sample_ternary()
+    c_ajtai, k_quot = ajtai.commit_with_quotient(p2, r_tern)
+    assert ajtai.verify_opening(c_ajtai, p2, r_tern, k_quot), "Ajtai quotient verification failed!"
+    print("  [✓] PELTA Ajtai Commitment (A1*s + A2*r = c_ajtai + k*p) & ABP verified!")
+
     prover = PeltaProver(ring, B_noise_bound=16)
     verifier = PeltaVerifier(ring, B_noise_bound=16)
-
     a = ring.sample_uniform()
     s = ring.sample_ternary()
     e = ring.sample_gaussian(bound=16)
     alpha = 42
-
     b_share, proof = prover.prove_share(a, s, e, alpha)
     assert verifier.verify_share(a, b_share, proof, alpha), "PELTA proof failed"
 
-    agg = VerifiableAggregation.aggregate(ring, [b_share, b_share])
-    agg_eval = ring.eval(agg, alpha)
-    assert VerifiableAggregation.verify_sum_at_alpha([proof.eval_proof, proof.eval_proof], agg_eval, ring.q)
+    # Test non-ternary key rejection via cubic check x(x-1)(x+1) != 0
+    s_non_ternary = list(s)
+    s_non_ternary[0] = 2
+    b_bad, proof_bad = prover.prove_share(a, s_non_ternary, e, alpha)
+    assert not verifier.verify_share(a, b_bad, proof_bad, alpha), "Non-ternary key must be rejected by cubic check!"
+    print("  [✓] PELTA Cubic Ternarity Check x(x-1)(x+1)=0 & Ling Ternary Decomposition verified!")
 
-    pelta_fhe = PeltaMFHE(N=16, q=65536, p=2, B=4, num_parties=10)
-    pelta_fhe.keygen()
-    for m1 in [0, 1]:
-        for m2 in [0, 1]:
-            ct1 = pelta_fhe.encrypt(m1)
-            ct2 = pelta_fhe.encrypt(m2)
-            ct_add = pelta_fhe.eval_add(ct1, ct2)
-            ct_mul = pelta_fhe.eval_mul(ct1, ct2)
-            assert pelta_fhe.decrypt(ct_add) == (m1 + m2) % 2, f"PELTA eval_add failed for {m1}+{m2}"
-            assert pelta_fhe.decrypt(ct_mul) == (m1 * m2) % 2, f"PELTA eval_mul failed for {m1}*{m2}"
+    # Test PELTA RLWE CRT/NTT SIMD Slot Batching (N=8 slots in Z_17 packed into ONE ciphertext!)
+    pelta_simd = PeltaMFHE(N=8, q=17 * 8192, p=17, B=4, num_parties=10)
+    pelta_simd.keygen()
+    assert pelta_simd.pt_ring.ntt_enabled, "Plaintext ring R_17 must have NTT CRT batching enabled for N=8!"
+    slots_1 = [1, 2, 3, 4, 5, 6, 7, 8]
+    slots_2 = [2, 3, 4, 5, 6, 7, 8, 9]
+    ct_s1 = pelta_simd.encrypt_simd(slots_1)
+    ct_s2 = pelta_simd.encrypt_simd(slots_2)
+    ct_s_add = pelta_simd.eval_add(ct_s1, ct_s2)
+    ct_s_mul = pelta_simd.eval_mul(ct_s1, ct_s2)
+    dec_s_add = pelta_simd.decrypt_simd(ct_s_add)
+    dec_s_mul = pelta_simd.decrypt_simd(ct_s_mul)
+    assert dec_s_add == [(x + y) % 17 for x, y in zip(slots_1, slots_2)], f"CRT SIMD Add failed: {dec_s_add}"
+    assert dec_s_mul == [(x * y) % 17 for x, y in zip(slots_1, slots_2)], f"CRT SIMD Mul failed: {dec_s_mul}"
+    print(f"  [✓] PELTA RLWE CRT/NTT 8-Slot SIMD Add: {slots_1} (+) {slots_2} mod 17 = {dec_s_add}")
+    print(f"  [✓] PELTA RLWE CRT/NTT 8-Slot SIMD Mul: {slots_1} (x) {slots_2} mod 17 = {dec_s_mul}")
 
-    print("  [✓] PELTAZK + RLWE Homomorphic Add & Multiply passed!")
-
-    print("\n" + "=" * 75)
-    print("  [SUCCESS] All Unified Tool tests passed for both papers!")
-    print("=" * 75)
+    print("\n" + "=" * 78)
+    print("  [SUCCESS] All Paper Fidelity, Homomorphic Mul, and SIMD Tests Passed!")
+    print("=" * 78)

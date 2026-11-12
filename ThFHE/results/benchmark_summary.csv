@@ -1,7 +1,7 @@
 scheme_name,mode,k,m,num_parties,setup_time_ms,keygen_time_ms,offline_prep_time_ms,offline_mults,offline_rand_bits,gate_storage_bits,gate_storage_bytes,eval_add_time_ms,eval_mul_time_ms,partial_dec_time_ms,agg_time_ms,online_latency_ms,online_std_latency_ms,online_throughput_dec_per_sec,online_rounds,online_opens,online_opened_bits,online_mults,comm_sent_bytes,comm_recv_bytes,correctness_verified
-CCS25_MPC_Rounding,local,16,1,1000,0.641,20.216,1.615,63,20,312,39,0.0052,1.2929,1.746,0.059,1.805,0.223,553.9,3,3,36,0,0,0,True
-Baseline_Dahl23_NoiseFlooding,local,16,1,1000,0.063,19.251,0.0,0,0,0,0,0.0048,0.9373,9.566,0.06,9.626,0.285,103.9,1,1,144,1,0,0,True
-PELTA_Malicious_MFHE,local,16,1,1000,0.038,11.266,20.535,2000,32000,256000,32000,0.0045,0.5631,71.295,1.228,72.523,2.509,13.8,2,2,512,0,0,0,True
-CCS25_MPC_Rounding,local,64,1,1000,0.623,24.822,30.661,2351,72,17792,2224,0.0052,1.5697,3.018,0.08,3.099,0.375,322.7,3,3,136,0,0,0,True
-Baseline_Dahl23_NoiseFlooding,local,64,1,1000,0.068,20.202,0.0,0,0,0,0,0.0056,1.6898,14.453,0.066,14.519,1.779,68.9,1,1,192,1,0,0,True
-PELTA_Malicious_MFHE,local,64,1,1000,0.056,11.703,21.576,2000,32000,256000,32000,0.005,0.5458,71.358,1.275,72.633,3.679,13.8,2,2,512,0,0,0,True
+CCS25_MPC_Rounding,local,16,1,10,0.105,7.184,0.798,63,20,312,39,0.0032,0.9597,0.065,0.006,0.071,0.067,14110.7,3,3,36,0,0,0,True
+Baseline_Dahl23_NoiseFlooding,local,16,1,10,0.009,7.686,0.0,0,0,0,0,0.0029,1.1019,0.122,0.002,0.123,0.016,8104.9,1,1,144,1,0,0,True
+PELTA_Malicious_MFHE,local,16,1,10,0.117,0.859,1.758,20,320,2560,320,0.0051,0.592,4.898,0.052,4.95,1.019,202.0,2,2,512,0,0,0,True
+CCS25_MPC_Rounding,local,64,1,10,0.112,7.738,34.463,2351,72,17792,2224,0.0043,1.5267,0.068,0.005,0.073,0.009,13606.7,3,3,136,0,0,0,True
+Baseline_Dahl23_NoiseFlooding,local,64,1,10,0.014,7.826,0.0,0,0,0,0,0.004,1.7784,0.142,0.005,0.147,0.025,6816.2,1,1,192,1,0,0,True
+PELTA_Malicious_MFHE,local,64,1,10,0.079,0.493,1.052,20,320,2560,320,0.0038,0.4598,3.981,0.046,4.027,0.19,248.3,2,2,512,0,0,0,True

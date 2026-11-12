@@ -34,6 +34,7 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         self.prover: Optional[PeltaProver] = None
         self.verifier: Optional[PeltaVerifier] = None
         self.ajtai: Optional[AjtaiCommitmentScheme] = None
+        self.party_zk_commits: List[Dict[str, Any]] = []
         self.last_audit: Dict[str, Any] = {}
 
     def setup(
@@ -84,14 +85,22 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         return self.mfhe.keygen()
 
     def preprocess(self) -> Any:
-        """[Stage 3: Offline Prep] 為 N 個參與方生成 Commit-then-Prove 離線 Ajtai 承諾"""
+        """[Stage 3: Offline Prep] 為 N 個參與方生成 Commit-then-Prove 離線 Ajtai 承諾與商數見證 k_vec"""
         if self.mfhe is None or not self.mfhe.s_joint:
             self.keygen()
         commits = []
+        self.party_zk_commits = []
         for _ in range(self.num_parties):
             s_i = self.zk_ring.sample_ternary()
             r_i = self.zk_ring.sample_ternary()
-            commits.append(self.ajtai.commit(s_i, r_i))
+            c_ajtai, k_vec = self.ajtai.commit_with_quotient(s_i, r_i)
+            commits.append(c_ajtai)
+            self.party_zk_commits.append({
+                "s_i": s_i,
+                "r_i": r_i,
+                "c_ajtai": c_ajtai,
+                "k_vec": k_vec
+            })
         return {"commitments": commits, "num_parties": self.num_parties}
 
     def encrypt(self, message: int) -> Tuple[Tuple[List[int], List[int]], int]:
@@ -128,6 +137,8 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         """
         if self.mfhe is None or not self.mfhe.s_joint:
             self.keygen()
+        if not self.party_zk_commits or len(self.party_zk_commits) != self.num_parties:
+            self.preprocess()
 
         mr = self.malicious_ratio if malicious_ratio is None else max(0, min(49, int(malicious_ratio)))
         at = self.attack_type if attack_type is None else (attack_type or "none")
@@ -137,25 +148,30 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         t0 = time.perf_counter()
         c0, c1 = ciphertext
         ring = self.mfhe.ring
-        alpha = self.mfhe.alpha
         a_pub = self.zk_ring.sample_uniform()
 
         partial_shares = []
-        eval_proofs = []
+        h_commits = []
         rejected_parties = []
 
         # Every single party i in [0..N-1] computes its partial decryption and ZK proof
         for p_idx, s_i in enumerate(self.mfhe.party_s_shares):
             honest_d_i = ring.mul(c1, s_i)
-            s_t = self.zk_ring.sample_ternary()
+            zk_data = self.party_zk_commits[p_idx]
+            s_t = zk_data["s_i"]
+            r_t = zk_data["r_i"]
+            c_ajtai = zk_data["c_ajtai"]
+            k_vec = zk_data["k_vec"]
             e_t = self.zk_ring.sample_gaussian(bound=16)
 
+            s_prove = s_t
             if p_idx in malicious_indices:
                 if at == "noise_flooding":
                     e_bad = [c * 50 for c in e_t]
                     b_sh, proof = self.prover.prove_share(a_pub, s_t, e_bad, 42)
                 elif at == "invalid_key_share":
                     s_bad = [random.randint(20, 60) for _ in range(self.zk_ring.N)]
+                    s_prove = s_bad
                     b_sh, proof = self.prover.prove_share(a_pub, s_bad, e_t, 42)
                 elif at == "share_tampering":
                     b_sh, proof = self.prover.prove_share(a_pub, s_t, e_t, 42)
@@ -168,19 +184,22 @@ class PeltaThFHEScheme(BaseThFHEScheme):
             else:
                 b_sh, proof = self.prover.prove_share(a_pub, s_t, e_t, 42)
 
-            is_valid = self.verifier.verify_share(a_pub, b_sh, proof, 42)
+            ajtai_ok = self.ajtai.verify_opening(c_ajtai, s_prove, r_t, k_vec)
+            is_valid = ajtai_ok and self.verifier.verify_share(a_pub, b_sh, proof, 42)
             if not is_valid:
                 rejected_parties.append(p_idx + 1)
 
             partial_shares.append(honest_d_i)
-            eval_proofs.append(ring.eval(honest_d_i, alpha))
+            h_commits.append(hash_commitment(honest_d_i))
 
         partial_dec_ms = (time.perf_counter() - t0) * 1000.0
 
-        # Stage 6: Verifiable Aggregation (Schwartz-Zippel check) + Final Plaintext Extraction
+        # Stage 6: Verifiable Aggregation (Schwartz-Zippel check with ROM Fiat-Shamir alpha) + Final Plaintext Extraction
         t1 = time.perf_counter()
         agg_c1_s = VerifiableAggregation.aggregate(ring, partial_shares)
-        agg_eval = ring.eval(agg_c1_s, alpha)
+        alpha_fs = VerifiableAggregation.derive_fiat_shamir_alpha(h_commits, agg_c1_s, ring.q)
+        eval_proofs = [ring.eval(d_i, alpha_fs) for d_i in partial_shares]
+        agg_eval = ring.eval(agg_c1_s, alpha_fs)
         sz_ok = VerifiableAggregation.verify_sum_at_alpha(eval_proofs, agg_eval, ring.q)
 
         phase = ring.add(c0, agg_c1_s)

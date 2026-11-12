@@ -530,7 +530,7 @@ class ToyLWE:
 
         # Generate Relinearization Key (evk) for quadratic terms s_i * s_j (0 <= i <= j < n)
         self.relin_key = {}
-        evk_noise_bound = max(1, min(8, self.L // 1024))
+        evk_noise_bound = max(1, min(4, self.L // (2048 * max(1, self.p // 16))))
         for i in range(self.n):
             for j in range(i, self.n):
                 s_ij = self.s[i] * self.s[j]
@@ -560,8 +560,8 @@ class ToyLWE:
         msg_mod = message % self.p
         a = [random.randint(0, self.q - 1) for _ in range(self.n)]
         inner_prod = sum(a[i] * self.s[i] for i in range(self.n)) % self.q
-        # Keep initial noise small enough to support homomorphic multiplication
-        max_noise = max(1, min(32, self.L // 256))
+        # Keep initial noise small enough to support homomorphic multiplication for any T = p
+        max_noise = max(1, min(16, self.L // (512 * max(1, self.p // 16))))
         e = random.randint(-max_noise, max_noise)
         b = (inner_prod + self.L * msg_mod + e) % self.q
         c_ext = [(-a_i) % self.q for a_i in a] + [b]
@@ -1203,20 +1203,34 @@ class PeltaMFHE:
     """
     def __init__(self, N: int = 32, q: int = 65536, p: int = 2, B: int = 4, num_parties: int = 10):
         self.N = N
-        self.q = q
-        self.p = p
-        self.delta = q // p
+        self.p = p  # User plaintext space T (e.g., T = 1024, 16, 17, 2)
         self.B = B
         self.num_parties = max(1, num_parties)
-        self.ring = PolyRing(N=N, q=q)
-        self.pt_ring = PolyRing(N=N, q=p)
+
+        # Determine NTT-friendly CRT plaintext modulus p_ntt so single-ciphertext RLWE SIMD
+        # works for both NTT primes (like 17, 97) AND power-of-two plaintext spaces (like T = 1024)
+        direct_pt_ring = PolyRing(N=N, q=p)
+        if direct_pt_ring.ntt_enabled:
+            self.p_ntt = p
+            self.pt_ring = direct_pt_ring
+        else:
+            cand = ((p * p) // (2 * N) + 1) * (2 * N) + 1
+            while not _is_prime(cand):
+                cand += 2 * N
+            self.p_ntt = cand
+            self.pt_ring = PolyRing(N=N, q=self.p_ntt)
+
+        # Ensure ciphertext modulus q has sufficient noise budget for BFV multiplication & SIMD
+        self.q = max(q, self.p_ntt * (1 << 26))
+        self.delta = self.q // self.p_ntt
+        self.ring = PolyRing(N=N, q=self.q)
         self.prover = PeltaProver(self.ring, B_noise_bound=B)
         self.verifier = PeltaVerifier(self.ring, B_noise_bound=B)
         self.alpha = 42
 
-        # Gadget decomposition for RLWE relinearization
-        self.gadget_base = 16
-        self.gadget_digits = math.ceil(math.log(q, self.gadget_base))
+        # 4-digit Gadget decomposition for fast RLWE relinearization
+        self.gadget_digits = 4
+        self.gadget_base = max(16, int(math.ceil(self.q ** 0.25)) + 2)
 
         self.crs_a: List[int] = []
         self.s_joint: List[int] = []
@@ -1267,29 +1281,26 @@ class PeltaMFHE:
             )
             self.rlk.append((b_ell, a_ell))
 
-        return {"N": self.N, "q": self.q, "num_parties": self.num_parties}
+        return {"N": self.N, "q": self.q, "p": self.p, "p_ntt": self.p_ntt, "num_parties": self.num_parties}
 
     # --------------------------------------------------------------------------
     # BFV Plaintext SIMD Batching (PELTA §2.2, p. 4: NTT CRT Slot Packing)
     # --------------------------------------------------------------------------
     def encode_simd(self, slots: List[int]) -> List[int]:
         """
-        Packs up to N plaintext values in Z_p^N into a single polynomial m(X) in R_p.
-        If p is an NTT-friendly prime (p == 1 mod 2N), uses Inverse Negacyclic NTT (CRT Batching)
-        so that polynomial addition and multiplication in R_p correspond to component-wise
-        SIMD slot addition and slot multiplication across all N slots!
+        Packs up to N plaintext values in Z_p^N into a single polynomial m(X) in R_{p_ntt}
+        using Inverse Negacyclic NTT (CRT Batching) so that polynomial addition and
+        multiplication in R_q correspond to component-wise SIMD slot addition and
+        multiplication across all N slots!
         """
         padded = ([int(x) % self.p for x in slots] + [0] * self.N)[:self.N]
-        if self.pt_ring.ntt_enabled:
-            return self.pt_ring.intt(padded)
-        return padded
+        return self.pt_ring.intt(padded)
 
     def decode_simd(self, m_poly: List[int]) -> List[int]:
-        """Unpacks a polynomial m(X) in R_p back into N plaintext SIMD slots in Z_p^N."""
-        mod_poly = [int(x) % self.p for x in m_poly[:self.N]]
-        if self.pt_ring.ntt_enabled:
-            return self.pt_ring.ntt(mod_poly)
-        return mod_poly
+        """Unpacks a polynomial m(X) in R_{p_ntt} back into N plaintext SIMD slots in Z_p^N."""
+        mod_poly = [int(x) % self.p_ntt for x in m_poly[:self.N]]
+        ntt_slots = self.pt_ring.ntt(mod_poly)
+        return [val % self.p for val in ntt_slots]
 
     def encrypt_simd(self, slots: List[int]) -> Tuple[List[int], List[int]]:
         """
@@ -1316,7 +1327,15 @@ class PeltaMFHE:
         agg_c1_s = VerifiableAggregation.aggregate(self.ring, partial_shares)
         phase = self.ring.add(c0, agg_c1_s)
         half_delta = self.delta // 2
-        m_poly = [(((val % self.q) + half_delta) // self.delta) % self.p for val in phase]
+        m_poly = [(((val % self.q) + half_delta) // self.delta) % self.p_ntt for val in phase]
+        return self.decode_simd(m_poly)
+
+    def decrypt_direct_simd(self, ct: Tuple[List[int], List[int]]) -> List[int]:
+        """Direct ideal RLWE SIMD decryption into N slots in Z_p^N."""
+        c0, c1 = ct
+        phase = self.ring.add(c0, self.ring.mul(c1, self.s_joint))
+        half_delta = self.delta // 2
+        m_poly = [(((val % self.q) + half_delta) // self.delta) % self.p_ntt for val in phase]
         return self.decode_simd(m_poly)
 
     def encrypt(self, message: int) -> Tuple[List[int], List[int]]:
@@ -1337,7 +1356,7 @@ class PeltaMFHE:
         c0, c1 = ct
         phase = self.ring.add(c0, self.ring.mul(c1, self.s_joint))
         val0 = phase[0] % self.q
-        return ((val0 + (self.delta // 2)) // self.delta) % self.p
+        return (((val0 + (self.delta // 2)) // self.delta) % self.p_ntt) % self.p
 
     def eval_add(self, ct1: Tuple[List[int], List[int]], ct2: Tuple[List[int], List[int]]) -> Tuple[List[int], List[int]]:
         """RLWE Homomorphic Addition (operates across all N SIMD slots simultaneously)."""
@@ -1347,9 +1366,9 @@ class PeltaMFHE:
         """
         RLWE BFV Homomorphic Multiplication (operates across all N SIMD slots simultaneously):
           1. Tensor product in Z[X]/(X^N + 1):
-             d0 = round(p * c1_0 * c2_0 / q)
-             d1 = round(p * (c1_0 * c2_1 + c1_1 * c2_0) / q)
-             d2 = round(p * c1_1 * c2_1 / q)
+             d0 = round(p_ntt * c1_0 * c2_0 / q)
+             d1 = round(p_ntt * (c1_0 * c2_1 + c1_1 * c2_0) / q)
+             d2 = round(p_ntt * c1_1 * c2_1 / q)
           2. Gadget Relinearization of d2 * s^2 using self.rlk
         """
         c1_0, c1_1 = ct1
@@ -1365,7 +1384,7 @@ class PeltaMFHE:
         def scale_down(poly_z: List[int]) -> List[int]:
             out = [0] * self.N
             for idx, val in enumerate(poly_z):
-                num = val * self.p
+                num = val * self.p_ntt
                 if num >= 0:
                     s_val = (num + half_q) // self.q
                 else:
@@ -1399,7 +1418,7 @@ class PeltaMFHE:
         agg_c1_s = VerifiableAggregation.aggregate(self.ring, partial_shares)
         phase = self.ring.add(c0, agg_c1_s)
         val0 = phase[0] % self.q
-        return ((val0 + (self.delta // 2)) // self.delta) % self.p
+        return (((val0 + (self.delta // 2)) // self.delta) % self.p_ntt) % self.p
 
 
 # ==============================================================================

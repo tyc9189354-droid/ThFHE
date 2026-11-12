@@ -124,13 +124,27 @@ class CCS25ThFHEScheme(BaseThFHEScheme):
             self.keygen()
         return self.lwe.encrypt(message)
 
+    def encrypt_simd(self, messages: List[int]) -> List[List[int]]:
+        """SIMD 批次明文加密"""
+        if not self.s_ext_stored:
+            self.keygen()
+        return self.lwe.encrypt_simd(messages)
+
     def eval_add(self, ct1: List[int], ct2: List[int]) -> List[int]:
         """[Stage 4a: Homo Add] 同態加法 c1 (+) c2"""
         return self.lwe.eval_add(ct1, ct2)
 
+    def eval_add_simd(self, batch_c1: List[List[int]], batch_c2: List[List[int]]) -> List[List[int]]:
+        """[Stage 4a: SIMD Homo Add] SWAR 暫存器打包平行同態加法"""
+        return self.lwe.eval_add_simd(batch_c1, batch_c2)
+
     def eval_mul(self, ct1: List[int], ct2: List[int]) -> List[int]:
         """[Stage 4b: Homo Mul] 同態乘法 c1 (x) c2 (含張量積縮放與 Gadget 重線性化)"""
         return self.lwe.eval_mul(ct1, ct2)
+
+    def eval_mul_simd(self, batch_c1: List[List[int]], batch_c2: List[List[int]]) -> List[List[int]]:
+        """[Stage 4b: SIMD Homo Mul] 多槽平行同態乘法 (含 Gadget 重線性化)"""
+        return self.lwe.eval_mul_simd(batch_c1, batch_c2)
 
     def decrypt(self, ciphertext: List[int], preprocessed_data: Optional[PreprocessedGates] = None) -> int:
         """線上解密"""
@@ -139,6 +153,30 @@ class CCS25ThFHEScheme(BaseThFHEScheme):
         gates = preprocessed_data or self._last_gates or self.preprocess()
         self.decryptor.abb.reset_metrics()
         return self.decryptor.decrypt(ciphertext, self.s_ext_stored, gates)
+
+    def decrypt_simd_with_stages(
+        self,
+        batch_ciphertext: List[List[int]],
+        malicious_ratio: Optional[int] = None,
+        attack_type: Optional[str] = None
+    ) -> Tuple[List[int], float, float]:
+        """SIMD 多槽平行門檻解密"""
+        if not self.s_ext_stored:
+            self.keygen()
+        mr = self.malicious_ratio if malicious_ratio is None else malicious_ratio
+        at = self.attack_type if attack_type is None else attack_type
+        decrypted_slots = []
+        total_pdec_ms = 0.0
+        total_agg_ms = 0.0
+        for ct in batch_ciphertext:
+            gates = self._last_gates or self.preprocess()
+            mu, pdec_ms, agg_ms = self.decrypt_with_stages(
+                ct, gates, malicious_ratio=mr, attack_type=at
+            )
+            decrypted_slots.append(mu)
+            total_pdec_ms += pdec_ms
+            total_agg_ms += agg_ms
+        return decrypted_slots, total_pdec_ms, total_agg_ms
 
     def decrypt_with_stages(
         self,

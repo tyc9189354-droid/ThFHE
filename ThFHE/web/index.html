@@ -339,15 +339,68 @@
     .btn-small:hover { background: rgba(59, 130, 246, 0.3); }
 
     .mini-input {
-      width: 52px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(59, 130, 246, 0.4);
+      min-width: 135px;
+      max-width: 240px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(59, 130, 246, 0.5);
       color: #93c5fd;
-      border-radius: 5px;
-      padding: 2px 5px;
+      border-radius: 6px;
+      padding: 3px 8px;
       font-family: var(--font-mono);
-      font-size: 0.74rem;
+      font-size: 0.76rem;
+      font-weight: 600;
       text-align: center;
+    }
+
+    .t-space-tag {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.42);
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .simd-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 9px;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .simd-toggle-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--card-border);
+      border-radius: 7px;
+      padding: 2px;
+      gap: 3px;
+    }
+    .simd-mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.73rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .simd-mode-btn.active {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.35);
     }
 
     .stat-cards {
@@ -615,13 +668,23 @@
           <option value="none">無攻擊 (誠實執行 Honest Execution)</option>
         </select>
       </div>
+
+      <!-- 4. Plaintext Space T Selector (Default T = 1024) -->
+      <div class="env-bar">
+        <span class="env-label">📐 明文空間 (Plaintext Space):</span>
+        <select id="global-tspace-select" class="env-select" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.45);" onchange="onPlaintextSpaceChange()">
+          <option value="10" selected>T = 1024 (ℤ₁₀₂₄: 0 ~ 1023)</option>
+          <option value="8">T = 256 (ℤ₂₅₆: 0 ~ 255)</option>
+          <option value="4">T = 16 (ℤ₁₆: 0 ~ 15)</option>
+          <option value="1">T = 2 (ℤ₂: 0 ~ 1)</option>
+        </select>
+      </div>
     </div>
   </header>
 
   <main>
     <!-- ===================================================================== -->
-    <!-- TAB 1: CCS 2025 (Dual Inputs + Stage Buttons + Result-Only Output Box -->
-    <!--        + Right-Side Execution Log)                                    -->
+    <!-- TAB 1: CCS 2025 (Dual Inputs + SIMD + T=1024 + Stage Buttons + Log)   -->
     <!-- ===================================================================== -->
     <section id="tab-ccs25" class="tab-content active">
       <div class="stat-cards">
@@ -648,47 +711,64 @@
       </div>
 
       <div class="dashboard-grid">
-        <!-- Left Card: Dual Ciphertext Inputs + Stage Buttons + Result-Only Output Box -->
+        <!-- Left Card: Dual Ciphertext Inputs + SIMD Bar + Stage Buttons + Result-Only Output Box -->
         <div class="card">
           <div class="card-title">
             <span>📥 CCS 2025 雙密文輸入與各階段控制</span>
-            <span class="badge badge-blue">LWE / BFV (p = 16)</span>
+            <span class="badge badge-blue" id="ccs-t-badge">LWE / BFV (明文空間 T = 1024)</span>
+          </div>
+
+          <!-- CCS 2025 SIMD Mode Toggle Bar -->
+          <div class="simd-bar">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 0.75rem; font-weight: 600; color: #c4b5fd;">⚡ 運算模式 (SIMD Control):</span>
+              <div class="simd-toggle-group">
+                <button type="button" class="simd-mode-btn active" id="ccs-mode-scalar-btn" onclick="setSIMDMode('ccs25', false)">🔢 單一純量 (Scalar)</button>
+                <button type="button" class="simd-mode-btn" id="ccs-mode-simd-btn" onclick="setSIMDMode('ccs25', true)">⚡ SIMD 多槽平行 (Batch SIMD)</button>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <button type="button" class="btn-small" onclick="fillRandomSIMDVectors('ccs25', 4)" title="生成 4 槽隨機 SIMD 明文向量並加密">🎲 4-Slot SIMD</button>
+              <button type="button" class="btn-small" onclick="fillRandomSIMDVectors('ccs25', 8)" title="生成 8 槽隨機 SIMD 明文向量並加密">🎲 8-Slot SIMD</button>
+            </div>
           </div>
 
           <!-- Input Box 1: Ciphertext c1 -->
           <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
               <label class="form-label" style="margin: 0;">密文輸入 1 (Ciphertext c₁)</label>
-              <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">明文 m₁:</span>
-                <input type="number" id="plain-m1" class="mini-input" min="0" max="15" value="3">
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="ccs-m1-space-label">明文空間: T=1024 (0~1023)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₁:</span>
+                <input type="text" id="plain-m1" class="mini-input" value="12" placeholder="例如: 12 或 [12, 25, 100, 512]">
                 <button class="btn-small" onclick="encryptToBox('ccs25', 1)">🔐 加密 m₁→c₁</button>
-                <button class="btn-small" onclick="generateRandomCiphertext('ccs25', 1)">🎲 隨機密文</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('ccs25', 1)">🎲 隨機</button>
               </div>
             </div>
-            <textarea class="form-control" id="cipher-in-1" rows="2" placeholder="請輸入密文向量 c₁ 或點擊上方按鈕加密生成..."></textarea>
+            <textarea class="form-control" id="cipher-in-1" rows="2" placeholder="請輸入密文向量 c₁ (或 SIMD 批次密文矩陣) 或點擊上方按鈕加密生成..."></textarea>
           </div>
 
           <!-- Input Box 2: Ciphertext c2 -->
           <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
               <label class="form-label" style="margin: 0;">密文輸入 2 (Ciphertext c₂)</label>
-              <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">明文 m₂:</span>
-                <input type="number" id="plain-m2" class="mini-input" min="0" max="15" value="5">
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="ccs-m2-space-label">明文空間: T=1024 (0~1023)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₂:</span>
+                <input type="text" id="plain-m2" class="mini-input" value="25" placeholder="例如: 25 或 [3, 40, 10, 2]">
                 <button class="btn-small" onclick="encryptToBox('ccs25', 2)">🔐 加密 m₂→c₂</button>
-                <button class="btn-small" onclick="generateRandomCiphertext('ccs25', 2)">🎲 隨機密文</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('ccs25', 2)">🎲 隨機</button>
               </div>
             </div>
-            <textarea class="form-control" id="cipher-in-2" rows="2" placeholder="請輸入密文向量 c₂ 或點擊上方按鈕加密生成..."></textarea>
+            <textarea class="form-control" id="cipher-in-2" rows="2" placeholder="請輸入密文向量 c₂ (或 SIMD 批次密文矩陣) 或點擊上方按鈕加密生成..."></textarea>
           </div>
 
           <!-- Operation Mode Selector -->
           <div class="form-group">
-            <label class="form-label">目標同態運算與解密模式 (Homomorphic Evaluation &amp; Decryption)</label>
+            <label class="form-label">目標同態運算與解密模式 (Homomorphic Evaluation &amp; Decryption — 支援單一純量與 SIMD 向量)</label>
             <select class="form-control" id="op-mode">
-              <option value="eval_mul" selected>✖️ 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod 16 (含重線性化)</option>
-              <option value="eval_add">➕ 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod 16</option>
+              <option value="eval_mul" selected id="ccs-opt-mul">✖️ 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod 1024 (T=1024, 含重線性化與 SIMD)</option>
+              <option value="eval_add" id="ccs-opt-add">➕ 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod 1024 (T=1024, 含 SWAR SIMD)</option>
               <option value="dec_1">🔓 單獨門檻解密密文 1: Dec(c₁) → m₁</option>
               <option value="dec_2">🔓 單獨門檻解密密文 2: Dec(c₂) → m₂</option>
             </select>
@@ -714,7 +794,7 @@
 
           <!-- Output Box: ONLY Decryption Result -->
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="color: #34d399; font-weight: 600;">📤 解密結果輸出框 (Decryption Output)</label>
+            <label class="form-label" style="color: #34d399; font-weight: 600;">📤 解密結果輸出框 (Decryption Output — 純解密結果 / SIMD 向量)</label>
             <input type="text" class="output-box-single" id="decrypt-output-box" readonly value="" placeholder="--">
           </div>
         </div>
@@ -725,16 +805,16 @@
             <span>🔍 CCS 2025 各階段執行過程日誌 (Execution Log)</span>
             <span class="badge badge-green" id="ccs-verify-badge">等待執行</span>
           </div>
-          <div class="console-box" id="ccs-console">[CCS 2025 System Ready]
-• 點擊左側「1. Setup」～「7. Aggregate & Output」任一階段按鈕，或點擊「▶ 一鍵執行完整同態運算與門檻解密」，此處將即時顯示該階段的詳細數學運算過程與實測耗時。
-• 左側「📤 解密結果輸出框」僅輸出純解密數值。</div>
+          <div class="console-box" id="ccs-console">[CCS 2025 System Ready — 明文空間 T = 1024 (ℤ₁₀₂₄)]
+• 可切換「🔢 單一純量」或「⚡ SIMD 多槽平行 (SWAR & Batch SIMD)」模式，或直接在訊息框輸入逗號分隔向量 (如: [12, 25, 100, 512])。
+• 點擊左側「1. Setup」～「7. Aggregate & Output」任一階段按鈕，此處將即時顯示該階段的詳細數學運算過程與實測耗時。
+• 左側「📤 解密結果輸出框」僅輸出純解密數值或純 SIMD 向量。</div>
         </div>
       </div>
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB 2: PELTA (Dual Inputs + Stage Buttons + Result-Only Output Box    -->
-    <!--        + Random Malicious Nodes + Right-Side Execution Log)           -->
+    <!-- TAB 2: PELTA (Dual Inputs + SIMD + T=1024 + Stage Buttons + Log)      -->
     <!-- ===================================================================== -->
     <section id="tab-pelta" class="tab-content">
       <div class="stat-cards">
@@ -761,11 +841,11 @@
       </div>
 
       <div class="dashboard-grid">
-        <!-- Left Card: PELTA Dual Inputs + Random Malicious Nodes + Stage Buttons + Result-Only Output Box -->
+        <!-- Left Card: PELTA Dual Inputs + SIMD Bar + Random Malicious Nodes + Stage Buttons + Output Box -->
         <div class="card">
           <div class="card-title">
             <span>📥 PELTA 雙密文輸入、隨機惡意節點與各階段控制</span>
-            <span class="badge badge-purple" id="pelta-node-count">RLWE (p = 16)</span>
+            <span class="badge badge-purple" id="pelta-node-count">RLWE (T = 1024)</span>
           </div>
 
           <!-- Random Malicious Party Topology Chips -->
@@ -775,40 +855,57 @@
           </div>
           <div class="party-chips-wrap" id="pelta-party-list"></div>
 
-          <!-- PELTA Input Box 1: Ciphertext c1 -->
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
-              <label class="form-label" style="margin: 0;">PELTA 密文輸入 1 (RLWE Ciphertext c₁)</label>
-              <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">明文 m₁:</span>
-                <input type="number" id="pelta-plain-m1" class="mini-input" min="0" max="15" value="3">
-                <button class="btn-small" onclick="encryptToBox('pelta', 1)">🔐 加密 m₁→c₁</button>
-                <button class="btn-small" onclick="generateRandomCiphertext('pelta', 1)">🎲 隨機密文</button>
+          <!-- PELTA SIMD Mode Toggle Bar -->
+          <div class="simd-bar" style="border-color: rgba(16, 185, 129, 0.38);">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 0.75rem; font-weight: 600; color: #6ee7b7;">⚡ 運算模式 (CRT/NTT SIMD):</span>
+              <div class="simd-toggle-group">
+                <button type="button" class="simd-mode-btn active" id="pelta-mode-scalar-btn" onclick="setSIMDMode('pelta', false)">🔢 單一純量 (Scalar)</button>
+                <button type="button" class="simd-mode-btn" id="pelta-mode-simd-btn" onclick="setSIMDMode('pelta', true)">⚡ CRT/NTT 單密文多槽 SIMD</button>
               </div>
             </div>
-            <textarea class="form-control" id="pelta-cipher-in-1" rows="2" placeholder="請輸入 RLWE 密文多項式 c₁ 或點擊上方按鈕加密生成..."></textarea>
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <button type="button" class="btn-small" onclick="fillRandomSIMDVectors('pelta', 4)" title="生成 4 槽隨機 SIMD 明文向量並透過 INTT 打包成單一 RLWE 密文">🎲 4-Slot SIMD</button>
+              <button type="button" class="btn-small" onclick="fillRandomSIMDVectors('pelta', 8)" title="生成 8 槽隨機 SIMD 明文向量並透過 INTT 打包成單一 RLWE 密文">🎲 8-Slot SIMD</button>
+            </div>
+          </div>
+
+          <!-- PELTA Input Box 1: Ciphertext c1 -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
+              <label class="form-label" style="margin: 0;">PELTA 密文輸入 1 (RLWE Ciphertext c₁)</label>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="pelta-m1-space-label">明文空間: T=1024 (0~1023)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₁:</span>
+                <input type="text" id="pelta-plain-m1" class="mini-input" value="12" placeholder="例如: 12 或 [12, 25, 100, 512]">
+                <button class="btn-small" onclick="encryptToBox('pelta', 1)">🔐 加密 m₁→c₁</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('pelta', 1)">🎲 隨機</button>
+              </div>
+            </div>
+            <textarea class="form-control" id="pelta-cipher-in-1" rows="2" placeholder="請輸入 RLWE 密文多項式 c₁ (單一 RLWE 密文同時封裝全部 SIMD 明文槽)..."></textarea>
           </div>
 
           <!-- PELTA Input Box 2: Ciphertext c2 -->
           <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
               <label class="form-label" style="margin: 0;">PELTA 密文輸入 2 (RLWE Ciphertext c₂)</label>
-              <div style="display: flex; align-items: center; gap: 5px;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">明文 m₂:</span>
-                <input type="number" id="pelta-plain-m2" class="mini-input" min="0" max="15" value="5">
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="pelta-m2-space-label">明文空間: T=1024 (0~1023)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₂:</span>
+                <input type="text" id="pelta-plain-m2" class="mini-input" value="25" placeholder="例如: 25 或 [3, 40, 10, 2]">
                 <button class="btn-small" onclick="encryptToBox('pelta', 2)">🔐 加密 m₂→c₂</button>
-                <button class="btn-small" onclick="generateRandomCiphertext('pelta', 2)">🎲 隨機密文</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('pelta', 2)">🎲 隨機</button>
               </div>
             </div>
-            <textarea class="form-control" id="pelta-cipher-in-2" rows="2" placeholder="請輸入 RLWE 密文多項式 c₂ 或點擊上方按鈕加密生成..."></textarea>
+            <textarea class="form-control" id="pelta-cipher-in-2" rows="2" placeholder="請輸入 RLWE 密文多項式 c₂ (單一 RLWE 密文同時封裝全部 SIMD 明文槽)..."></textarea>
           </div>
 
           <!-- PELTA Operation Mode Selector -->
           <div class="form-group">
-            <label class="form-label">PELTA 目標同態運算與解密模式 (RLWE Evaluation &amp; Verifiable Decryption)</label>
+            <label class="form-label">PELTA 目標同態運算與解密模式 (RLWE Evaluation &amp; Verifiable Decryption — 支援單一純量與 CRT SIMD)</label>
             <select class="form-control" id="pelta-op-mode">
-              <option value="eval_mul" selected>✖️ RLWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod 16 (含重線性化)</option>
-              <option value="eval_add">➕ RLWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod 16</option>
+              <option value="eval_mul" selected id="pelta-opt-mul">✖️ RLWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod 1024 (T=1024, 含重線性化與 CRT SIMD)</option>
+              <option value="eval_add" id="pelta-opt-add">➕ RLWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod 1024 (T=1024, 含 CRT SIMD)</option>
               <option value="dec_1">🔓 單獨可驗證解密密文 1: Dec(c₁) → m₁</option>
               <option value="dec_2">🔓 單獨可驗證解密密文 2: Dec(c₂) → m₂</option>
             </select>
@@ -834,7 +931,7 @@
 
           <!-- PELTA Output Box: ONLY Decryption Result -->
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="color: #34d399; font-weight: 600;">📤 PELTA 解密結果輸出框 (Decryption Output)</label>
+            <label class="form-label" style="color: #34d399; font-weight: 600;">📤 PELTA 解密結果輸出框 (Decryption Output — 純解密結果 / SIMD 向量)</label>
             <input type="text" class="output-box-single" id="pelta-output-box" readonly value="" placeholder="--">
           </div>
         </div>
@@ -845,9 +942,10 @@
             <span>🔍 PELTA 各階段執行過程與惡意攔截日誌 (Execution Log)</span>
             <span class="badge badge-green" id="pelta-verify-badge">等待執行</span>
           </div>
-          <div class="console-box" id="pelta-console">[PELTA Shield Ready]
-• 點擊左側「1. Setup」～「7. Aggregate & Output」任一階段按鈕，或點擊「🛡️ 一鍵執行 PELTA...」，此處將即時顯示多項式環運算、隨機惡意節點攔截、Schwartz-Zippel 可驗證聚合與各階段耗時。
-• 左側「📤 PELTA 解密結果輸出框」僅輸出純解密數值。</div>
+          <div class="console-box" id="pelta-console">[PELTA Shield Ready — 明文空間 T = 1024 (ℤ₁₀₂₄)]
+• 可切換「🔢 單一純量」或「⚡ CRT/NTT 單密文多槽 SIMD」模式，利用負循環 INTT 將多個明文槽打包進單一 RLWE 密文 (c₀, c₁) 平行運算。
+• 點擊左側「1. Setup」～「7. Aggregate & Output」任一階段按鈕，此處將即時顯示多項式環運算、隨機惡意節點攔截、Schwartz-Zippel 可驗證聚合與各階段耗時。
+• 左側「📤 PELTA 解密結果輸出框」僅輸出純解密數值或純 SIMD 向量。</div>
         </div>
       </div>
     </section>
@@ -1065,6 +1163,108 @@
 
     // Stores currently sampled random malicious party IDs (1-indexed, e.g. [2, 7])
     let CURRENT_RANDOM_MALICIOUS_IDS = [];
+    const SIMD_STATE = { ccs25: false, pelta: false };
+
+    function getSelectedMBits() {
+      const el = document.getElementById('global-tspace-select');
+      const m = el ? parseInt(el.value) : 10;
+      return isNaN(m) ? 10 : m;
+    }
+
+    function getSelectedTSpace() {
+      return 1 << getSelectedMBits();
+    }
+
+    function updatePlaintextSpaceLabels() {
+      const T = getSelectedTSpace();
+      const rangeStr = `明文空間: T=${T} (0~${T - 1})`;
+      ['ccs-m1-space-label', 'ccs-m2-space-label', 'pelta-m1-space-label', 'pelta-m2-space-label'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = rangeStr;
+      });
+      const ccsBadge = document.getElementById('ccs-t-badge');
+      if (ccsBadge) ccsBadge.innerText = `LWE / BFV (明文空間 T = ${T})`;
+
+      const ccsMulOpt = document.getElementById('ccs-opt-mul');
+      const ccsAddOpt = document.getElementById('ccs-opt-add');
+      if (ccsMulOpt) ccsMulOpt.innerText = `✖️ 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod ${T} (T=${T}, 含重線性化與 SIMD)`;
+      if (ccsAddOpt) ccsAddOpt.innerText = `➕ 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod ${T} (T=${T}, 含 SWAR SIMD)`;
+
+      const peltaMulOpt = document.getElementById('pelta-opt-mul');
+      const peltaAddOpt = document.getElementById('pelta-opt-add');
+      if (peltaMulOpt) peltaMulOpt.innerText = `✖️ RLWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod ${T} (T=${T}, 含重線性化與 CRT SIMD)`;
+      if (peltaAddOpt) peltaAddOpt.innerText = `➕ RLWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod ${T} (T=${T}, 含 CRT SIMD)`;
+    }
+
+    async function onPlaintextSpaceChange() {
+      const T = getSelectedTSpace();
+      LOCAL_CRYPTO.m = getSelectedMBits();
+      LOCAL_CRYPTO.p = T;
+      LOCAL_CRYPTO.L = Math.floor(LOCAL_CRYPTO.q / T);
+      updatePlaintextSpaceLabels();
+      await syncEnvironmentUI(true);
+      appendConsole('ccs-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${T} (ℤ_${T}: 0 ~ ${T - 1})`);
+      appendConsole('pelta-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${T} (ℤ_${T}: 0 ~ ${T - 1})`);
+    }
+
+    async function setSIMDMode(target, enabled) {
+      SIMD_STATE[target] = Boolean(enabled);
+      const T = getSelectedTSpace();
+      if (target === 'ccs25') {
+        document.getElementById('ccs-mode-scalar-btn').classList.toggle('active', !enabled);
+        document.getElementById('ccs-mode-simd-btn').classList.toggle('active', enabled);
+        const m1El = document.getElementById('plain-m1');
+        const m2El = document.getElementById('plain-m2');
+        if (enabled) {
+          if (!m1El.value.includes(',')) {
+            const v1 = [12 % T, 25 % T, 100 % T, 512 % T];
+            const v2 = [3 % T, 40 % T, 10 % T, 2 % T];
+            m1El.value = `[${v1.join(', ')}]`;
+            m2El.value = `[${v2.join(', ')}]`;
+          }
+          appendConsole('ccs-console', `\n[⚡ 切換至 SIMD 多槽平行模式] 明文空間 T=${T}，支援 SWAR 暫存器打包加法與多槽平行乘法！`);
+        } else {
+          m1El.value = String(12 % T);
+          m2El.value = String(25 % T);
+          appendConsole('ccs-console', `\n[🔢 切換至單一純量模式] 明文空間 T=${T}`);
+        }
+        await runCCSStage('encrypt');
+      } else {
+        document.getElementById('pelta-mode-scalar-btn').classList.toggle('active', !enabled);
+        document.getElementById('pelta-mode-simd-btn').classList.toggle('active', enabled);
+        const m1El = document.getElementById('pelta-plain-m1');
+        const m2El = document.getElementById('pelta-plain-m2');
+        if (enabled) {
+          if (!m1El.value.includes(',')) {
+            const v1 = [12 % T, 25 % T, 100 % T, 512 % T];
+            const v2 = [3 % T, 40 % T, 10 % T, 2 % T];
+            m1El.value = `[${v1.join(', ')}]`;
+            m2El.value = `[${v2.join(', ')}]`;
+          }
+          appendConsole('pelta-console', `\n[⚡ 切換至 PELTA CRT/NTT 單密文多槽 SIMD 模式] 明文空間 T=${T}，透過負循環 INTT 將多個明文槽封裝進單一 RLWE 密文 (c₀, c₁)！`);
+        } else {
+          m1El.value = String(12 % T);
+          m2El.value = String(25 % T);
+          appendConsole('pelta-console', `\n[🔢 切換至 PELTA 單一純量模式] 明文空間 T=${T}`);
+        }
+        await runPeltaStage('encrypt');
+      }
+    }
+
+    async function fillRandomSIMDVectors(target, slotCount = 4) {
+      const T = getSelectedTSpace();
+      const v1 = Array.from({length: slotCount}, () => Math.floor(Math.random() * T));
+      const v2 = Array.from({length: slotCount}, () => Math.floor(Math.random() * T));
+      if (target === 'ccs25') {
+        document.getElementById('plain-m1').value = `[${v1.join(', ')}]`;
+        document.getElementById('plain-m2').value = `[${v2.join(', ')}]`;
+        await setSIMDMode('ccs25', true);
+      } else {
+        document.getElementById('pelta-plain-m1').value = `[${v1.join(', ')}]`;
+        document.getElementById('pelta-plain-m2').value = `[${v2.join(', ')}]`;
+        await setSIMDMode('pelta', true);
+      }
+    }
 
     function sampleRandomMaliciousIds(numParties, malRatio, attackType) {
       if (attackType === 'none' || malRatio <= 0) {
@@ -1105,10 +1305,10 @@
     const LOCAL_CRYPTO = {
       n_dim: 8,
       k: 24,
-      m: 4,
+      m: 10,
       q: 16777216,
-      p: 16,
-      L: 1048576,
+      p: 1024,
+      L: 16384,
       num_parties: 10,
       s: [],
       party_shares: [],
@@ -1119,6 +1319,9 @@
 
       setupAndKeygen(numParties) {
         const t0 = performance.now();
+        this.m = getSelectedMBits();
+        this.p = 1 << this.m;
+        this.L = Math.floor(this.q / this.p);
         this.num_parties = Math.max(10, Math.min(1000, parseInt(numParties) || 10));
         this.crs = [];
         for (let i = 0; i < Math.min(this.num_parties, 64); i++) {
@@ -1150,7 +1353,7 @@
               const a = Array.from({length: this.n_dim}, () => Math.floor(Math.random() * this.q));
               let inner = 0;
               for (let u = 0; u < this.n_dim; u++) inner = (inner + a[u] * this.s[u]) % this.q;
-              const e = Math.floor(Math.random() * 5) - 2;
+              const e = Math.floor(Math.random() * 3) - 1;
               const b = ((inner + scaled + e) % this.q + this.q) % this.q;
               const ct = a.map(au => (this.q - au) % this.q);
               ct.push(b);
@@ -1172,7 +1375,7 @@
         const a = Array.from({length: this.n_dim}, () => Math.floor(Math.random() * this.q));
         let inner = 0;
         for (let i = 0; i < this.n_dim; i++) inner = (inner + a[i] * this.s[i]) % this.q;
-        const e = Math.floor(Math.random() * 17) - 8;
+        const e = Math.floor(Math.random() * 5) - 2;
         const b = ((inner + this.L * m_mod + e) % this.q + this.q) % this.q;
         const ct = a.map(ai => (this.q - ai) % this.q);
         ct.push(b);
@@ -1350,6 +1553,7 @@
       const malRatio = getSelectedMaliciousRatio();
       const atk = getSelectedAttackType();
 
+      updatePlaintextSpaceLabels();
       sampleRandomMaliciousIds(n, malRatio, atk);
       const numMal = CURRENT_RANDOM_MALICIOUS_IDS.length;
 
@@ -1405,14 +1609,20 @@
       return cleaned.replace(/[\[\]]/g, '').split(/[\s,]+/).filter(Boolean).map(x => Number(x) || 0);
     }
 
+    function formatOutputValue(val) {
+      if (Array.isArray(val)) return `[${val.join(', ')}]`;
+      return String(val);
+    }
+
     // =========================================================================
     // Initialize Ciphertext Boxes for Both CCS 2025 & PELTA
     // =========================================================================
     async function initializeCiphertextBoxes(numParties) {
-      const m1 = parseInt(document.getElementById('plain-m1').value) || 3;
-      const m2 = parseInt(document.getElementById('plain-m2').value) || 5;
-      const pm1 = parseInt(document.getElementById('pelta-plain-m1').value) || 3;
-      const pm2 = parseInt(document.getElementById('pelta-plain-m2').value) || 5;
+      const m1Raw = document.getElementById('plain-m1').value.trim() || '12';
+      const m2Raw = document.getElementById('plain-m2').value.trim() || '25';
+      const pm1Raw = document.getElementById('pelta-plain-m1').value.trim() || '12';
+      const pm2Raw = document.getElementById('pelta-plain-m2').value.trim() || '25';
+      const mBits = getSelectedMBits();
       try {
         const resp = await fetch('/api/setup', {
           method: 'POST',
@@ -1421,7 +1631,14 @@
             num_parties: numParties,
             malicious_ratio: getSelectedMaliciousRatio(),
             attack_type: getSelectedAttackType(),
-            k: 32, m: 4, m1, m2, pm1, pm2
+            k: 32,
+            m: mBits,
+            ccs_simd: SIMD_STATE.ccs25,
+            pelta_simd: SIMD_STATE.pelta,
+            m1: m1Raw,
+            m2: m2Raw,
+            pm1: pm1Raw,
+            pm2: pm2Raw
           })
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1438,8 +1655,8 @@
         }
       } catch (e) {
         LOCAL_CRYPTO.setupAndKeygen(numParties);
-        const enc1 = LOCAL_CRYPTO.encrypt(m1);
-        const enc2 = LOCAL_CRYPTO.encrypt(m2);
+        const enc1 = LOCAL_CRYPTO.encrypt(parseInt(m1Raw) || 12);
+        const enc2 = LOCAL_CRYPTO.encrypt(parseInt(m2Raw) || 25);
         document.getElementById('cipher-in-1').value = JSON.stringify(enc1.ciphertext);
         document.getElementById('cipher-in-2').value = JSON.stringify(enc2.ciphertext);
         document.getElementById('pelta-cipher-in-1').value = JSON.stringify([enc1.ciphertext, enc2.ciphertext]);
@@ -1451,32 +1668,64 @@
 
     async function encryptToBox(target, boxNum) {
       const numParties = getSelectedParties();
+      const mBits = getSelectedMBits();
+      const T = getSelectedTSpace();
       const inputId = target === 'pelta' ? `pelta-plain-m${boxNum}` : `plain-m${boxNum}`;
       const cipherId = target === 'pelta' ? `pelta-cipher-in-${boxNum}` : `cipher-in-${boxNum}`;
       const consoleId = target === 'pelta' ? 'pelta-console' : 'ccs-console';
-      const mVal = parseInt(document.getElementById(inputId).value) || 0;
+      const rawMsg = document.getElementById(inputId).value.trim() || '12';
+      if (rawMsg.includes(',')) {
+        SIMD_STATE[target] = true;
+        if (target === 'ccs25') {
+          document.getElementById('ccs-mode-scalar-btn').classList.remove('active');
+          document.getElementById('ccs-mode-simd-btn').classList.add('active');
+        } else {
+          document.getElementById('pelta-mode-scalar-btn').classList.remove('active');
+          document.getElementById('pelta-mode-simd-btn').classList.add('active');
+        }
+      }
 
       try {
         const resp = await fetch('/api/encrypt', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ target, num_parties: numParties, message: mVal })
+          body: JSON.stringify({
+            target,
+            num_parties: numParties,
+            m: mBits,
+            simd_mode: SIMD_STATE[target],
+            message: rawMsg
+          })
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         document.getElementById(cipherId).value = JSON.stringify(data.ciphertext);
-        appendConsole(consoleId, `\n[Stage 4: Encrypt] 明文 m_${boxNum} = ${data.message} 已加密為密文 c_${boxNum} (實測耗時: ${data.enc_time_ms} ms)`);
+        if (data.simd_mode) {
+          if (target === 'pelta') {
+            appendConsole(consoleId, `\n[Stage 4: CRT/NTT SIMD Encrypt] 明文空間 T=${T} | 向量 m_${boxNum} = [${data.message.join(', ')}] 已透過負循環 INTT (p_ntt=${data.p_ntt}) 打包至單一 RLWE 密文 c_${boxNum} (實測耗時: ${data.enc_time_ms} ms)`);
+          } else {
+            appendConsole(consoleId, `\n[Stage 4: Batch SIMD Encrypt] 明文空間 T=${T} | 向量 m_${boxNum} = [${data.message.join(', ')}] 已平行加密為 ${data.message.length} 槽 SIMD 密文 c_${boxNum} (實測耗時: ${data.enc_time_ms} ms)`);
+          }
+        } else {
+          appendConsole(consoleId, `\n[Stage 4: Encrypt] 明文空間 T=${T} | 明文 m_${boxNum} = ${data.message} 已加密為密文 c_${boxNum} (實測耗時: ${data.enc_time_ms} ms)`);
+        }
       } catch (e) {
-        const enc = LOCAL_CRYPTO.encrypt(mVal);
+        const enc = LOCAL_CRYPTO.encrypt(parseInt(rawMsg) || 12);
         document.getElementById(cipherId).value = JSON.stringify(enc.ciphertext);
-        appendConsole(consoleId, `\n[Stage 4: Encrypt] 明文 m_${boxNum} = ${enc.message} 已加密為密文 c_${boxNum}`);
+        appendConsole(consoleId, `\n[Stage 4: Encrypt] 明文空間 T=${T} | 明文 m_${boxNum} = ${enc.message} 已加密為密文 c_${boxNum}`);
       }
     }
 
     async function generateRandomCiphertext(target, boxNum) {
-      const randM = Math.floor(Math.random() * 16);
+      const T = getSelectedTSpace();
       const inputId = target === 'pelta' ? `pelta-plain-m${boxNum}` : `plain-m${boxNum}`;
-      document.getElementById(inputId).value = randM;
+      if (SIMD_STATE[target]) {
+        const vec = Array.from({length: 4}, () => Math.floor(Math.random() * T));
+        document.getElementById(inputId).value = `[${vec.join(', ')}]`;
+      } else {
+        const randM = Math.floor(Math.random() * T);
+        document.getElementById(inputId).value = String(randM);
+      }
       await encryptToBox(target, boxNum);
     }
 
@@ -1487,10 +1736,12 @@
       const numParties = getSelectedParties();
       const malRatio = getSelectedMaliciousRatio();
       const attackType = getSelectedAttackType();
+      const mBits = getSelectedMBits();
+      const T = getSelectedTSpace();
       const c1 = parseCiphertextInput(document.getElementById('cipher-in-1').value);
       const c2 = parseCiphertextInput(document.getElementById('cipher-in-2').value);
-      const m1 = parseInt(document.getElementById('plain-m1').value) || 3;
-      const m2 = parseInt(document.getElementById('plain-m2').value) || 5;
+      const m1 = document.getElementById('plain-m1').value.trim() || '12';
+      const m2 = document.getElementById('plain-m2').value.trim() || '25';
       const opMode = document.getElementById('op-mode').value;
       const box = 'ccs-console';
 
@@ -1499,8 +1750,14 @@
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            stage, num_parties: numParties, malicious_ratio: malRatio,
-            attack_type: attackType, c1, c2, m1, m2, op_mode: opMode
+            stage,
+            num_parties: numParties,
+            malicious_ratio: malRatio,
+            attack_type: attackType,
+            m: mBits,
+            simd_mode: SIMD_STATE.ccs25,
+            c1, c2, m1, m2,
+            op_mode: opMode
           })
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1508,8 +1765,10 @@
 
         if (stage === 'setup') {
           document.getElementById('ccs-stat-setup').innerText = data.time_ms + ' ms';
+          if (data.c1) document.getElementById('cipher-in-1').value = JSON.stringify(data.c1);
+          if (data.c2) document.getElementById('cipher-in-2').value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: Setup 系統參數初始化]`);
-          appendConsole(box, `  • 初始化模數 q = 2^${data.params.k}, 明文空間 p = 2^${data.params.m} = ${1 << data.params.m}, 捨入基底 b = ${data.params.b}`);
+          appendConsole(box, `  • 初始化模數 q = 2^${data.params.k}, 明文空間 T = 2^${data.params.m} = ${1 << data.params.m} (ℤ_${1 << data.params.m}: 0~${(1 << data.params.m) - 1}), 捨入基底 b = ${data.params.b}`);
           appendConsole(box, `  • 參與方規模 N = ${data.params.num_parties} Parties | 實測 Setup 耗時: ${data.time_ms} ms`);
         } else if (stage === 'keygen') {
           document.getElementById('cipher-in-1').value = JSON.stringify(data.c1);
@@ -1520,21 +1779,21 @@
           appendConsole(box, `  • 實測 KeyGen 耗時: ${data.time_ms} ms`);
         } else if (stage === 'preprocess') {
           appendConsole(box, `\n[Stage 3: Offline Prep 離線預處理門池生成]`);
-          appendConsole(box, `  • 已完成 Sign 查表門與 ModLTZ 比較門的分治子集乘積預處理`);
+          appendConsole(box, `  • 已完成 Sign 查表門與 ModLTZ 比較門的分治子集乘積預處理 (Lemma 6 精確乘法數)`);
           appendConsole(box, `  • 離線乘法消耗: ${data.offline_metrics.num_mults} 次 | 門儲存大小: ${data.offline_metrics.gate_storage_bits} bits`);
           appendConsole(box, `  • 實測 Offline Prep 耗時: ${data.time_ms} ms`);
         } else if (stage === 'encrypt') {
           document.getElementById('cipher-in-1').value = JSON.stringify(data.c1);
           document.getElementById('cipher-in-2').value = JSON.stringify(data.c2);
-          appendConsole(box, `\n[Stage 4: Encrypt 明文加密]`);
-          appendConsole(box, `  • m₁ = ${data.m1} -> c₁ = ${JSON.stringify(data.c1)} (雜訊 e₁ = ${data.e1})`);
-          appendConsole(box, `  • m₂ = ${data.m2} -> c₂ = ${JSON.stringify(data.c2)} (雜訊 e₂ = ${data.e2})`);
+          appendConsole(box, `\n[Stage 4: Encrypt 明文加密 (明文空間 T=${T}, 模式: ${data.simd_mode ? '⚡ SIMD 多槽批次' : '🔢 單一純量'})]`);
+          appendConsole(box, `  • m₁ = ${formatOutputValue(data.m1)} -> c₁ 已填入密文框 1`);
+          appendConsole(box, `  • m₂ = ${formatOutputValue(data.m2)} -> c₂ 已填入密文框 2`);
           appendConsole(box, `  • 實測 Encrypt 耗時: ${data.time_ms} ms`);
         } else if (stage === 'eval') {
           document.getElementById('ccs-stat-eval').innerText = data.time_ms + ' ms';
-          appendConsole(box, `\n[Stage 5: Homo Eval 同態運算]`);
+          appendConsole(box, `\n[Stage 5: Homo Eval 同態運算 (${data.simd_mode ? '⚡ SIMD 平行批次' : '🔢 單一純量'})]`);
           appendConsole(box, `  • 執行模式: ${data.op_label}`);
-          appendConsole(box, `  • 運算後密文向量 c_eval = ${JSON.stringify(data.c_eval)}`);
+          appendConsole(box, `  • 預期結果 (mod T=${T}): ${formatOutputValue(data.expected_mu)}`);
           appendConsole(box, `  • 實測 Homo Eval 耗時: ${data.time_ms} ms`);
         } else if (stage === 'partial_dec') {
           const audit = data.audit_info || {};
@@ -1554,15 +1813,15 @@
           }
           appendConsole(box, `  • 實測 Partial Dec 耗時: ${data.partial_dec_ms} ms`);
         } else if (stage === 'aggregate') {
-          document.getElementById('decrypt-output-box').value = String(data.decrypted_plaintext);
+          document.getElementById('decrypt-output-box').value = formatOutputValue(data.decrypted_plaintext);
           document.getElementById('ccs-stat-lat').innerText = data.total_online_ms + ' ms';
           document.getElementById('ccs-stat-thru').innerText = Number(data.throughput_dec_per_sec).toLocaleString() + ' Dec/s';
           const badge = document.getElementById('ccs-verify-badge');
           badge.className = data.verified ? 'badge badge-green' : 'badge badge-red';
           badge.innerText = data.verified ? '✓ 驗證通過 (Verified)' : '✗ 驗證異常';
-          appendConsole(box, `\n[Stage 7: Aggregate & Output 份額聚合與明文重構]`);
+          appendConsole(box, `\n[Stage 7: Aggregate & Output 份額聚合與明文重構 (明文空間 T=${T})]`);
           appendConsole(box, `  • Round 3 雜訊消除 [z]_k - [e]_k 並聚合 N=${numParties} 方份額`);
-          appendConsole(box, `  • 最終解密明文 μ = ${data.decrypted_plaintext} (預期值: ${data.expected_plaintext}) -> 已輸出至左側「解密結果輸出框」！`);
+          appendConsole(box, `  • 最終解密結果 μ = ${formatOutputValue(data.decrypted_plaintext)} (預期值: ${formatOutputValue(data.expected_plaintext)}) -> 已輸出至左側「解密結果輸出框」！`);
           appendConsole(box, `  • 實測 Aggregation 耗時: ${data.agg_ms} ms | 總線上延遲: ${data.total_online_ms} ms`);
         }
       } catch (e) {
@@ -1574,6 +1833,7 @@
       const numParties = getSelectedParties();
       const malRatio = getSelectedMaliciousRatio();
       const attackType = getSelectedAttackType();
+      const mBits = getSelectedMBits();
       const c1 = parseCiphertextInput(document.getElementById('cipher-in-1').value);
       const c2 = parseCiphertextInput(document.getElementById('cipher-in-2').value);
       const opMode = document.getElementById('op-mode').value;
@@ -1584,6 +1844,8 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             c1, c2,
+            m: mBits,
+            simd_mode: SIMD_STATE.ccs25,
             op_mode: opMode,
             num_parties: numParties,
             malicious_ratio: malRatio,
@@ -1623,6 +1885,8 @@
         const totalOnline = decRes.pdec_ms + decRes.agg_ms;
 
         renderDecryptionResult({
+          simd_mode: false,
+          t_space: LOCAL_CRYPTO.p,
           op_mode: opMode,
           op_label: opLabel,
           num_parties: numParties,
@@ -1663,13 +1927,13 @@
       document.getElementById('ccs-stat-lat').innerText = Number(data.timings.total_online_ms).toFixed(3) + ' ms';
       document.getElementById('ccs-stat-thru').innerText = Number(data.timings.throughput_dec_per_sec).toLocaleString() + ' Dec/s';
 
-      // Output Box ONLY displays the decrypted result value!
-      document.getElementById('decrypt-output-box').value = String(data.decrypted_plaintext);
+      // Output Box ONLY displays the decrypted result value or SIMD vector!
+      document.getElementById('decrypt-output-box').value = formatOutputValue(data.decrypted_plaintext);
 
       const badge = document.getElementById('ccs-verify-badge');
       if (data.verified) {
         badge.className = 'badge badge-green';
-        badge.innerText = '✓ 驗證通過 (Verified)';
+        badge.innerText = data.simd_mode ? `✓ SIMD (${data.slot_count} Slots) 驗證通過` : '✓ 驗證通過 (Verified)';
       } else {
         badge.className = 'badge badge-red';
         badge.innerText = '✗ 驗證異常';
@@ -1679,9 +1943,9 @@
       const atkName = ATTACK_NAMES[data.attack_type] || data.attack_type;
 
       appendConsole(box, `\n================================================================`);
-      appendConsole(box, `[CCS 2025 完整流程執行] 模式: ${data.op_label}`);
+      appendConsole(box, `[CCS 2025 完整流程執行] 明文空間 T=${data.t_space || data.p_mod} | 模式: ${data.op_label}`);
       appendConsole(box, `  • [Stage 1~3] Setup=${data.timings.setup_time_ms}ms | KeyGen=${data.timings.keygen_time_ms}ms | Prep=${data.timings.prep_time_ms}ms`);
-      appendConsole(box, `  • [Stage 5: Homo Eval] 運算後密文 c_eval = ${JSON.stringify(data.evaluated_ciphertext)} (耗時: ${data.timings.eval_time_ms} ms)`);
+      appendConsole(box, `  • [Stage 5: Homo Eval] ${data.simd_mode ? `SIMD 平行運算 (${data.slot_count} Slots)` : '單一密文運算'} 耗時: ${data.timings.eval_time_ms} ms`);
 
       if ((audit.num_malicious || 0) > 0) {
         appendConsole(box, `  • [Stage 6: 隨機惡意節點攔截] 隨機抽樣的 ${audit.num_malicious} 個惡意節點 (P${(audit.detected_parties_sample || []).join(', P')}) 發動「${atkName}」`);
@@ -1693,7 +1957,7 @@
       if (data.rounds_info && data.rounds_info.length >= 3) {
         appendConsole(box, `  • [Round 1] Open([z]_l + [r]_l) -> z' = ${data.rounds_info[0].value}`);
         appendConsole(box, `  • [Round 2] Open([y]_{d+1} + [r_modltz]) -> y' = ${data.rounds_info[1].value}`);
-        appendConsole(box, `  • [Stage 7 / Round 3] 雜訊消除並聚合 -> 解密明文 μ = ${data.decrypted_plaintext} (預期值: ${data.expected_plaintext})`);
+        appendConsole(box, `  • [Stage 7 / Round 3] 雜訊消除並聚合 -> 解密結果 μ = ${formatOutputValue(data.decrypted_plaintext)} (預期值: ${formatOutputValue(data.expected_plaintext)})`);
       }
       appendConsole(box, `  • [線上階段耗時] PartialDec=${data.timings.partial_dec_time_ms}ms | Agg=${data.timings.agg_time_ms}ms | Total=${data.timings.total_online_ms}ms`);
     }
@@ -1710,8 +1974,9 @@
       const malSet = new Set(CURRENT_RANDOM_MALICIOUS_IDS);
       const numMal = malSet.size;
       const numHonest = n - numMal;
+      const T = getSelectedTSpace();
 
-      document.getElementById('pelta-node-count').innerText = `${n}P (${numMal} 隨機惡意 / ${numHonest} 誠實)`;
+      document.getElementById('pelta-node-count').innerText = `T=${T} | ${n}P (${numMal} 惡意 / ${numHonest} 誠實)`;
       const container = document.getElementById('pelta-party-list');
       container.innerHTML = '';
 
@@ -1736,10 +2001,12 @@
       const numParties = getSelectedParties();
       const malRatio = getSelectedMaliciousRatio();
       const attackType = getSelectedAttackType();
+      const mBits = getSelectedMBits();
+      const T = getSelectedTSpace();
       const c1 = parseCiphertextInput(document.getElementById('pelta-cipher-in-1').value);
       const c2 = parseCiphertextInput(document.getElementById('pelta-cipher-in-2').value);
-      const m1 = parseInt(document.getElementById('pelta-plain-m1').value) || 3;
-      const m2 = parseInt(document.getElementById('pelta-plain-m2').value) || 5;
+      const m1 = document.getElementById('pelta-plain-m1').value.trim() || '12';
+      const m2 = document.getElementById('pelta-plain-m2').value.trim() || '25';
       const opMode = document.getElementById('pelta-op-mode').value;
       const box = 'pelta-console';
 
@@ -1748,8 +2015,14 @@
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            stage, num_parties: numParties, malicious_ratio: malRatio,
-            attack_type: attackType, c1, c2, m1, m2, op_mode: opMode
+            stage,
+            num_parties: numParties,
+            malicious_ratio: malRatio,
+            attack_type: attackType,
+            m: mBits,
+            simd_mode: SIMD_STATE.pelta,
+            c1, c2, m1, m2,
+            op_mode: opMode
           })
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -1757,8 +2030,10 @@
 
         if (stage === 'setup') {
           document.getElementById('pelta-stat-setup').innerText = data.time_ms + ' ms';
+          if (data.c1) document.getElementById('pelta-cipher-in-1').value = JSON.stringify(data.c1);
+          if (data.c2) document.getElementById('pelta-cipher-in-2').value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: PELTA Setup 多項式環與 CRS 初始化]`);
-          appendConsole(box, `  • 多項式環 R_q = Z_${data.params.q}[X]/(X^${data.params.N_poly}+1), 明文模數 p = ${data.params.p}, 雜訊上界 B = ${data.params.B}`);
+          appendConsole(box, `  • 多項式環 R_q = Z_${data.params.q}[X]/(X^${data.params.N_poly}+1), 明文空間 T = ${data.t_space} (CRT NTT 擴展模數 p_ntt = ${data.p_ntt}), 雜訊上界 B = ${data.params.B}`);
           appendConsole(box, `  • 參與方規模 N = ${data.params.num_parties} Parties | 實測 Setup 耗時: ${data.time_ms} ms`);
         } else if (stage === 'keygen') {
           document.getElementById('pelta-cipher-in-1').value = JSON.stringify(data.c1);
@@ -1767,21 +2042,21 @@
           appendConsole(box, `  • 已為 N = ${data.keygen_info.num_parties} 個參與方生成秘密份額 s^{(i)} 與公鑰 b = -a·s + e`);
           appendConsole(box, `  • 已生成 RLWE Gadget 重線性化金鑰 (rlk) 供多項式同態乘法使用 | 實測耗時: ${data.time_ms} ms`);
         } else if (stage === 'preprocess') {
-          appendConsole(box, `\n[Stage 3: PELTA Offline Prep 離線 Ajtai 格承諾生成]`);
-          appendConsole(box, `  • 已為全部 N = ${numParties} 個參與方生成 Commit-then-Prove 離線 Ajtai 承諾 (${data.commit_count} 組)`);
+          appendConsole(box, `\n[Stage 3: PELTA Offline Prep 離線 Ajtai 格承諾與商數見證 k_vec 生成]`);
+          appendConsole(box, `  • 已為全部 N = ${numParties} 個參與方生成 Commit-then-Prove 離線 Ajtai 承諾 A₁s+A₂r = c_ajtai + k·p (${data.commit_count} 組)`);
           appendConsole(box, `  • 承諾儲存大小: ${data.offline_metrics.gate_storage_bits} bits | 實測耗時: ${data.time_ms} ms`);
         } else if (stage === 'encrypt') {
           document.getElementById('pelta-cipher-in-1').value = JSON.stringify(data.c1);
           document.getElementById('pelta-cipher-in-2').value = JSON.stringify(data.c2);
-          appendConsole(box, `\n[Stage 4: PELTA Encrypt RLWE 明文加密]`);
-          appendConsole(box, `  • m₁ = ${data.m1} -> RLWE 密文 c₁ = (c₁_0, c₁_1) 已填入輸入框 1`);
-          appendConsole(box, `  • m₂ = ${data.m2} -> RLWE 密文 c₂ = (c₂_0, c₂_1) 已填入輸入框 2`);
+          appendConsole(box, `\n[Stage 4: PELTA Encrypt RLWE 加密 (明文空間 T=${T}, 模式: ${data.simd_mode ? '⚡ CRT/NTT 單密文多槽 SIMD' : '🔢 單一純量'})]`);
+          appendConsole(box, `  • m₁ = ${formatOutputValue(data.m1)} -> 單一 RLWE 密文 c₁ = (c₁_0, c₁_1) 已填入輸入框 1`);
+          appendConsole(box, `  • m₂ = ${formatOutputValue(data.m2)} -> 單一 RLWE 密文 c₂ = (c₂_0, c₂_1) 已填入輸入框 2`);
           appendConsole(box, `  • 實測 Encrypt 耗時: ${data.time_ms} ms`);
         } else if (stage === 'eval') {
           document.getElementById('pelta-stat-mul').innerText = data.time_ms + ' ms';
-          appendConsole(box, `\n[Stage 5: PELTA Homo Eval RLWE 同態運算]`);
+          appendConsole(box, `\n[Stage 5: PELTA Homo Eval RLWE 同態運算 (${data.simd_mode ? '⚡ CRT/NTT 單密文平行多槽' : '🔢 單一純量'})]`);
           appendConsole(box, `  • 執行模式: ${data.op_label}`);
-          appendConsole(box, `  • 運算後密文 c_eval[0] 前 6 項係數: [${data.ct_eval[0].slice(0, 6).join(', ')}...]`);
+          appendConsole(box, `  • 預期結果 (mod T=${T}): ${formatOutputValue(data.expected_mu)}`);
           appendConsole(box, `  • 實測 Homo Eval 耗時: ${data.time_ms} ms`);
         } else if (stage === 'partial_dec') {
           const audit = data.audit_info || {};
@@ -1791,7 +2066,7 @@
           }
           document.getElementById('pelta-stat-zk').innerText = data.timings.partial_dec_time_ms + ' ms';
           appendConsole(box, `\n[Stage 6: PELTA Partial Dec & Commit-then-Prove NIZK 零知識驗證]`);
-          appendConsole(box, `  • 全體 N = ${numParties} 個參與方計算部分解密 d^{(i)} = c₁ · s^{(i)} 並執行三元分解範數證明`);
+          appendConsole(box, `  • 全體 N = ${numParties} 個參與方計算部分解密 d^{(i)} = c₁ · s^{(i)} 並執行三次方三元性檢查 x(x-1)(x+1)=0 與 Ajtai ABP 範數驗證`);
           if ((audit.num_malicious || 0) > 0) {
             appendConsole(box, `  • [隨機惡意節點攔截] 隨機抽樣的 ${audit.num_malicious} 個惡意節點 (P${(audit.rejected_parties_sample || []).join(', P')}) 發動「${ATTACK_NAMES[attackType]}」`);
             appendConsole(box, `    -> PeltaVerifier 透過三元分解與 Fiat-Shamir 承諾檢查成功攔截全部 ${audit.rejected_count} 個惡意節點！`);
@@ -1812,18 +2087,18 @@
           document.getElementById('pelta-agg-status').innerText = audit.schwartz_zippel_passed ? '✓ 驗證通過' : '✗ 失敗';
           document.getElementById('pelta-agg-status').style.color = audit.schwartz_zippel_passed ? '#34d399' : '#f87171';
 
-          // Output Box ONLY displays the decrypted result value!
-          document.getElementById('pelta-output-box').value = String(data.decrypted_plaintext);
+          // Output Box ONLY displays the decrypted result value or SIMD vector!
+          document.getElementById('pelta-output-box').value = formatOutputValue(data.decrypted_plaintext);
 
           const badge = document.getElementById('pelta-verify-badge');
           badge.className = data.verified ? 'badge badge-green' : 'badge badge-red';
-          badge.innerText = data.verified ? '✓ 驗證通過 (Verified)' : '✗ 驗證異常';
+          badge.innerText = data.verified ? (data.simd_mode ? `✓ CRT SIMD (${data.slot_count} Slots) 驗證通過` : '✓ 驗證通過 (Verified)') : '✗ 驗證異常';
 
           if (stage === 'run_all') {
             appendConsole(box, `\n================================================================`);
-            appendConsole(box, `[PELTA 完整流程執行] 模式: ${data.op_label}`);
+            appendConsole(box, `[PELTA 完整流程執行] 明文空間 T=${data.t_space || data.p_mod} | 模式: ${data.op_label}`);
             appendConsole(box, `  • [Stage 1~3] Setup=${data.timings.setup_time_ms}ms | KeyGen=${data.timings.keygen_time_ms}ms | Prep=${data.timings.prep_time_ms}ms`);
-            appendConsole(box, `  • [Stage 5: Homo Eval] RLWE 同態評估耗時: ${data.timings.eval_time_ms} ms`);
+            appendConsole(box, `  • [Stage 5: Homo Eval] RLWE ${data.simd_mode ? 'CRT/NTT 單密文多槽平行' : '單一純量'}同態評估耗時: ${data.timings.eval_time_ms} ms`);
             if ((audit.num_malicious || 0) > 0) {
               appendConsole(box, `  • [Stage 6: 隨機惡意節點攔截] 隨機抽樣的 ${audit.num_malicious} 個惡意節點 (P${(audit.rejected_parties_sample || []).join(', P')}) 發動「${ATTACK_NAMES[attackType]}」`);
               appendConsole(box, `    -> PeltaVerifier 成功攔截全部 ${audit.rejected_count} / ${audit.num_malicious} 個惡意節點！(耗時: ${data.timings.partial_dec_time_ms} ms)`);
@@ -1831,8 +2106,8 @@
               appendConsole(box, `  • [Stage 6: NIZK 驗證] 全體 ${numParties} 個參與方驗證通過 (耗時: ${data.timings.partial_dec_time_ms} ms)`);
             }
           }
-          appendConsole(box, `  • [Stage 7: Schwartz-Zippel 可驗證聚合] 隨機挑戰點 α = ${data.alpha}, 聚合一致性驗證 = ${audit.schwartz_zippel_passed}`);
-          appendConsole(box, `  • [最終解密結果] 解密明文 μ = ${data.decrypted_plaintext} (預期值: ${data.expected_plaintext}) -> 已輸出至左側「PELTA 解密結果輸出框」！(聚合耗時: ${data.timings.agg_time_ms} ms)`);
+          appendConsole(box, `  • [Stage 7: Schwartz-Zippel 可驗證聚合] ROM Fiat-Shamir 挑戰點 α = ${data.alpha}, 聚合一致性驗證 = ${audit.schwartz_zippel_passed}`);
+          appendConsole(box, `  • [最終解密結果] 解密明文 μ = ${formatOutputValue(data.decrypted_plaintext)} (預期值: ${formatOutputValue(data.expected_plaintext)}) -> 已輸出至左側「PELTA 解密結果輸出框」！(聚合耗時: ${data.timings.agg_time_ms} ms)`);
         }
       } catch (e) {
         appendConsole(box, `\n[Local Fallback] 已完成 PELTA 階段 (${stage}) 本地模擬。`);

@@ -110,6 +110,12 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         ct = self.mfhe.encrypt(message)
         return ct, 0
 
+    def encrypt_simd(self, slots: List[int]) -> Tuple[List[int], List[int]]:
+        """RLWE CRT/NTT 多槽打包 SIMD 加密"""
+        if self.mfhe is None or not self.mfhe.s_joint:
+            self.keygen()
+        return self.mfhe.encrypt_simd(slots)
+
     def eval_add(self, ct1: Tuple[List[int], List[int]], ct2: Tuple[List[int], List[int]]) -> Tuple[List[int], List[int]]:
         """[Stage 4a: Homo Add] RLWE 同態加法"""
         return self.mfhe.eval_add(ct1, ct2)
@@ -121,6 +127,22 @@ class PeltaThFHEScheme(BaseThFHEScheme):
     def decrypt(self, ciphertext: Tuple[List[int], List[int]], preprocessed_data: Optional[Any] = None) -> int:
         mu, _, _ = self.decrypt_with_stages(ciphertext, preprocessed_data)
         return mu
+
+    def decrypt_simd_with_stages(
+        self,
+        ciphertext: Tuple[List[int], List[int]],
+        slot_count: int = 4,
+        malicious_ratio: Optional[int] = None,
+        attack_type: Optional[str] = None
+    ) -> Tuple[List[int], float, float]:
+        """RLWE CRT/NTT 多槽 SIMD 可驗證門檻解密"""
+        _, pdec_ms, agg_ms = self.decrypt_with_stages(
+            ciphertext,
+            malicious_ratio=malicious_ratio,
+            attack_type=attack_type
+        )
+        slots = self.last_audit.get("decoded_simd_slots", [])[:slot_count]
+        return slots, pdec_ms, agg_ms
 
     def decrypt_with_stages(
         self,
@@ -203,8 +225,11 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         sz_ok = VerifiableAggregation.verify_sum_at_alpha(eval_proofs, agg_eval, ring.q)
 
         phase = ring.add(c0, agg_c1_s)
+        half_delta = self.mfhe.delta // 2
         val0 = phase[0] % self.mfhe.q
-        mu = ((val0 + (self.mfhe.delta // 2)) // self.mfhe.delta) % self.mfhe.p
+        mu = (((val0 + half_delta) // self.mfhe.delta) % self.mfhe.p_ntt) % self.mfhe.p
+        m_poly = [(((val % self.mfhe.q) + half_delta) // self.mfhe.delta) % self.mfhe.p_ntt for val in phase]
+        decoded_simd_slots = self.mfhe.decode_simd(m_poly)
         agg_ms = (time.perf_counter() - t1) * 1000.0
 
         self.last_audit = {
@@ -214,7 +239,9 @@ class PeltaThFHEScheme(BaseThFHEScheme):
             "attack_type": at,
             "rejected_count": len(rejected_parties),
             "rejected_parties_sample": rejected_parties[:10],
-            "schwartz_zippel_passed": sz_ok
+            "schwartz_zippel_passed": sz_ok,
+            "fiat_shamir_alpha": alpha_fs,
+            "decoded_simd_slots": decoded_simd_slots
         }
 
         return mu, partial_dec_ms, agg_ms

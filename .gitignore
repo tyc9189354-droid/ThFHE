@@ -20,3 +20,7 @@ env/
 # IDE files
 .vscode/
 .idea/
+
+# Ignore FABEO directory in this repository
+FABEO/
+

@@ -1,92 +1,63 @@
 """
 ================================================================================
-自訂方案轉接器 (Custom Scheme Adapter Template)
+自訂方案轉接器模板 (Custom Scheme Adapter Template)
 ================================================================================
-當你準備好貼上現有程式碼時，請將你的函式或類別引入此檔案，並填入下方對應的方法中。
-這樣你的演算法就能直接無縫接入所有量測、雲端通訊與論文圖表繪製流程！
+當你有未來的新論文或自研程式碼時，請依照此模板包裝，並繼承 BaseThFHEScheme。
+只要實作以下幾個核心生命週期，就能自動接入整個評測框架與論文圖表繪製！
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple, Optional
 from core.base_scheme import BaseThFHEScheme
 
-# TODO: 在此處引入你現有的程式碼模組
-# 範例: from my_thfhe_code import MyCryptoSystem, MyCiphertext
+# TODO: 引入你的論文實作模組 (例如 from your_tool import ...)
 
-class CustomThFHEScheme(BaseThFHEScheme):
+class CustomPaperThFHEScheme(BaseThFHEScheme):
     """
-    包裝你的現有程式碼的 Adapter 類別。
+    未來其他論文的實作轉接器。
     """
 
-    def __init__(self, name: str = "my_custom_scheme"):
+    def __init__(self, name: str = "My_New_Paper_Scheme"):
         super().__init__(name)
-        # TODO: 初始化你底層系統的實例或變數
-        # self.engine = MyCryptoSystem()
+        self.k = 64
+        self.m = 1
 
-    def setup(self, security_param: int, threshold_t: int, total_n: int, **kwargs) -> Dict[str, Any]:
-        """
-        [1] 系統參數設定
-        請呼叫你程式碼中的 Setup / Parameter Generation 邏輯
-        """
-        self.params = {
-            "security_param": security_param,
-            "threshold_t": threshold_t,
-            "total_n": total_n,
-            **kwargs
-        }
-        # TODO: 呼叫你的 setup 函式
+    def setup(self, k: int = 64, m: int = 1, **kwargs) -> Dict[str, Any]:
+        """[1] 系統參數設定與密鑰初始化"""
+        self.k = k
+        self.m = m
+        self.params = {"k": k, "m": m, **kwargs}
+        # TODO: 呼叫你的 setup 或 keygen
         return self.params
 
-    def keygen(self) -> Dict[str, Any]:
-        """
-        [2] 密鑰生成
-        請呼叫你的 KeyGen 或分散式密鑰生成 (DKG) 邏輯
-        :return: 必須回傳一個字典，包含 'pk', 'eval_key', 'sk_shares'
-        """
-        # TODO: 替換為你的密鑰生成
-        # pk, eval_key, sk_shares = self.engine.generate_keys(...)
-        # return {"pk": pk, "eval_key": eval_key, "sk_shares": sk_shares}
-        raise NotImplementedError("請填入你的 keygen 實作")
+    def preprocess(self) -> Any:
+        """[2] 離線預處理階段 (生成門、Beaver triples、隨機數等)"""
+        # TODO: 呼叫你的離線預處理
+        return {}
 
-    def encrypt(self, plaintext: Any, pk: Any) -> Any:
-        """
-        [3] 加密明文
-        """
-        # TODO: 替換為你的加密函式
-        # return self.engine.encrypt(pk, plaintext)
+    def encrypt(self, message: int) -> Tuple[Any, Any]:
+        """[3] 明文加密"""
+        # TODO: 呼叫你的加密函式，回傳 (密文, 雜訊)
         raise NotImplementedError("請填入你的 encrypt 實作")
 
-    def eval_add(self, ct1: Any, ct2: Any, eval_key: Optional[Any] = None) -> Any:
-        """
-        [4] 同態加法
-        """
-        # TODO: 替換為你的同態加法
-        # return self.engine.add(ct1, ct2)
-        raise NotImplementedError("請填入你的 eval_add 實作")
+    def decrypt(self, ciphertext: Any, preprocessed_data: Optional[Any] = None) -> int:
+        """[4] 線上門檻解密"""
+        # TODO: 呼叫你的線上門檻解密函式，回傳還原的明文
+        raise NotImplementedError("請填入你的 decrypt 實作")
 
-    def eval_mult(self, ct1: Any, ct2: Any, eval_key: Optional[Any] = None) -> Any:
-        """
-        [5] 同態乘法
-        """
-        # TODO: 替換為你的同態乘法
-        # return self.engine.multiply(ct1, ct2, eval_key)
-        raise NotImplementedError("請填入你的 eval_mult 實作")
+    def get_offline_metrics(self, preprocessed_data: Any) -> Dict[str, Any]:
+        """[5] 離線成本統計 (乘法次數、門儲存大小)"""
+        return {
+            "num_mults": 0,
+            "num_rand_bits": 0,
+            "gate_storage_bits": 0,
+            "gate_storage_bytes": 0
+        }
 
-    def partial_decrypt(self, party_id: int, ciphertext: Any, sk_share: Any) -> Any:
-        """
-        [6] 門檻解密 - 單方計算解密份額
-        """
-        # TODO: 替換為各方產生 partial decryption share 的函式
-        # return self.engine.partial_decrypt(party_id, sk_share, ciphertext)
-        raise NotImplementedError("請填入你的 partial_decrypt 實作")
-
-    def combine_decryption(self, partial_shares: List[Any], ciphertext: Any, pk: Optional[Any] = None) -> Any:
-        """
-        [7] 門檻解密 - 聚合 >= t 個份額重構明文
-        """
-        # TODO: 替換為聚合解密的函式
-        # return self.engine.combine(partial_shares, ciphertext)
-        raise NotImplementedError("請填入你的 combine_decryption 實作")
-
-    # 選填: 若你的密文/密鑰有自訂的 to_bytes / serialize 函式，可在此覆寫以獲得最精確通訊位元組量測
-    # def serialize_ciphertext(self, ciphertext: Any) -> bytes:
-    #     return ciphertext.to_bytes()
+    def get_online_metrics(self) -> Dict[str, Any]:
+        """[6] 線上成本統計 (揭示次數、揭示位元數、交互輪數)"""
+        return {
+            "num_opens": 3,
+            "opened_bits": 0,
+            "num_mults": 0,
+            "num_rounds": 3
+        }

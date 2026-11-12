@@ -1,35 +1,32 @@
 # ==========================================================
-# ThFHE 評測實驗配置檔 (Benchmark Configuration)
+# Threshold FHE 評測實驗配置檔 (Benchmark Configuration)
 # ==========================================================
 
-# 評測模式: 'local' (單機模擬多方) 或 'remote' (透過網路/雲端 Server)
+# 評測模式: 'local' (本地演算法評測) 或 'remote' (透過 server.py / 雲端連線)
 mode: "local"
 
 # 實驗重複次數與預熱次數
 iterations: 5
 warmup: 1
 
-# 安全參數 (如 80, 128, 256)
-security_params:
-  - 128
+# 測試的參數組合 (k: 密文模數 bits, m: 明文模數 bits, b: 門分解 base bits)
+test_params:
+  - k: 16
+    m: 1
+    b: 4
+  - k: 64
+    m: 1
+    b: 8
 
-# 參與方數量與門檻值組合 [(threshold_t, total_n)]
-threshold_configs:
-  - threshold_t: 2
-    total_n: 3
-  - threshold_t: 3
-    total_n: 5
-  - threshold_t: 6
-    total_n: 10
-
-# 測試明文輸入數值 (用於加法與乘法正確性檢驗)
-test_inputs:
-  m1: 15
-  m2: 27
+# 要比較的方案清單:
+# 可選: 'ccs25' (本篇論文), 'baseline_noise_flooding' (傳統雜訊淹沒方案)
+schemes:
+  - "ccs25"
+  - "baseline_noise_flooding"
 
 # 雲端伺服器設定 (僅在 mode 為 remote 時使用)
 remote_server:
   url: "http://127.0.0.1:8000"
 
-# 輸出目錄
+# 結果輸出目錄
 output_dir: "./results"

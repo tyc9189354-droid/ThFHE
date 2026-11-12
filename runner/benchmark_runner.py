@@ -1,207 +1,159 @@
+import time
+import math
 import datetime
 from typing import Dict, Any, List, Optional
 from core.base_scheme import BaseThFHEScheme
-from core.metrics import BenchmarkResult, StageMetric
-from core.profiler import Profiler
-from network.client import BenchmarkClient
+from core.metrics import BenchmarkResult, OfflineMetric, OnlineMetric
+from client import ThresholdFHEClient
+from tool import encode_ciphertext
 
 class BenchmarkRunner:
     """
-    評測管線執行器：自動化測試各階段效能、量測通訊量並驗證正確性。
+    統一評測執行核心：
+    可同時評測與比較多個 Scheme（例如 CCS25 vs 其他論文實作），
+    精確量測離線預處理成本 (Offline) 與線上解密效能 (Online)。
     """
 
     def __init__(self, iterations: int = 5, warmup: int = 1):
         self.iterations = iterations
         self.warmup = warmup
 
-    def run_local(
-        self,
-        scheme: BaseThFHEScheme,
-        security_param: int,
-        threshold_t: int,
-        total_n: int,
-        plain_m1: int = 15,
-        plain_m2: int = 27
-    ) -> BenchmarkResult:
-        """
-        本地端模擬評測：單機評測演算法各階段的計算耗時、記憶體與物件大小。
-        """
-        print(f"\n[+] Running LOCAL Benchmark: Scheme='{scheme.name}', (t={threshold_t}, n={total_n}, sec={security_param})")
+    def run_local(self, scheme: BaseThFHEScheme, k: int, m: int, **kwargs) -> BenchmarkResult:
+        """本地模式：量測純演算法與 MPC 協議的運算複雜度與指標"""
+        print(f"\n[+] Running LOCAL Benchmark: Scheme='{scheme.name}' (k={k}, m={m})")
 
         # 1. Setup
-        scheme.setup(security_param=security_param, threshold_t=threshold_t, total_n=total_n)
+        scheme.setup(k=k, m=m, **kwargs)
 
-        # 2. KeyGen
-        keys, metric_keygen = Profiler.measure_execution(
-            func=lambda: scheme.keygen(),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="keygen"
-        )
-        pk = keys["pk"]
-        eval_key = keys.get("eval_key")
-        sk_shares = keys["sk_shares"]
+        # 2. Offline Preprocessing Benchmark
+        # Warmup
+        for _ in range(self.warmup):
+            scheme.preprocess()
 
-        # 量測 Key 大小
-        pk_size = len(scheme.serialize_key(pk))
-        eval_key_size = len(scheme.serialize_key(eval_key)) if eval_key else 0
-        sk_share_sample = next(iter(sk_shares.values())) if isinstance(sk_shares, dict) else sk_shares[0]
-        sk_share_size = len(scheme.serialize_key(sk_share_sample))
+        prep_times_ms = []
+        last_gates = None
+        for _ in range(self.iterations):
+            t0 = time.perf_counter()
+            last_gates = scheme.preprocess()
+            prep_times_ms.append((time.perf_counter() - t0) * 1000.0)
 
-        # 3. Encrypt
-        ct1, metric_enc1 = Profiler.measure_execution(
-            func=lambda: scheme.encrypt(plain_m1, pk),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="encrypt"
-        )
-        ct2 = scheme.encrypt(plain_m2, pk)
-        ct_size = len(scheme.serialize_ciphertext(ct1))
+        mean_prep_time = sum(prep_times_ms) / len(prep_times_ms)
+        off_info = scheme.get_offline_metrics(last_gates)
 
-        # 4. Homomorphic Eval Add
-        ct_add, metric_eval_add = Profiler.measure_execution(
-            func=lambda: scheme.eval_add(ct1, ct2, eval_key),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="eval_add"
+        offline_metric = OfflineMetric(
+            prep_time_ms=round(mean_prep_time, 3),
+            num_mults=off_info.get("num_mults", 0),
+            num_rand_bits=off_info.get("num_rand_bits", 0),
+            gate_storage_bits=off_info.get("gate_storage_bits", 0),
+            gate_storage_bytes=off_info.get("gate_storage_bytes", 0),
+            details={"raw_prep_times_ms": prep_times_ms}
         )
 
-        # 5. Homomorphic Eval Mult
-        ct_mult, metric_eval_mult = Profiler.measure_execution(
-            func=lambda: scheme.eval_mult(ct1, ct2, eval_key),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="eval_mult"
+        # 3. Online Decryption Benchmark
+        test_messages = [0, 1]
+        ciphertexts = [scheme.encrypt(msg) for msg in test_messages]
+        ct_sample = ciphertexts[0][0]
+        ct_size_bytes = len(scheme.serialize_ciphertext(ct_sample))
+
+        # Measure online latency
+        online_times_ms = []
+        correctness_verified = True
+
+        for _ in range(self.iterations):
+            for i, msg in enumerate(test_messages):
+                ct, _ = ciphertexts[i]
+                # Prepare fresh gate
+                fresh_gate = scheme.preprocess()
+
+                t0 = time.perf_counter()
+                recovered = scheme.decrypt(ct, fresh_gate)
+                lat = (time.perf_counter() - t0) * 1000.0
+                online_times_ms.append(lat)
+
+                if recovered != msg:
+                    correctness_verified = False
+
+        mean_lat = sum(online_times_ms) / len(online_times_ms)
+        variance = sum((x - mean_lat) ** 2 for x in online_times_ms) / len(online_times_ms) if len(online_times_ms) > 1 else 0.0
+        std_lat = math.sqrt(variance)
+
+        # Throughput estimation: 1000 / mean_lat_ms
+        throughput = 1000.0 / mean_lat if mean_lat > 0 else 0.0
+
+        on_info = scheme.get_online_metrics()
+
+        online_metric = OnlineMetric(
+            latency_ms=round(mean_lat, 3),
+            std_latency_ms=round(std_lat, 3),
+            throughput_dec_per_sec=round(throughput, 1),
+            num_rounds=on_info.get("num_rounds", 3),
+            num_opens=on_info.get("num_opens", 3),
+            opened_bits=on_info.get("opened_bits", 0),
+            online_mults=on_info.get("online_mults", 0),
+            details={"raw_online_latencies_ms": online_times_ms}
         )
 
-        # 6. Partial Decrypt (模擬 t 個參與方計算份額)
-        sample_parties = list(sk_shares.keys())[:threshold_t] if isinstance(sk_shares, dict) else list(range(1, threshold_t + 1))
-        
-        def run_all_partial_decrypts():
-            shares = []
-            for pid in sample_parties:
-                sk_s = sk_shares[pid] if isinstance(sk_shares, dict) else sk_shares[pid - 1]
-                shares.append(scheme.partial_decrypt(pid, ct_add, sk_s))
-            return shares
-
-        shares_list, metric_p_dec = Profiler.measure_execution(
-            func=run_all_partial_decrypts,
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="partial_decrypt"
-        )
-        share_size = len(scheme.serialize_share(shares_list[0]))
-
-        # 7. Combine Decryption
-        dec_result, metric_combine = Profiler.measure_execution(
-            func=lambda: scheme.combine_decryption(shares_list, ct_add, pk),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="combine_decryption"
-        )
-
-        # 正確性檢查 (加法: m1 + m2)
-        expected_add = plain_m1 + plain_m2
-        correct = (dec_result == expected_add)
-
-        result = BenchmarkResult(
-            scheme_name=scheme.name,
-            security_param=security_param,
-            threshold_t=threshold_t,
-            total_n=total_n,
-            mode="local",
-            timestamp=datetime.datetime.now().isoformat(),
-            stages={
-                "keygen": metric_keygen,
-                "encrypt": metric_enc1,
-                "eval_add": metric_eval_add,
-                "eval_mult": metric_eval_mult,
-                "partial_decrypt": metric_p_dec,
-                "combine_decryption": metric_combine
-            },
-            key_sizes_bytes={
-                "pk_bytes": pk_size,
-                "eval_key_bytes": eval_key_size,
-                "sk_share_bytes": sk_share_size
-            },
-            ciphertext_size_bytes=ct_size,
-            share_size_bytes=share_size,
-            correctness_verified=correct
-        )
-
-        print(f"  -> Correctness Verified: {correct} (Got: {dec_result}, Expected: {expected_add})")
-        return result
-
-    def run_remote(
-        self,
-        scheme: BaseThFHEScheme,
-        server_url: str,
-        security_param: int,
-        threshold_t: int,
-        total_n: int,
-        plain_m1: int = 15,
-        plain_m2: int = 27
-    ) -> BenchmarkResult:
-        """
-        雲端伺服器評測模式：將運算發送至伺服器，測量網路通訊大小 (Upload/Download) 與端到端延遲。
-        """
-        print(f"\n[+] Running REMOTE Benchmark against server {server_url}...")
-        client = BenchmarkClient(server_url)
-
-        if not client.check_health():
-            raise ConnectionError(f"Cannot connect to Cloud Server at {server_url}. Please ensure server is running.")
-
-        # Local setup & keygen
-        scheme.setup(security_param=security_param, threshold_t=threshold_t, total_n=total_n)
-        client.setup_remote(scheme.name, security_param, threshold_t, total_n)
-
-        keys = scheme.keygen()
-        pk = keys["pk"]
-        eval_key = keys.get("eval_key")
-        sk_shares = keys["sk_shares"]
-
-        ct1 = scheme.encrypt(plain_m1, pk)
-        ct2 = scheme.encrypt(plain_m2, pk)
-
-        # 測量遠端同態運算與通訊量
-        client.comm_stats.reset()
-        ct_res, metric_remote_eval = Profiler.measure_execution(
-            func=lambda: client.eval_remote(scheme.name, "add", ct1, ct2, eval_key),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="remote_eval_add"
-        )
-        metric_remote_eval.comm_sent_bytes = client.comm_stats.total_bytes_sent
-        metric_remote_eval.comm_recv_bytes = client.comm_stats.total_bytes_received
-
-        # 本地各方計算份額
-        sample_parties = list(sk_shares.keys())[:threshold_t] if isinstance(sk_shares, dict) else list(range(1, threshold_t + 1))
-        shares = [scheme.partial_decrypt(pid, ct_res, sk_shares[pid]) for pid in sample_parties]
-
-        # 測量伺服器聚合重構與通訊量
-        client.comm_stats.reset()
-        recovered, metric_remote_combine = Profiler.measure_execution(
-            func=lambda: client.combine_remote(scheme.name, shares, ct_res, pk),
-            iterations=self.iterations,
-            warmup=self.warmup,
-            stage_name="remote_combine"
-        )
-        metric_remote_combine.comm_sent_bytes = client.comm_stats.total_bytes_sent
-        metric_remote_combine.comm_recv_bytes = client.comm_stats.total_bytes_received
-
-        correct = (recovered == (plain_m1 + plain_m2))
+        print(f"  -> Offline: Prep={offline_metric.prep_time_ms} ms, Mults={offline_metric.num_mults}, Gates={offline_metric.gate_storage_bytes} B")
+        print(f"  -> Online:  Latency={online_metric.latency_ms} ms (±{online_metric.std_latency_ms}), Throughput={online_metric.throughput_dec_per_sec} Dec/s")
+        print(f"  -> Correctness: {correctness_verified}")
 
         return BenchmarkResult(
             scheme_name=scheme.name,
-            security_param=security_param,
-            threshold_t=threshold_t,
-            total_n=total_n,
+            k=k,
+            m=m,
+            mode="local",
+            timestamp=datetime.datetime.now().isoformat(),
+            offline=offline_metric,
+            online=online_metric,
+            ciphertext_size_bytes=ct_size_bytes,
+            correctness_verified=correctness_verified,
+            metadata={"params": scheme.params}
+        )
+
+    def run_remote(self, server_url: str, k: int = 64, m: int = 1, b: int = 8, n_dim: int = 16) -> BenchmarkResult:
+        """遠端雲端模式：透過 HTTP API 與 server.py 進行端到端評測"""
+        print(f"\n[+] Running REMOTE Benchmark against server {server_url} (k={k}, m={m})...")
+        client = ThresholdFHEClient(server_url=server_url)
+
+        # Health & setup
+        client.check_health()
+        client.setup_server(k=k, m=m, b=b, n_dim=n_dim, pool_size=self.iterations * 2)
+
+        latencies_ms = []
+        correctness = True
+
+        for msg in [0, 1]:
+            c_b64 = client.get_demo_ciphertext(msg)
+            for _ in range(self.iterations):
+                recovered, info = client.decrypt_interactive(c_b64)
+                latencies_ms.append(info["total_rtt_ms"])
+                if recovered != msg:
+                    correctness = False
+
+        mean_lat = sum(latencies_ms) / len(latencies_ms)
+        std_lat = math.sqrt(sum((x - mean_lat)**2 for x in latencies_ms) / len(latencies_ms))
+        throughput = 1000.0 / mean_lat if mean_lat > 0 else 0.0
+
+        online_metric = OnlineMetric(
+            latency_ms=round(mean_lat, 3),
+            std_latency_ms=round(std_lat, 3),
+            throughput_dec_per_sec=round(throughput, 1),
+            num_rounds=3,
+            num_opens=3,
+            opened_bits=k - m + (math.ceil((k - m)/b) + 1) + k,
+            online_mults=0,
+            comm_sent_bytes=client.stats.bytes_sent,
+            comm_recv_bytes=client.stats.bytes_recv
+        )
+
+        return BenchmarkResult(
+            scheme_name="CCS25_Remote_Server",
+            k=k,
+            m=m,
             mode="remote",
             timestamp=datetime.datetime.now().isoformat(),
-            stages={
-                "remote_eval_add": metric_remote_eval,
-                "remote_combine": metric_remote_combine
-            },
-            correctness_verified=correct,
+            offline=OfflineMetric(),
+            online=online_metric,
+            correctness_verified=correctness,
             metadata={"server_url": server_url}
         )

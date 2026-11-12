@@ -22,10 +22,14 @@ class ResultExporter:
             return
 
         headers = [
-            "scheme_name", "mode", "security_param", "threshold_t", "total_n",
-            "stage_name", "mean_time_ms", "std_time_ms", "min_time_ms", "max_time_ms",
-            "comm_sent_bytes", "comm_recv_bytes", "memory_peak_kb",
-            "ciphertext_size_bytes", "share_size_bytes", "correctness"
+            "scheme_name", "mode", "k", "m",
+            # Offline Metrics
+            "offline_prep_time_ms", "offline_mults", "offline_rand_bits",
+            "gate_storage_bits", "gate_storage_bytes",
+            # Online Metrics
+            "online_latency_ms", "online_std_latency_ms", "online_throughput_dec_per_sec",
+            "online_rounds", "online_opens", "online_opened_bits", "online_mults",
+            "comm_sent_bytes", "comm_recv_bytes", "correctness_verified"
         ]
 
         with open(output_path, "w", newline="", encoding="utf-8") as f:
@@ -33,11 +37,12 @@ class ResultExporter:
             writer.writerow(headers)
 
             for r in results:
-                for stage_name, s in r.stages.items():
-                    writer.writerow([
-                        r.scheme_name, r.mode, r.security_param, r.threshold_t, r.total_n,
-                        stage_name, s.mean_time_ms, s.std_time_ms, s.min_time_ms, s.max_time_ms,
-                        s.comm_sent_bytes, s.comm_recv_bytes, s.memory_peak_kb,
-                        r.ciphertext_size_bytes, r.share_size_bytes, r.correctness_verified
-                    ])
+                writer.writerow([
+                    r.scheme_name, r.mode, r.k, r.m,
+                    r.offline.prep_time_ms, r.offline.num_mults, r.offline.num_rand_bits,
+                    r.offline.gate_storage_bits, r.offline.gate_storage_bytes,
+                    r.online.latency_ms, r.online.std_latency_ms, r.online.throughput_dec_per_sec,
+                    r.online.num_rounds, r.online.num_opens, r.online.opened_bits, r.online.online_mults,
+                    r.online.comm_sent_bytes, r.online.comm_recv_bytes, r.correctness_verified
+                ])
         print(f"[✓] Saved CSV results to: {output_path}")

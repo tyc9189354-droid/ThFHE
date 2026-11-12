@@ -1,1 +1,236 @@
-[]
+[
+  {
+    "scheme_name": "CCS25_MPC_Rounding",
+    "k": 16,
+    "m": 1,
+    "mode": "local",
+    "timestamp": "2026-11-12T13:45:11.744821",
+    "offline": {
+      "prep_time_ms": 0.672,
+      "num_mults": 63,
+      "num_rand_bits": 20,
+      "gate_storage_bits": 312,
+      "gate_storage_bytes": 39,
+      "details": {
+        "raw_prep_times_ms": [
+          0.6532919999999998,
+          0.5949999999999983,
+          0.8933750000000018,
+          0.6394579999999955,
+          0.5807089999999987
+        ]
+      }
+    },
+    "online": {
+      "latency_ms": 0.014,
+      "std_latency_ms": 0.003,
+      "throughput_dec_per_sec": 73754.5,
+      "num_rounds": 3,
+      "num_opens": 3,
+      "opened_bits": 36,
+      "online_mults": 0,
+      "comm_sent_bytes": 0,
+      "comm_recv_bytes": 0,
+      "details": {
+        "raw_online_latencies_ms": [
+          0.019249999999998435,
+          0.01812499999999384,
+          0.014834000000005232,
+          0.011958000000006352,
+          0.013375000000009907,
+          0.012083999999995543,
+          0.011582999999995569,
+          0.011334000000001732,
+          0.011707999999999164,
+          0.011334000000001732
+        ]
+      }
+    },
+    "ciphertext_size_bytes": 67,
+    "correctness_verified": true,
+    "metadata": {
+      "params": {
+        "k": 16,
+        "m": 1,
+        "l": 15,
+        "b": 4,
+        "d": 4,
+        "n_dim": 16
+      }
+    }
+  },
+  {
+    "scheme_name": "Baseline_Dahl21_NoiseFlooding",
+    "k": 16,
+    "m": 1,
+    "mode": "local",
+    "timestamp": "2026-11-12T13:45:12.276185",
+    "offline": {
+      "prep_time_ms": 0.0,
+      "num_mults": 0,
+      "num_rand_bits": 0,
+      "gate_storage_bits": 0,
+      "gate_storage_bytes": 0,
+      "details": {
+        "raw_prep_times_ms": [
+          0.00024999999999331113,
+          0.00020800000000154029,
+          0.00012500000000359446,
+          0.00012500000000359446,
+          0.00012499999998971667
+        ]
+      }
+    },
+    "online": {
+      "latency_ms": 53.064,
+      "std_latency_ms": 1.98,
+      "throughput_dec_per_sec": 18.8,
+      "num_rounds": 1,
+      "num_opens": 1,
+      "opened_bits": 16,
+      "online_mults": 0,
+      "comm_sent_bytes": 0,
+      "comm_recv_bytes": 0,
+      "details": {
+        "raw_online_latencies_ms": [
+          55.059166999999995,
+          55.023624999999996,
+          50.42991699999999,
+          50.52662499999999,
+          55.078375000000015,
+          53.12208300000004,
+          50.14741699999997,
+          55.097458000000046,
+          52.269082999999995,
+          53.89104199999994
+        ]
+      }
+    },
+    "ciphertext_size_bytes": 67,
+    "correctness_verified": true,
+    "metadata": {
+      "params": {
+        "k": 16,
+        "m": 1,
+        "technique": "Noise Flooding"
+      }
+    }
+  },
+  {
+    "scheme_name": "CCS25_MPC_Rounding",
+    "k": 64,
+    "m": 1,
+    "mode": "local",
+    "timestamp": "2026-11-12T13:45:12.775721",
+    "offline": {
+      "prep_time_ms": 27.758,
+      "num_mults": 2351,
+      "num_rand_bits": 72,
+      "gate_storage_bits": 17792,
+      "gate_storage_bytes": 2224,
+      "details": {
+        "raw_prep_times_ms": [
+          28.934000000000015,
+          31.025791999999996,
+          23.09366700000004,
+          32.91091600000007,
+          22.82562499999996
+        ]
+      }
+    },
+    "online": {
+      "latency_ms": 0.026,
+      "std_latency_ms": 0.002,
+      "throughput_dec_per_sec": 39183.3,
+      "num_rounds": 3,
+      "num_opens": 3,
+      "opened_bits": 136,
+      "online_mults": 0,
+      "comm_sent_bytes": 0,
+      "comm_recv_bytes": 0,
+      "details": {
+        "raw_online_latencies_ms": [
+          0.027208999999972505,
+          0.023749999999989058,
+          0.023834000000055866,
+          0.03166700000001299,
+          0.0244169999999988,
+          0.025209000000026016,
+          0.025624999999918074,
+          0.023082999999868292,
+          0.02725000000003419,
+          0.0231669999999351
+        ]
+      }
+    },
+    "ciphertext_size_bytes": 196,
+    "correctness_verified": true,
+    "metadata": {
+      "params": {
+        "k": 64,
+        "m": 1,
+        "l": 63,
+        "b": 8,
+        "d": 8,
+        "n_dim": 16
+      }
+    }
+  },
+  {
+    "scheme_name": "Baseline_Dahl21_NoiseFlooding",
+    "k": 64,
+    "m": 1,
+    "mode": "local",
+    "timestamp": "2026-11-12T13:45:13.326203",
+    "offline": {
+      "prep_time_ms": 0.0,
+      "num_mults": 0,
+      "num_rand_bits": 0,
+      "gate_storage_bits": 0,
+      "gate_storage_bytes": 0,
+      "details": {
+        "raw_prep_times_ms": [
+          0.00041699999986377634,
+          0.0002499999998128999,
+          0.00012499999990644994,
+          0.00012499999990644994,
+          0.00012499999990644994
+        ]
+      }
+    },
+    "online": {
+      "latency_ms": 53.457,
+      "std_latency_ms": 1.928,
+      "throughput_dec_per_sec": 18.7,
+      "num_rounds": 1,
+      "num_opens": 1,
+      "opened_bits": 64,
+      "online_mults": 0,
+      "comm_sent_bytes": 0,
+      "comm_recv_bytes": 0,
+      "details": {
+        "raw_online_latencies_ms": [
+          55.033249999999924,
+          51.10883300000002,
+          50.36383300000003,
+          50.88595899999993,
+          55.079499999999946,
+          55.03704199999993,
+          54.63016700000001,
+          52.305207999999936,
+          55.064290999999876,
+          55.05775000000001
+        ]
+      }
+    },
+    "ciphertext_size_bytes": 194,
+    "correctness_verified": true,
+    "metadata": {
+      "params": {
+        "k": 64,
+        "m": 1,
+        "technique": "Noise Flooding"
+      }
+    }
+  }
+]

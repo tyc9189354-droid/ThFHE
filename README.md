@@ -1,93 +1,80 @@
-# ThFHE 論文通用評測與雲端 Benchmark 框架
+# Threshold FHE 統一論文評測與基準測試框架
 
-本專案為門檻全同態加密（Threshold Fully Homomorphic Encryption, ThFHE）量身打造之**通用學術評測框架**。
-支援與多篇論文/基準方案（Baselines）在相同硬體與參數條件下進行公平且精確的效能與通訊量比較。
+本專案為門檻全同態加密（Threshold Fully Homomorphic Encryption, ThFHE）量身打造之**通用學術評測與基準測試框架**。
+支援與多篇論文/基準方案（Baselines）在完全相同的硬體與參數條件下，進行公平且精確的**離線成本 (Offline Preprocessing)** 與 **線上效能 (Online Decryption)** 比較。
 
 ---
 
-## 專案目錄結構
+## 專案架構概覽
 
 ```text
 .
-├── configs/
-│   └── benchmark_config.yaml      # 實驗參數設定（安全參數、(t, n) 矩陣、重複次數）
+├── tool.py                        # 核心工具庫 (F_ABB 抽象、門生成、MPC 快速變換、ToyLWE)
+├── server.py                      # 雲端協調伺服器 (支援 REST API, 門池管理, 多輪交互)
+├── client.py                      # 客戶端 (支援 One-Shot 與 3-Round Interactive MPC 解密)
 ├── core/
-│   ├── base_scheme.py             # 統一抽象介面 (Adapter Pattern 基底類別)
-│   ├── metrics.py                 # 實驗指標數據結構 (Latency, Memory, Comm bytes)
-│   └── profiler.py                # 高精確度計時與記憶體追蹤工具
+│   ├── base_scheme.py             # 統一抽象介面 (BaseThFHEScheme: Setup / Preprocess / Decrypt)
+│   ├── metrics.py                 # 指標數據結構 (Offline 與 Online 雙維度評測)
+│   └── profiler.py                # 高精確度計時器 (ns 級別)
 ├── schemes/
-│   ├── dummy_scheme.py            # 示範方案 (流程測試與驗證)
-│   └── custom_scheme_template.py  # 你的程式碼對接模板 (填入你的邏輯即可)
-├── network/
-│   ├── server.py                  # 雲端伺服器 (支援獨立部署至雲端 VM)
-│   ├── client.py                  # 客戶端通訊層 (自動攔截並計算通訊流量)
-│   └── comm_tracker.py            # 通訊統計器
+│   ├── ccs25_scheme.py            # CCS 2025 論文頂會方案 Adapter (無需雜訊淹沒)
+│   ├── baseline_noise_flooding.py # 傳統 Noise Flooding (SOTA Dahl et al. 2023) Baseline
+│   └── custom_scheme_template.py  # 未來新論文的代碼對接模板
 ├── runner/
-│   └── benchmark_runner.py        # 自動化評測執行核心 (支援 Local 與 Remote 雙模式)
+│   └── benchmark_runner.py        # 自動化評測執行核心 (支援 Local 與 Remote Server 雙模式)
 ├── analysis/
-│   ├── exporter.py                # 匯出結構化數據 (CSV / JSON，利於 LaTeX 論文製表)
-│   └── plotter.py                 # 自動繪製論文標準圖形 (含誤差槓之長條圖與折線圖)
-├── results/                       # 存放評測產生的數據與圖表
-├── main.py                        # 框架主命令列入口 (CLI)
-└── requirements.txt               # 依賴套件清單
+│   ├── exporter.py                # 匯出結構化 CSV / JSON 數據 (利於 LaTeX 論文製表)
+│   └── plotter.py                 # 自動繪製論文比較圖形 (延遲與吞吐量長條圖)
+├── configs/
+│   └── benchmark_config.yaml      # 實驗配置 (安全參數、模數 k/m/b、方案清單)
+├── results/                       # 存放評測數據 (CSV, JSON, 圖表)
+└── main.py                        # 統一命令列主入口 (CLI)
 ```
 
 ---
 
-## 核心評測維度 (Metrics)
+## 評測維度 (Metrics)
 
-1. **計算耗時 (Latency, ms)**：
-   - 密鑰生成（KeyGen / DKG）
-   - 加密（Encryption）
-   - 同態運算（Eval Add / Eval Mult / Bootstrapping）
-   - 部分解密（Partial Decryption）
-   - 份額聚合與明文重構（Combine Decryption）
-2. **通訊成本 (Communication Overhead, Bytes)**：
-   - 上傳與下載位元組數（Upload / Download bytes）
-   - 各參與方訊息輪數（Interaction rounds）
-3. **儲存空間 (Sizes, Bytes)**：
-   - 公鑰 (PK)、評估鑰 (EvalKey)、私鑰份額 (SK Share)、密文大小 (Ciphertext)
-4. **記憶體峰值 (Peak RAM, KB)**
-5. **正確性檢驗 (Correctness Verification)**：自動比對運算結果與明文真實值。
+本框架針對門檻 FHE 解密特點，劃分兩大評測維度：
+
+1. **離線預處理成本 (Offline Phase)**：
+   - 預處理執行時間（`prep_time_ms`）
+   - Beaver Triples / 乘法消耗次數（`offline_mults`）
+   - 隨機位元生成量（`offline_rand_bits`）
+   - 門儲存大小（`gate_storage_bits` / `gate_storage_bytes`，精確符合論文公式 5）
+2. **線上解密效能 (Online Phase)**：
+   - 單次解密端到端延遲（`online_latency_ms`，含 Mean 與 Std dev）
+   - 每秒解密吞吐量（`online_throughput_dec_per_sec`）
+   - 交互輪數（`online_rounds`，如 CCS25 為 3 輪）
+   - 揭示次數與位元數（`online_opens`, `online_opened_bits`）
+   - 線上通訊流量（`comm_sent_bytes`, `comm_recv_bytes`）
+   - 正確性驗證（`correctness_verified`）
 
 ---
 
-## 快速使用方式
+## 快速使用
 
-### 1. 安裝可選繪圖與進階套件
-```bash
-pip install -r requirements.txt
-```
-*(注意：本框架核心具備零依賴回退設計，即使未安裝第三方套件，亦可原生執行本地評測與 CSV/JSON 匯出)*
-
-### 2. 本地模擬評測 (Local Mode)
-單機模擬各參與方與運算，量測純演算法與計算複雜度效能：
+### 1. 執行本地跨論文基準比較 (Local Benchmark)
 ```bash
 python3 main.py benchmark --mode local
 ```
-結果將自動儲存於 `results/benchmark_summary.csv` 與 `results/benchmark_summary.json`。
+> 將自動遍歷所有配置（如 $k=16, 64$），橫向對比 CCS25 與傳統 Baseline，結果自動儲存於 `results/benchmark_summary.csv` 與 `results/benchmark_summary.json`。
 
-### 3. 雲端伺服器評測 (Remote Server Mode)
-#### [A] 在雲端伺服器上啟動 Server：
+### 2. 啟動雲端伺服器 (Cloud Server)
 ```bash
-python3 main.py server --host 0.0.0.0 --port 8000
+python3 server.py --host 0.0.0.0 --port 8000 --k 64 --m 1 --b 8
 ```
-#### [B] 在客戶端執行遠端評測：
+
+### 3. 客戶端發起解密 (Client)
 ```bash
-python3 main.py benchmark --mode remote --server-url http://<YOUR_CLOUD_SERVER_IP>:8000
+# 執行 3-Round Interactive MPC 解密
+python3 client.py --server-url http://127.0.0.1:8000
 ```
-框架將自動將密文發送至雲端伺服器進行同態運算與解密聚合，並精確計算傳輸位元組與網路端到端延遲。
 
 ---
 
-## 如何接入你的程式碼？
+## 如何接入未來的新論文程式碼？
 
-1. 打開 `schemes/custom_scheme_template.py`。
-2. 將你的函式引入並填入對應生命週期：
-   - `setup(...)`
-   - `keygen(...)`
-   - `encrypt(...)`
-   - `eval_add(...)` / `eval_mult(...)`
-   - `partial_decrypt(...)`
-   - `combine_decryption(...)`
-3. 在 `main.py` 的 `schemes_to_test` 加入你的類別實例，即可一鍵與後續其他論文的實作進行全方位橫向對比！
+1. 參考 `schemes/custom_scheme_template.py`。
+2. 繼承 `BaseThFHEScheme`，實作 `setup()`, `preprocess()`, `encrypt()`, `decrypt()`, `get_offline_metrics()`, `get_online_metrics()`。
+3. 在 `main.py` 的 `SCHEME_REGISTRY` 註冊你的方案名稱，即可一鍵納入自動化比較！

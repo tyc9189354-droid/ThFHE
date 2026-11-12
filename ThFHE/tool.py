@@ -370,7 +370,7 @@ class ThresholdFHEDecryptor:
         num_parties = len(party_key_shares)
         malicious_ratio = max(0, min(49, int(malicious_ratio)))
         num_malicious = (num_parties * malicious_ratio) // 100 if attack_type != "none" else 0
-        malicious_indices = set(range(num_parties - num_malicious, num_parties))
+        malicious_indices = set(random.sample(range(num_parties), num_malicious)) if num_malicious > 0 else set()
 
         # 1. Each party computes its local inner product share z_i = <c, s^{(i)}> mod 2^k
         honest_partial_z = self.compute_partial_inner_products(ciphertext_c, party_key_shares)
@@ -982,11 +982,18 @@ class PeltaMFHE:
         m_poly = self.ring.zero()
         m_poly[0] = (message % self.p) * self.delta
         a = self.ring.sample_uniform()
-        e = self.ring.sample_gaussian(bound=2)
+        e = self.ring.sample_gaussian(bound=1)
         # c0 = -a * s + m_poly + e, c1 = a  =>  c0 + c1 * s = m_poly + e
         c0 = self.ring.add(self.ring.neg(self.ring.mul(a, self.s_joint)), self.ring.add(m_poly, e))
         c1 = a
         return c0, c1
+
+    def decrypt_direct(self, ct: Tuple[List[int], List[int]]) -> int:
+        """Direct ideal RLWE decryption under s_joint."""
+        c0, c1 = ct
+        phase = self.ring.add(c0, self.ring.mul(c1, self.s_joint))
+        val0 = phase[0] % self.q
+        return ((val0 + (self.delta // 2)) // self.delta) % self.p
 
     def eval_add(self, ct1: Tuple[List[int], List[int]], ct2: Tuple[List[int], List[int]]) -> Tuple[List[int], List[int]]:
         """RLWE Homomorphic Addition."""

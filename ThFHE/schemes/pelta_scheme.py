@@ -132,7 +132,7 @@ class PeltaThFHEScheme(BaseThFHEScheme):
         mr = self.malicious_ratio if malicious_ratio is None else max(0, min(49, int(malicious_ratio)))
         at = self.attack_type if attack_type is None else (attack_type or "none")
         num_malicious = (self.num_parties * mr) // 100 if at != "none" else 0
-        malicious_indices = set(range(self.num_parties - num_malicious, self.num_parties))
+        malicious_indices = set(random.sample(range(self.num_parties), num_malicious)) if num_malicious > 0 else set()
 
         t0 = time.perf_counter()
         c0, c1 = ciphertext

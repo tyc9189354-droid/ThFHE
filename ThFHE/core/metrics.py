@@ -4,8 +4,10 @@ import json
 
 @dataclass
 class OfflineMetric:
-    """離線預處理階段 (Offline Preprocessing) 的評測指標"""
-    prep_time_ms: float = 0.0
+    """離線與初始化階段 (Setup + KeyGen + Offline Preprocessing) 的評測指標"""
+    setup_time_ms: float = 0.0          # Setup 系統參數初始化耗時 (ms)
+    keygen_time_ms: float = 0.0         # 分散式 KeyGen 與重線性化金鑰生成耗時 (ms)
+    prep_time_ms: float = 0.0           # 離線門預處理 / 承諾生成耗時 (ms)
     num_mults: int = 0                  # 離線乘法次數 (Beaver Triples 消耗)
     num_rand_bits: int = 0              # 隨機位元數量
     gate_storage_bits: int = 0          # 門儲存位元數 (Formula 5)
@@ -14,7 +16,11 @@ class OfflineMetric:
 
 @dataclass
 class OnlineMetric:
-    """線上門檻解密階段 (Online Decryption) 的評測指標"""
+    """線上同態運算與門檻解密階段 (Online Evaluation & Decryption) 的評測指標"""
+    eval_add_time_ms: float = 0.0       # 同態加法耗時 (ms)
+    eval_mul_time_ms: float = 0.0       # 同態乘法 (含重線性化) 耗時 (ms)
+    partial_dec_time_ms: float = 0.0    # 部分解密 / MPC 捨入 / ZK 驗證耗時 (ms)
+    agg_time_ms: float = 0.0            # 份額聚合與最終明文重構耗時 (ms)
     latency_ms: float = 0.0             # 單次解密端到端耗時 (ms)
     std_latency_ms: float = 0.0         # 延遲標準差
     throughput_dec_per_sec: float = 0.0 # 吞吐量 (Decryptions per second)
@@ -34,6 +40,7 @@ class BenchmarkResult:
     m: int                              # Plaintext modulus bit-length (p = 2^m)
     mode: str                           # 'local' or 'remote'
     timestamp: str
+    num_parties: int = 10               # 參與方數量 (10 <= N <= 1000)
     offline: OfflineMetric = field(default_factory=OfflineMetric)
     online: OnlineMetric = field(default_factory=OnlineMetric)
     ciphertext_size_bytes: int = 0

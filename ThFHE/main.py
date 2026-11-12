@@ -4,8 +4,8 @@
 Main Entry Point: Threshold FHE Unified Benchmark Framework
 ================================================================================
 Usage:
-  # 執行本地跨論文基準評測 (CCS25 vs Baseline Noise Flooding)
-  python3 main.py benchmark --mode local
+  # 執行本地跨論文基準評測 (CCS25 vs Baseline Noise Flooding vs PELTA)
+  python3 main.py benchmark --mode local --parties 10
 
   # 啟動雲端伺服器 (供分散式/遠端評測使用)
   python3 main.py server --port 8000
@@ -19,7 +19,6 @@ import sys
 import argparse
 from typing import Dict, Any, List
 
-# 確保專案根目錄在 sys.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -27,13 +26,15 @@ if BASE_DIR not in sys.path:
 from runner.benchmark_runner import BenchmarkRunner
 from schemes.ccs25_scheme import CCS25ThFHEScheme
 from schemes.baseline_noise_flooding import BaselineNoiseFloodingScheme
+from schemes.pelta_scheme import PeltaThFHEScheme
 from analysis.exporter import ResultExporter
 from analysis.plotter import ResultPlotter
-import server
+from CCS25 import server
 
 SCHEME_REGISTRY = {
     "ccs25": CCS25ThFHEScheme,
-    "baseline_noise_flooding": BaselineNoiseFloodingScheme
+    "baseline_noise_flooding": BaselineNoiseFloodingScheme,
+    "pelta": PeltaThFHEScheme
 }
 
 def load_yaml_config(path: str) -> Dict[str, Any]:
@@ -51,14 +52,17 @@ def run_benchmark_cmd(args):
     cfg = load_yaml_config(config_path)
 
     mode = args.mode or cfg.get("mode", "local")
-    iterations = cfg.get("iterations", 5)
+    iterations = cfg.get("iterations", 3)
     warmup = cfg.get("warmup", 1)
+    num_parties = max(10, min(1000, getattr(args, "parties", None) or cfg.get("num_parties", 10)))
     output_dir = cfg.get("output_dir", "./results")
     param_list = cfg.get("test_params", [
         {"k": 16, "m": 1, "b": 4},
         {"k": 64, "m": 1, "b": 8}
     ])
-    scheme_names = cfg.get("schemes", ["ccs25", "baseline_noise_flooding"])
+    scheme_names = cfg.get("schemes", ["ccs25", "baseline_noise_flooding", "pelta"])
+    if "pelta" not in scheme_names:
+        scheme_names.append("pelta")
     server_url = args.server_url or cfg.get("remote_server", {}).get("url", "http://127.0.0.1:8000")
 
     runner = BenchmarkRunner(iterations=iterations, warmup=warmup)
@@ -66,6 +70,7 @@ def run_benchmark_cmd(args):
 
     print(f"============================================================")
     print(f"  Starting Threshold FHE Benchmark Suite (Mode: {mode.upper()})")
+    print(f"  Parties: N={num_parties} (Range: 10..1000)")
     print(f"  Comparing Schemes: {scheme_names}")
     print(f"============================================================")
 
@@ -74,7 +79,7 @@ def run_benchmark_cmd(args):
             k = params["k"]
             m = params["m"]
             b = params.get("b", 4)
-            print(f"\n>>> Parameter Set: k={k}, m={m}, b={b}")
+            print(f"\n>>> Parameter Set: k={k}, m={m}, b={b}, N={num_parties}")
 
             for s_name in scheme_names:
                 scheme_cls = SCHEME_REGISTRY.get(s_name)
@@ -84,22 +89,19 @@ def run_benchmark_cmd(args):
 
                 scheme_inst = scheme_cls()
                 try:
-                    res = runner.run_local(scheme=scheme_inst, k=k, m=m, b=b)
+                    res = runner.run_local(scheme=scheme_inst, k=k, m=m, num_parties=num_parties, b=b)
                     all_results.append(res)
                 except Exception as e:
                     print(f"[-] Error evaluating {s_name}: {e}")
     else:
-        # Remote mode
-        res = runner.run_remote(server_url=server_url, k=64, m=1, b=8)
+        res = runner.run_remote(server_url=server_url, k=64, m=1, b=8, num_parties=num_parties)
         all_results.append(res)
 
-    # 匯出結果
     json_path = os.path.join(output_dir, "benchmark_summary.json")
     csv_path = os.path.join(output_dir, "benchmark_summary.csv")
     ResultExporter.export_json(all_results, json_path)
     ResultExporter.export_csv(all_results, csv_path)
 
-    # 自動繪圖
     lat_chart = os.path.join(output_dir, "online_latency_comparison.png")
     thru_chart = os.path.join(output_dir, "throughput_comparison.png")
     ResultPlotter.plot_latency_comparison(all_results, lat_chart)
@@ -115,6 +117,7 @@ def main():
     b_parser = subparsers.add_parser("benchmark", help="Run benchmark suite")
     b_parser.add_argument("--config", default="./configs/benchmark_config.yaml", help="Path to config file")
     b_parser.add_argument("--mode", choices=["local", "remote"], help="Override benchmark mode")
+    b_parser.add_argument("--parties", type=int, default=10, help="Number of parties (10..1000)")
     b_parser.add_argument("--server-url", help="Override remote server URL")
 
     # server
@@ -124,17 +127,18 @@ def main():
     s_parser.add_argument("--k", type=int, default=64, help="k")
     s_parser.add_argument("--m", type=int, default=1, help="m")
     s_parser.add_argument("--b", type=int, default=8, help="b")
+    s_parser.add_argument("--parties", type=int, default=10, help="Number of parties (10..1000)")
 
     args = parser.parse_args()
 
     if args.command == "benchmark":
         run_benchmark_cmd(args)
     elif args.command == "server":
-        server.run(host=args.host, port=args.port, k=args.k, m=args.m, b=args.b)
+        server.run(host=args.host, port=args.port, k=args.k, m=args.m, b=args.b, num_parties=args.parties)
     else:
-        # 預設執行 benchmark
         args.config = "./configs/benchmark_config.yaml"
         args.mode = "local"
+        args.parties = 10
         args.server_url = None
         run_benchmark_cmd(args)
 

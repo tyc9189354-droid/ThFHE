@@ -4,27 +4,42 @@
     "k": 16,
     "m": 1,
     "mode": "local",
-    "timestamp": "2026-11-12T14:01:05.155596",
+    "timestamp": "2026-11-12T23:54:21.905717",
+    "num_parties": 1000,
     "offline": {
-      "prep_time_ms": 0.663,
+      "setup_time_ms": 0.641,
+      "keygen_time_ms": 20.216,
+      "prep_time_ms": 1.615,
       "num_mults": 63,
       "num_rand_bits": 20,
       "gate_storage_bits": 312,
       "gate_storage_bytes": 39,
       "details": {
+        "raw_setup_times_ms": [
+          0.7366249999999908,
+          0.5824999999999997,
+          0.6051669999999898
+        ],
+        "raw_keygen_times_ms": [
+          18.646582999999993,
+          18.902333999999993,
+          23.098791000000006
+        ],
         "raw_prep_times_ms": [
-          0.6375840000000105,
-          0.5649169999999981,
-          0.8735420000000049,
-          0.6081670000000067,
-          0.6297089999999922
+          2.1415419999999963,
+          1.3123750000000045,
+          1.3910829999999874
         ]
       }
     },
     "online": {
-      "latency_ms": 0.015,
-      "std_latency_ms": 0.003,
-      "throughput_dec_per_sec": 67872.5,
+      "eval_add_time_ms": 0.0052,
+      "eval_mul_time_ms": 1.2929,
+      "partial_dec_time_ms": 1.746,
+      "agg_time_ms": 0.059,
+      "latency_ms": 1.805,
+      "std_latency_ms": 0.223,
+      "throughput_dec_per_sec": 553.9,
       "num_rounds": 3,
       "num_opens": 3,
       "opened_bits": 36,
@@ -33,16 +48,12 @@
       "comm_recv_bytes": 0,
       "details": {
         "raw_online_latencies_ms": [
-          0.022957999999989598,
-          0.01408299999999807,
-          0.014083999999997543,
-          0.017709000000004638,
-          0.015374999999998029,
-          0.014874999999997529,
-          0.011625000000001218,
-          0.013209000000000137,
-          0.011917000000000177,
-          0.011499999999997623
+          2.2630839999999988,
+          1.8390419999999852,
+          1.7829159999999955,
+          1.7393749999999875,
+          1.623667000000023,
+          1.5832510000000077
         ]
       }
     },
@@ -55,54 +66,66 @@
         "l": 15,
         "b": 4,
         "d": 4,
-        "n_dim": 16
+        "n_dim": 16,
+        "num_parties": 1000
       }
     }
   },
   {
-    "scheme_name": "Baseline_Dahl21_NoiseFlooding",
+    "scheme_name": "Baseline_Dahl23_NoiseFlooding",
     "k": 16,
     "m": 1,
     "mode": "local",
-    "timestamp": "2026-11-12T14:01:05.710719",
+    "timestamp": "2026-11-12T23:54:22.024883",
+    "num_parties": 1000,
     "offline": {
+      "setup_time_ms": 0.063,
+      "keygen_time_ms": 19.251,
       "prep_time_ms": 0.0,
       "num_mults": 0,
       "num_rand_bits": 0,
       "gate_storage_bits": 0,
       "gate_storage_bytes": 0,
       "details": {
+        "raw_setup_times_ms": [
+          0.07304100000002367,
+          0.059499999999990116,
+          0.0553749999999964
+        ],
+        "raw_keygen_times_ms": [
+          17.640624999999993,
+          20.997041999999993,
+          19.116625
+        ],
         "raw_prep_times_ms": [
-          0.00020800000000154029,
-          0.00020800000000154029,
-          0.00012500000000359446,
-          0.00012499999998971667,
-          0.00012499999998971667
+          0.00033300000001901253,
+          0.0003339999999907306,
+          0.00020900000000101393
         ]
       }
     },
     "online": {
-      "latency_ms": 55.434,
-      "std_latency_ms": 4.651,
-      "throughput_dec_per_sec": 18.0,
+      "eval_add_time_ms": 0.0048,
+      "eval_mul_time_ms": 0.9373,
+      "partial_dec_time_ms": 9.566,
+      "agg_time_ms": 0.06,
+      "latency_ms": 9.626,
+      "std_latency_ms": 0.285,
+      "throughput_dec_per_sec": 103.9,
       "num_rounds": 1,
       "num_opens": 1,
-      "opened_bits": 16,
-      "online_mults": 0,
+      "opened_bits": 144,
+      "online_mults": 1,
       "comm_sent_bytes": 0,
       "comm_recv_bytes": 0,
       "details": {
         "raw_online_latencies_ms": [
-          55.10533399999999,
-          55.02375000000001,
-          55.03174999999999,
-          68.47766699999997,
-          51.870458000000006,
-          51.38279200000001,
-          51.40929199999999,
-          55.07224999999993,
-          55.85645900000002,
-          55.10633299999989
+          9.810291999999999,
+          9.39291600000003,
+          10.154458999999978,
+          9.391916999999973,
+          9.631166000000025,
+          9.37429099999998
         ]
       }
     },
@@ -112,7 +135,78 @@
       "params": {
         "k": 16,
         "m": 1,
-        "technique": "Noise Flooding"
+        "num_parties": 1000,
+        "technique": "Noise Flooding (Statistical Smudging)"
+      }
+    }
+  },
+  {
+    "scheme_name": "PELTA_Malicious_MFHE",
+    "k": 16,
+    "m": 1,
+    "mode": "local",
+    "timestamp": "2026-11-12T23:54:22.698104",
+    "num_parties": 1000,
+    "offline": {
+      "setup_time_ms": 0.038,
+      "keygen_time_ms": 11.266,
+      "prep_time_ms": 20.535,
+      "num_mults": 2000,
+      "num_rand_bits": 32000,
+      "gate_storage_bits": 256000,
+      "gate_storage_bytes": 32000,
+      "details": {
+        "raw_setup_times_ms": [
+          0.04845800000002898,
+          0.03266600000001452,
+          0.03158300000000169
+        ],
+        "raw_keygen_times_ms": [
+          11.912499999999993,
+          11.158166999999997,
+          10.727374999999984
+        ],
+        "raw_prep_times_ms": [
+          21.36604200000003,
+          19.61016700000001,
+          20.627417000000037
+        ]
+      }
+    },
+    "online": {
+      "eval_add_time_ms": 0.0045,
+      "eval_mul_time_ms": 0.5631,
+      "partial_dec_time_ms": 71.295,
+      "agg_time_ms": 1.228,
+      "latency_ms": 72.523,
+      "std_latency_ms": 2.509,
+      "throughput_dec_per_sec": 13.8,
+      "num_rounds": 2,
+      "num_opens": 2,
+      "opened_bits": 512,
+      "online_mults": 0,
+      "comm_sent_bytes": 0,
+      "comm_recv_bytes": 0,
+      "details": {
+        "raw_online_latencies_ms": [
+          72.20062500000013,
+          76.50637500000002,
+          73.10229199999995,
+          70.60908299999991,
+          68.61391699999997,
+          74.10658300000017
+        ]
+      }
+    },
+    "ciphertext_size_bytes": 118,
+    "correctness_verified": true,
+    "metadata": {
+      "params": {
+        "N_poly": 16,
+        "q": 65536,
+        "p": 2,
+        "B": 4,
+        "num_parties": 1000
       }
     }
   },
@@ -121,27 +215,42 @@
     "k": 64,
     "m": 1,
     "mode": "local",
-    "timestamp": "2026-11-12T14:01:06.214883",
+    "timestamp": "2026-11-12T23:54:23.161257",
+    "num_parties": 1000,
     "offline": {
-      "prep_time_ms": 27.832,
+      "setup_time_ms": 0.623,
+      "keygen_time_ms": 24.822,
+      "prep_time_ms": 30.661,
       "num_mults": 2351,
       "num_rand_bits": 72,
       "gate_storage_bits": 17792,
       "gate_storage_bytes": 2224,
       "details": {
+        "raw_setup_times_ms": [
+          0.6328329999999438,
+          0.6212909999999683,
+          0.615499999999991
+        ],
+        "raw_keygen_times_ms": [
+          24.163459000000053,
+          30.528957999999882,
+          19.773416000000044
+        ],
         "raw_prep_times_ms": [
-          27.412667000000003,
-          30.95370799999997,
-          23.224875000000033,
-          34.60291700000007,
-          22.963792000000094
+          28.442834000000026,
+          33.79441700000019,
+          29.746834
         ]
       }
     },
     "online": {
-      "latency_ms": 0.03,
-      "std_latency_ms": 0.004,
-      "throughput_dec_per_sec": 33717.5,
+      "eval_add_time_ms": 0.0052,
+      "eval_mul_time_ms": 1.5697,
+      "partial_dec_time_ms": 3.018,
+      "agg_time_ms": 0.08,
+      "latency_ms": 3.099,
+      "std_latency_ms": 0.375,
+      "throughput_dec_per_sec": 322.7,
       "num_rounds": 3,
       "num_opens": 3,
       "opened_bits": 136,
@@ -150,20 +259,16 @@
       "comm_recv_bytes": 0,
       "details": {
         "raw_online_latencies_ms": [
-          0.03354199999994201,
-          0.030584000000000167,
-          0.03679099999998048,
-          0.028958000000023354,
-          0.02954099999996629,
-          0.030458000000122,
-          0.022208000000079053,
-          0.025415999999944816,
-          0.03212499999993845,
-          0.026959000000159605
+          2.904792000000045,
+          2.8719580000000633,
+          2.9735419999998847,
+          2.914123999999907,
+          3.9310839999997516,
+          2.9969589999998547
         ]
       }
     },
-    "ciphertext_size_bytes": 192,
+    "ciphertext_size_bytes": 197,
     "correctness_verified": true,
     "metadata": {
       "params": {
@@ -172,64 +277,147 @@
         "l": 63,
         "b": 8,
         "d": 8,
-        "n_dim": 16
+        "n_dim": 16,
+        "num_parties": 1000
       }
     }
   },
   {
-    "scheme_name": "Baseline_Dahl21_NoiseFlooding",
+    "scheme_name": "Baseline_Dahl23_NoiseFlooding",
     "k": 64,
     "m": 1,
     "mode": "local",
-    "timestamp": "2026-11-12T14:01:06.771727",
+    "timestamp": "2026-11-12T23:54:23.324705",
+    "num_parties": 1000,
     "offline": {
+      "setup_time_ms": 0.068,
+      "keygen_time_ms": 20.202,
       "prep_time_ms": 0.0,
       "num_mults": 0,
       "num_rand_bits": 0,
       "gate_storage_bits": 0,
       "gate_storage_bytes": 0,
       "details": {
+        "raw_setup_times_ms": [
+          0.08658300000008445,
+          0.06058300000000294,
+          0.05658300000010996
+        ],
+        "raw_keygen_times_ms": [
+          18.12329200000007,
+          23.78108400000012,
+          18.70016699999999
+        ],
         "raw_prep_times_ms": [
-          0.0004580000001475071,
+          0.000292000000179371,
           0.0002500000000349445,
-          0.00016700000005087645,
-          0.00012499999990644994,
-          0.00012499999990644994
+          0.0002080000001125626
         ]
       }
     },
     "online": {
-      "latency_ms": 54.044,
-      "std_latency_ms": 1.439,
-      "throughput_dec_per_sec": 18.5,
+      "eval_add_time_ms": 0.0056,
+      "eval_mul_time_ms": 1.6898,
+      "partial_dec_time_ms": 14.453,
+      "agg_time_ms": 0.066,
+      "latency_ms": 14.519,
+      "std_latency_ms": 1.779,
+      "throughput_dec_per_sec": 68.9,
       "num_rounds": 1,
       "num_opens": 1,
-      "opened_bits": 64,
-      "online_mults": 0,
+      "opened_bits": 192,
+      "online_mults": 1,
       "comm_sent_bytes": 0,
       "comm_recv_bytes": 0,
       "details": {
         "raw_online_latencies_ms": [
-          55.03066700000004,
-          54.72091600000017,
-          50.585875000000115,
-          55.1008340000001,
-          53.228915999999906,
-          55.06729199999994,
-          52.51945799999991,
-          55.07391700000008,
-          54.019749999999924,
-          55.088625
+          12.469916999999997,
+          12.963416999999922,
+          12.850500000000098,
+          16.377000000000084,
+          16.617958999999956,
+          15.835708000000004
         ]
       }
     },
-    "ciphertext_size_bytes": 196,
+    "ciphertext_size_bytes": 195,
     "correctness_verified": true,
     "metadata": {
       "params": {
         "k": 64,
         "m": 1,
-        "technique": "Noise Flooding"
+        "num_parties": 1000,
+        "technique": "Noise Flooding (Statistical Smudging)"
+      }
+    }
+  },
+  {
+    "scheme_name": "PELTA_Malicious_MFHE",
+    "k": 64,
+    "m": 1,
+    "mode": "local",
+    "timestamp": "2026-11-12T23:54:23.992457",
+    "num_parties": 1000,
+    "offline": {
+      "setup_time_ms": 0.056,
+      "keygen_time_ms": 11.703,
+      "prep_time_ms": 21.576,
+      "num_mults": 2000,
+      "num_rand_bits": 32000,
+      "gate_storage_bits": 256000,
+      "gate_storage_bytes": 32000,
+      "details": {
+        "raw_setup_times_ms": [
+          0.10345899999997243,
+          0.03395799999994509,
+          0.030458000000122
+        ],
+        "raw_keygen_times_ms": [
+          11.786332999999871,
+          12.453667000000168,
+          10.868624999999854
+        ],
+        "raw_prep_times_ms": [
+          26.96887499999989,
+          19.405166999999945,
+          18.354624999999956
+        ]
+      }
+    },
+    "online": {
+      "eval_add_time_ms": 0.005,
+      "eval_mul_time_ms": 0.5458,
+      "partial_dec_time_ms": 71.358,
+      "agg_time_ms": 1.275,
+      "latency_ms": 72.633,
+      "std_latency_ms": 3.679,
+      "throughput_dec_per_sec": 13.8,
+      "num_rounds": 2,
+      "num_opens": 2,
+      "opened_bits": 512,
+      "online_mults": 0,
+      "comm_sent_bytes": 0,
+      "comm_recv_bytes": 0,
+      "details": {
+        "raw_online_latencies_ms": [
+          69.33695899999992,
+          69.2609999999998,
+          75.43241700000003,
+          74.00008399999992,
+          69.07875000000007,
+          78.68762500000015
+        ]
+      }
+    },
+    "ciphertext_size_bytes": 118,
+    "correctness_verified": true,
+    "metadata": {
+      "params": {
+        "N_poly": 16,
+        "q": 65536,
+        "p": 2,
+        "B": 4,
+        "num_parties": 1000
       }
     }
   }

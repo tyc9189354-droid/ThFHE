@@ -1,0 +1,35 @@
+# ==========================================================
+# ThFHE 評測實驗配置檔 (Benchmark Configuration)
+# ==========================================================
+
+# 評測模式: 'local' (單機模擬多方) 或 'remote' (透過網路/雲端 Server)
+mode: "local"
+
+# 實驗重複次數與預熱次數
+iterations: 5
+warmup: 1
+
+# 安全參數 (如 80, 128, 256)
+security_params:
+  - 128
+
+# 參與方數量與門檻值組合 [(threshold_t, total_n)]
+threshold_configs:
+  - threshold_t: 2
+    total_n: 3
+  - threshold_t: 3
+    total_n: 5
+  - threshold_t: 6
+    total_n: 10
+
+# 測試明文輸入數值 (用於加法與乘法正確性檢驗)
+test_inputs:
+  m1: 15
+  m2: 27
+
+# 雲端伺服器設定 (僅在 mode 為 remote 時使用)
+remote_server:
+  url: "http://127.0.0.1:8000"
+
+# 輸出目錄
+output_dir: "./results"

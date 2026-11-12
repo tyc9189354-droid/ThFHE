@@ -1,0 +1,5 @@
+scheme_name,mode,k,m,offline_prep_time_ms,offline_mults,offline_rand_bits,gate_storage_bits,gate_storage_bytes,online_latency_ms,online_std_latency_ms,online_throughput_dec_per_sec,online_rounds,online_opens,online_opened_bits,online_mults,comm_sent_bytes,comm_recv_bytes,correctness_verified
+CCS25_MPC_Rounding,local,16,1,0.663,63,20,312,39,0.015,0.003,67872.5,3,3,36,0,0,0,True
+Baseline_Dahl21_NoiseFlooding,local,16,1,0.0,0,0,0,0,55.434,4.651,18.0,1,1,16,0,0,0,True
+CCS25_MPC_Rounding,local,64,1,27.832,2351,72,17792,2224,0.03,0.004,33717.5,3,3,136,0,0,0,True
+Baseline_Dahl21_NoiseFlooding,local,64,1,0.0,0,0,0,0,54.044,1.439,18.5,1,1,64,0,0,0,True

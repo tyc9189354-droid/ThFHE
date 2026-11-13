@@ -1,9 +1,9 @@
 scheme_name,mode,k,m,num_parties,setup_time_ms,keygen_time_ms,offline_prep_time_ms,offline_mults,offline_rand_bits,gate_storage_bits,gate_storage_bytes,eval_add_time_ms,eval_mul_time_ms,partial_dec_time_ms,agg_time_ms,online_latency_ms,online_std_latency_ms,online_throughput_dec_per_sec,online_rounds,online_opens,online_opened_bits,online_mults,comm_sent_bytes,comm_recv_bytes,correctness_verified
-CCS25_MPC_Rounding,local,16,1,10,0.06,4.704,0.508,63,20,312,39,0.0022,0.5495,0.024,0.003,0.026,0.003,38089.4,3,3,36,0,0,0,True
-Baseline_Dahl23_NoiseFlooding,local,16,1,10,0.007,3.814,0.0,0,0,0,0,0.0015,0.4581,0.057,0.001,0.057,0.003,17403.9,1,1,144,1,0,0,True
-PELTA_Malicious_MFHE,local,16,1,10,0.047,0.326,0.582,20,320,2560,320,0.0035,0.373,2.475,0.069,2.543,0.149,393.2,2,2,512,0,0,0,True
-"HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)",local,16,1,10,2.63,8.378,8.05,192,1536,6144,768,0.644,4.5884,5.365,5.759,11.124,0.881,89.9,1,1,34560,0,0,0,True
-CCS25_MPC_Rounding,local,64,1,10,0.062,4.519,22.241,2351,72,17792,2224,0.0037,1.0136,0.047,0.004,0.051,0.003,19662.5,3,3,136,0,0,0,True
-Baseline_Dahl23_NoiseFlooding,local,64,1,10,0.007,4.41,0.0,0,0,0,0,0.0019,0.9923,0.092,0.001,0.093,0.003,10758.5,1,1,192,1,0,0,True
-PELTA_Malicious_MFHE,local,64,1,10,0.048,0.347,0.568,20,320,2560,320,0.003,0.3699,2.537,0.062,2.599,0.072,384.7,2,2,512,0,0,0,True
-"HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)",local,64,1,10,2.637,8.191,7.959,192,1536,6144,768,0.6352,4.539,5.236,6.21,11.446,0.593,87.4,1,1,34560,0,0,0,True
+CCS25_MPC_Rounding,local,16,1,10,0.055,3.689,0.454,63,20,312,39,0.0025,0.5039,0.022,0.002,0.024,0.007,40830.2,3,3,36,0,0,0,True
+Baseline_Dahl23_NoiseFlooding,local,16,1,10,0.007,3.544,0.0,0,0,0,0,0.0023,0.4591,0.056,0.001,0.057,0.002,17538.6,1,1,144,1,0,0,True
+PELTA_Malicious_MFHE,local,16,1,10,0.047,0.297,0.589,20,320,2560,320,0.0033,0.3866,2.551,0.064,2.615,0.095,382.4,2,2,512,0,0,0,True
+"HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)",local,16,1,10,2.677,8.455,8.134,192,1536,6144,768,0.6752,4.5279,5.363,5.984,11.346,0.711,88.1,1,1,34560,0,0,0,True
+CCS25_MPC_Rounding,local,64,1,10,0.061,4.404,21.65,2351,72,17792,2224,0.0036,0.9799,0.041,0.004,0.045,0.003,22244.9,3,3,136,0,0,0,True
+Baseline_Dahl23_NoiseFlooding,local,64,1,10,0.007,4.423,0.0,0,0,0,0,0.0018,0.9878,0.094,0.001,0.095,0.006,10509.3,1,1,192,1,0,0,True
+PELTA_Malicious_MFHE,local,64,1,10,0.049,0.337,0.598,20,320,2560,320,0.0031,0.3676,2.491,0.063,2.554,0.029,391.5,2,2,512,0,0,0,True
+"HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)",local,64,1,10,2.609,8.265,7.951,192,1536,6144,768,0.6721,4.5699,5.299,5.91,11.209,0.644,89.2,1,1,34560,0,0,0,True

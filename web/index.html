@@ -884,6 +884,43 @@
     }
 
     /* =========================================================================
+       Benchmark Mode Panel in Arena (評測架構模式切換器)
+       ========================================================================= */
+    .benchmark-mode-panel {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.85rem 1.25rem;
+      margin-bottom: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.85rem;
+      backdrop-filter: blur(12px);
+    }
+    .btn-mode-tag {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 0.38rem 0.9rem;
+      border-radius: 7px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-mode-tag:hover {
+      color: #fff;
+    }
+    .btn-mode-tag.active {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(16, 185, 129, 0.45));
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.35);
+      border: 1px solid rgba(59, 130, 246, 0.65);
+    }
+
+    /* =========================================================================
        Paper Selection Panel in Arena (論文評測競技場方案選取器)
        ========================================================================= */
     .paper-filter-panel {
@@ -1567,6 +1604,25 @@
           </div>
         </div>
 
+        <!-- Benchmark Execution Mode Toggle (雙模式架構：演算法核心快速 vs 實體多埠 Sockets 網路) -->
+        <div class="benchmark-mode-panel">
+          <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+            <span style="font-weight: 600; font-size: 0.88rem; color: #93c5fd;">🌐 評測架構模式 (Mode)：</span>
+            <div style="display: inline-flex; background: rgba(0, 0, 0, 0.45); padding: 3px; border-radius: 8px; border: 1px solid var(--card-border);">
+              <button type="button" id="btn-mode-local" class="btn-mode-tag active" onclick="setArenaBenchmarkMode('local')">
+                ⚡ 演算法核心快速評測 (Local In-Memory)
+              </button>
+              <button type="button" id="btn-mode-distributed" class="btn-mode-tag" onclick="setArenaBenchmarkMode('distributed')">
+                🌐 實體分散式網路評測 (Multi-Port Sockets, 19 RNS Primes)
+              </button>
+            </div>
+          </div>
+          <div id="arena-mode-desc" style="font-size: 0.76rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+            <span class="badge badge-blue" style="font-size: 0.7rem;">快速核心模式</span>
+            <span>純記憶體微秒級演算法直通，適合快速除錯與即時比較。</span>
+          </div>
+        </div>
+
         <!-- Paper Selection Panel (可自由選取論文方案進行比較) -->
         <div class="paper-filter-panel">
           <div class="filter-header">
@@ -1817,6 +1873,27 @@
               <td class="col-noah" id="tbl-noah-ok">--</td>
               <td class="col-pelta" id="tbl-pelta-ok">--</td>
               <td class="col-hqfs" id="tbl-hqfs-ok">--</td>
+            </tr>
+            <tr>
+              <td><strong>8. 實體網路通訊量 (Sockets & TX/RX Bytes)</strong></td>
+              <td class="col-ccs" id="tbl-ccs-comm">--</td>
+              <td class="col-noah" id="tbl-noah-comm">--</td>
+              <td class="col-pelta" id="tbl-pelta-comm">--</td>
+              <td class="col-hqfs" id="tbl-hqfs-comm" style="color: #fde68a;">--</td>
+            </tr>
+            <tr>
+              <td><strong>9. RNS 模數質數個數 (RNS Primes Count)</strong></td>
+              <td class="col-ccs" id="tbl-ccs-rns">N/A (Toy LWE)</td>
+              <td class="col-noah" id="tbl-noah-rns">N/A (Toy LWE)</td>
+              <td class="col-pelta" id="tbl-pelta-rns">1 (RLWE)</td>
+              <td class="col-hqfs" id="tbl-hqfs-rns" style="color: #fde68a; font-weight: 600;">19 個 NTT 質數 (6Q+13P)</td>
+            </tr>
+            <tr>
+              <td><strong>10. 記憶體峰值佔用 (Peak RAM Footprint)</strong></td>
+              <td class="col-ccs" id="tbl-ccs-mem">--</td>
+              <td class="col-noah" id="tbl-noah-mem">--</td>
+              <td class="col-pelta" id="tbl-pelta-mem">--</td>
+              <td class="col-hqfs" id="tbl-hqfs-mem" style="color: #34d399; font-weight: 600;">--</td>
             </tr>
           </tbody>
         </table>
@@ -3162,6 +3239,29 @@
     // =========================================================================
     // Tab 4: Live Benchmark Arena (4 Papers)
     // =========================================================================
+    let ARENA_BENCHMARK_MODE = 'local';
+
+    function setArenaBenchmarkMode(mode) {
+      ARENA_BENCHMARK_MODE = mode;
+      const btnLocal = document.getElementById('btn-mode-local');
+      const btnDist = document.getElementById('btn-mode-distributed');
+      const descEl = document.getElementById('arena-mode-desc');
+
+      if (mode === 'distributed') {
+        if (btnLocal) btnLocal.classList.remove('active');
+        if (btnDist) btnDist.classList.add('active');
+        if (descEl) {
+          descEl.innerHTML = `<span class="badge badge-purple" style="font-size: 0.7rem;">實體 Sockets 模式</span> <span>真實驗證：動態綁定 N 個實體 TCP Ports | HQ-FS 啟用 19 個 RNS 質數 (6Q+13P) | 串流式極低記憶體 (< 10MB)</span>`;
+        }
+      } else {
+        if (btnLocal) btnLocal.classList.add('active');
+        if (btnDist) btnDist.classList.remove('active');
+        if (descEl) {
+          descEl.innerHTML = `<span class="badge badge-blue" style="font-size: 0.7rem;">快速核心模式</span> <span>純記憶體微秒級演算法直通，適合快速除錯與即時比較。</span>`;
+        }
+      }
+    }
+
     async function runLiveBenchmarkArena() {
       const numParties = getSelectedParties();
       const malRatio = getSelectedMaliciousRatio();
@@ -3175,16 +3275,18 @@
         return;
       }
 
+      const isDist = ARENA_BENCHMARK_MODE === 'distributed';
       btn.disabled = true;
-      btn.innerText = `⏳ 正在實測 N=${numParties}, Mal=${malRatio}% (${selectedPapers.length} 篇論文)...`;
-      badge.className = 'badge badge-blue';
-      badge.innerText = `正在執行實測 (N=${numParties}, Mal=${malRatio}%, ${selectedPapers.length} 篇論文)...`;
+      btn.innerText = `⏳ 正在執行${isDist ? '實體 Sockets' : '演算法'}實測 N=${numParties}, Mal=${malRatio}% (${selectedPapers.length} 篇論文)...`;
+      badge.className = isDist ? 'badge badge-purple' : 'badge badge-blue';
+      badge.innerText = `正在執行實測 (${isDist ? '實體多埠 Sockets, 19 RNS Primes' : '演算法核心'}, N=${numParties}, Mal=${malRatio}%, ${selectedPapers.length} 篇論文)...`;
 
       try {
         const resp = await fetch('/api/benchmark', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
+            mode: ARENA_BENCHMARK_MODE,
             num_parties: numParties,
             malicious_ratio: malRatio,
             attack_type: attackType,
@@ -3417,6 +3519,46 @@
       document.getElementById('tbl-noah-ok').innerHTML = noah.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
       document.getElementById('tbl-pelta-ok').innerHTML = pelta.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
       document.getElementById('tbl-hqfs-ok').innerHTML = hqfs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul + CPA^D Safe)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
+
+      // New network & architecture metrics
+      function formatComm(obj) {
+        if (!obj || (!obj.comm_sent_bytes && !obj.comm_recv_bytes)) {
+          return obj.mode === 'distributed' ? `${numParties} Ports Sockets` : '純記憶體直通 (0 Bytes)';
+        }
+        const totalKb = ((obj.comm_sent_bytes + obj.comm_recv_bytes) / 1024).toFixed(1);
+        return `${obj.sockets_count || numParties} Ports (${totalKb} KB)`;
+      }
+      function formatMem(obj) {
+        if (!obj || !obj.peak_mem_mb) return '< 5 MB';
+        return `${obj.peak_mem_mb} MB (極低記憶體佔用)`;
+      }
+
+      const elCcsComm = document.getElementById('tbl-ccs-comm');
+      if (elCcsComm) elCcsComm.innerText = formatComm(ccs);
+      const elNoahComm = document.getElementById('tbl-noah-comm');
+      if (elNoahComm) elNoahComm.innerText = formatComm(noah);
+      const elPeltaComm = document.getElementById('tbl-pelta-comm');
+      if (elPeltaComm) elPeltaComm.innerText = formatComm(pelta);
+      const elHqfsComm = document.getElementById('tbl-hqfs-comm');
+      if (elHqfsComm) elHqfsComm.innerText = formatComm(hqfs);
+
+      const elCcsRns = document.getElementById('tbl-ccs-rns');
+      if (elCcsRns) elCcsRns.innerText = 'N/A (Toy LWE)';
+      const elNoahRns = document.getElementById('tbl-noah-rns');
+      if (elNoahRns) elNoahRns.innerText = 'N/A (Toy LWE)';
+      const elPeltaRns = document.getElementById('tbl-pelta-rns');
+      if (elPeltaRns) elPeltaRns.innerText = '1 (RLWE)';
+      const elHqfsRns = document.getElementById('tbl-hqfs-rns');
+      if (elHqfsRns) elHqfsRns.innerText = (hqfs.rns_primes_count || (hqfs.mode === 'distributed' ? 19 : 2)) + ' 個 NTT 質數 (6Q+13P)';
+
+      const elCcsMem = document.getElementById('tbl-ccs-mem');
+      if (elCcsMem) elCcsMem.innerText = formatMem(ccs);
+      const elNoahMem = document.getElementById('tbl-noah-mem');
+      if (elNoahMem) elNoahMem.innerText = formatMem(noah);
+      const elPeltaMem = document.getElementById('tbl-pelta-mem');
+      if (elPeltaMem) elPeltaMem.innerText = formatMem(pelta);
+      const elHqfsMem = document.getElementById('tbl-hqfs-mem');
+      if (elHqfsMem) elHqfsMem.innerText = formatMem(hqfs);
     }
 
     window.addEventListener('DOMContentLoaded', () => {

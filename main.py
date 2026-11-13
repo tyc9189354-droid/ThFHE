@@ -97,6 +97,14 @@ def run_benchmark_cmd(args):
                     all_results.append(res)
                 except Exception as e:
                     print(f"[-] Error evaluating {s_name}: {e}")
+    elif mode == "distributed":
+        print(f"\n[*] Executing Unified Multi-Port Distributed Socket Benchmark Suite for N={num_parties}...")
+        for s_name in scheme_names:
+            try:
+                res = runner.run_distributed(scheme_name=s_name, k=64, m=1, b=8, num_parties=num_parties)
+                all_results.append(res)
+            except Exception as e:
+                print(f"[-] Error evaluating distributed {s_name}: {e}")
     else:
         res = runner.run_remote(server_url=server_url, k=64, m=1, b=8, num_parties=num_parties)
         all_results.append(res)
@@ -120,7 +128,7 @@ def main():
     # benchmark
     b_parser = subparsers.add_parser("benchmark", help="Run benchmark suite")
     b_parser.add_argument("--config", default="./configs/benchmark_config.yaml", help="Path to config file")
-    b_parser.add_argument("--mode", choices=["local", "remote"], help="Override benchmark mode")
+    b_parser.add_argument("--mode", choices=["local", "distributed", "remote"], default="local", help="Override benchmark mode")
     b_parser.add_argument("--parties", type=int, default=10, help="Number of parties (10..1000)")
     b_parser.add_argument("--server-url", help="Override remote server URL")
 

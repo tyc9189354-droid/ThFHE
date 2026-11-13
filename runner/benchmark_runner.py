@@ -6,6 +6,7 @@ from core.base_scheme import BaseThFHEScheme
 from core.metrics import BenchmarkResult, OfflineMetric, OnlineMetric
 from CCS25.client import ThresholdFHEClient
 from tool import encode_ciphertext
+from network.distributed_engine import run_scheme_distributed
 
 class BenchmarkRunner:
     """
@@ -214,4 +215,34 @@ class BenchmarkRunner:
             online=online_metric,
             correctness_verified=correctness,
             metadata={"server_url": server_url}
+        )
+
+    def run_distributed(
+        self,
+        scheme_name: str,
+        k: int = 64,
+        m: int = 1,
+        b: int = 8,
+        num_parties: int = 10,
+        base_port: Optional[int] = None,
+        **kwargs
+    ) -> BenchmarkResult:
+        """實體分散式多埠 Socket 模式：為 N 個節點綁定專屬 Socket Ports 執行真實網路評測"""
+        port_offsets = {
+            "ccs25": 14100,
+            "noah": 14200,
+            "baseline_noise_flooding": 14200,
+            "pelta": 14300,
+            "hqfs": 14400
+        }
+        bp = base_port or port_offsets.get(scheme_name.lower(), 14500)
+        return run_scheme_distributed(
+            scheme_name=scheme_name,
+            num_parties=num_parties,
+            k=k,
+            m=m,
+            b=b,
+            base_port=bp,
+            iterations=self.iterations,
+            **kwargs
         )

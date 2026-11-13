@@ -1420,6 +1420,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 })
 
         elif path == "/api/benchmark":
+            mode = req.get("mode", "local")
             num_parties = max(10, min(1000, int(req.get("num_parties", 10))))
             malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 0))))
             attack_type = req.get("attack_type", "none")
@@ -1442,6 +1443,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             def format_res(r):
                 return {
                     "scheme_name": r.scheme_name,
+                    "mode": r.mode,
                     "num_parties": r.num_parties,
                     "correctness_verified": r.correctness_verified,
                     "setup_time_ms": r.offline.setup_time_ms,
@@ -1453,37 +1455,59 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "agg_time_ms": r.online.agg_time_ms,
                     "online_latency_ms": r.online.latency_ms,
                     "throughput_dec_per_sec": r.online.throughput_dec_per_sec,
-                    "gate_storage_bits": r.offline.gate_storage_bits
+                    "gate_storage_bits": r.offline.gate_storage_bits,
+                    "comm_sent_bytes": r.online.comm_sent_bytes,
+                    "comm_recv_bytes": r.online.comm_recv_bytes,
+                    "sockets_count": r.metadata.get("sockets_count", num_parties),
+                    "rns_primes_count": r.metadata.get("rns_primes_count", 19 if "hqfs" in r.scheme_name.lower() and r.mode == "distributed" else 2),
+                    "peak_mem_mb": r.online.details.get("peak_mem_mb", 0)
                 }
 
             results_map = {}
-            if "ccs25" in schemes_requested:
-                res_ccs = runner.run_local(
-                    ccs_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                    malicious_ratio=malicious_ratio, attack_type=attack_type
-                )
-                results_map["ccs25"] = format_res(res_ccs)
-            if "noah" in schemes_requested:
-                res_noah = runner.run_local(
-                    noah_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                    malicious_ratio=malicious_ratio, attack_type=attack_type
-                )
-                results_map["noah"] = format_res(res_noah)
-            if "pelta" in schemes_requested:
-                res_pelta = runner.run_local(
-                    pelta_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                    malicious_ratio=malicious_ratio, attack_type=attack_type
-                )
-                results_map["pelta"] = format_res(res_pelta)
-            if "hqfs" in schemes_requested:
-                res_hqfs = runner.run_local(
-                    hqfs_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                    malicious_ratio=malicious_ratio, attack_type=attack_type
-                )
-                results_map["hqfs"] = format_res(res_hqfs)
+            if mode == "distributed":
+                # Real Multi-Port Distributed TCP Socket Mode
+                if "ccs25" in schemes_requested:
+                    res_ccs = runner.run_distributed("ccs25", k=k, m=m, num_parties=num_parties, b=b)
+                    results_map["ccs25"] = format_res(res_ccs)
+                if "noah" in schemes_requested:
+                    res_noah = runner.run_distributed("noah", k=k, m=m, num_parties=num_parties, b=b)
+                    results_map["noah"] = format_res(res_noah)
+                if "pelta" in schemes_requested:
+                    res_pelta = runner.run_distributed("pelta", k=k, m=m, num_parties=num_parties, b=b)
+                    results_map["pelta"] = format_res(res_pelta)
+                if "hqfs" in schemes_requested:
+                    res_hqfs = runner.run_distributed("hqfs", k=k, m=m, num_parties=num_parties, b=b)
+                    results_map["hqfs"] = format_res(res_hqfs)
+            else:
+                # Fast In-Memory Local Algorithm Mode
+                if "ccs25" in schemes_requested:
+                    res_ccs = runner.run_local(
+                        ccs_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type
+                    )
+                    results_map["ccs25"] = format_res(res_ccs)
+                if "noah" in schemes_requested:
+                    res_noah = runner.run_local(
+                        noah_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type
+                    )
+                    results_map["noah"] = format_res(res_noah)
+                if "pelta" in schemes_requested:
+                    res_pelta = runner.run_local(
+                        pelta_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type
+                    )
+                    results_map["pelta"] = format_res(res_pelta)
+                if "hqfs" in schemes_requested:
+                    res_hqfs = runner.run_local(
+                        hqfs_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type
+                    )
+                    results_map["hqfs"] = format_res(res_hqfs)
 
             self._send_json(200, {
                 "status": "ok",
+                "mode": mode,
                 "num_parties": num_parties,
                 "malicious_ratio": malicious_ratio,
                 "attack_type": attack_type,

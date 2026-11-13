@@ -27,6 +27,7 @@ from runner.benchmark_runner import BenchmarkRunner
 from schemes.ccs25_scheme import CCS25ThFHEScheme
 from schemes.baseline_noise_flooding import BaselineNoiseFloodingScheme
 from schemes.pelta_scheme import PeltaThFHEScheme
+from schemes.hqfs_scheme import HQFSThFHEScheme
 from analysis.exporter import ResultExporter
 from analysis.plotter import ResultPlotter
 from CCS25 import server
@@ -34,7 +35,8 @@ from CCS25 import server
 SCHEME_REGISTRY = {
     "ccs25": CCS25ThFHEScheme,
     "baseline_noise_flooding": BaselineNoiseFloodingScheme,
-    "pelta": PeltaThFHEScheme
+    "pelta": PeltaThFHEScheme,
+    "hqfs": HQFSThFHEScheme
 }
 
 def load_yaml_config(path: str) -> Dict[str, Any]:

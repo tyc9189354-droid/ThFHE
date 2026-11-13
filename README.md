@@ -20,6 +20,11 @@
 │   ├── server.py                  # 聚合者與驗證者 (Commit-then-Prove ZK 惡意檢查、可驗證聚合、RLWE 同態乘法)
 │   └── client.py                  # 參與方 (Prover，支援誠實份額提交、惡意攻擊攔截與 RLWE 測試)
 │
+├── HQFS/                          # 論文 3 (Our Work): Actively Secure and CPA^D-Resistant Threshold FHE via Homomorphic Quotient Proofs
+│   ├── server.py                  # 雲端服務商 (CSP) 與資料接收者 (DR) (Alg 1 Setup, Alg 6 BFS 批次過濾解密, Alg 7/8 同態運算與零密文疊加)
+│   ├── client.py                  # 資料擁有者 (DO) 與分散式節點 (DCN) (Alg 2 KeyGen, Alg 3 RLKGen, Alg 4 iNTT 加密, Alg 5 HQ-FS ZKP 部分解密)
+│   └── tool.py                    # 專屬工具橋接模組 (整合至頂層 tool.py)
+│
 ├── web/                           # 🌐 互動式可視化 Web 實驗室與實測 API 伺服器
 │   ├── index.html                 # 前端主頁面 (支援 T=1024 明文空間、Scalar/SIMD 多槽平行運算、7 階段獨立按鈕與實測直方圖)
 │   └── serve.py                   # 本地 Web 與實測後端 API 伺服器 (預設 port 3000)

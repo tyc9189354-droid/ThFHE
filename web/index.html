@@ -658,7 +658,7 @@
       border-right: 1px solid var(--card-border);
       display: flex;
       flex-direction: column;
-      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, visibility 0.28s;
       z-index: 90;
       position: sticky;
       top: 108px;
@@ -668,8 +668,14 @@
     }
 
     .app-sidebar.collapsed {
-      width: 68px;
-      min-width: 68px;
+      width: 0 !important;
+      min-width: 0 !important;
+      border-right: none !important;
+      opacity: 0 !important;
+      overflow: hidden !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+      padding: 0 !important;
     }
 
     .sidebar-header {
@@ -1043,6 +1049,14 @@
       border-color: rgba(245, 158, 11, 0.8);
       background: rgba(245, 158, 11, 0.14);
     }
+    .paper-chip-label.active#chip-label-ot25 {
+      border-color: rgba(6, 182, 212, 0.8);
+      background: rgba(6, 182, 212, 0.14);
+    }
+    .paper-chip-label.active#chip-label-ajax {
+      border-color: rgba(236, 72, 153, 0.8);
+      background: rgba(236, 72, 153, 0.14);
+    }
     .paper-chip-label input[type="checkbox"] {
       cursor: pointer;
       accent-color: #3b82f6;
@@ -1068,6 +1082,194 @@
       text-overflow: ellipsis;
     }
 
+
+    /* View Paper Button */
+    .btn-view-paper {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #93c5fd;
+      background: rgba(30, 58, 138, 0.28);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .btn-view-paper:hover {
+      background: rgba(59, 130, 246, 0.35);
+      border-color: #60a5fa;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Paper Viewer Modal */
+    .paper-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.82);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .paper-modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    .paper-modal-container {
+      background: #0f172a;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 14px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+      width: 92vw;
+      max-width: 1200px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalSlideUp 0.25s ease-out;
+    }
+    @keyframes modalSlideUp {
+      from { transform: translateY(16px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .paper-modal-header {
+      padding: 0.95rem 1.4rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+    .paper-modal-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .paper-modal-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      padding: 2px 7px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+    .paper-modal-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .paper-modal-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .paper-modal-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-shrink: 0;
+    }
+    .btn-paper-action {
+      background: rgba(59, 130, 246, 0.18);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-paper-action:hover {
+      background: rgba(59, 130, 246, 0.35);
+      color: #ffffff;
+      border-color: #60a5fa;
+    }
+    .paper-modal-close-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .paper-modal-close-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+    .paper-modal-body {
+      flex: 1;
+      position: relative;
+      background: #020617;
+      overflow: hidden;
+    }
+    .paper-modal-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #020617;
+    }
+    .paper-modal-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 2.5rem;
+      text-align: center;
+    }
+    .placeholder-icon {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+      opacity: 0.8;
+    }
+    .paper-modal-placeholder h4 {
+      font-size: 1.25rem;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+    .paper-modal-placeholder p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      max-width: 580px;
+      line-height: 1.6;
+      margin-bottom: 1.2rem;
+    }
+
   </style>
 </head>
 <body>
@@ -1075,7 +1277,7 @@
   <header>
     <div class="header-top">
       <div class="brand">
-        <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="收合 / 展開側邊欄 (快捷鍵: [ )">
+        <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="收合 / 展開側邊欄">
           <span class="toggle-icon">☰</span>
         </button>
         <div class="brand-logo">Th</div>
@@ -1154,19 +1356,14 @@
     <aside class="app-sidebar" id="app-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title-group">
-          <span style="font-size: 1.05rem;">🧭</span>
           <span class="sidebar-title">實驗與評測導覽</span>
         </div>
-        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar()" title="收合側邊欄 (快捷鍵: [ )">
-          <span id="collapse-arrow">◀</span>
-        </button>
       </div>
 
       <nav class="sidebar-nav">
         <div class="nav-section-label">獨立論文實驗室 (6 大論文專屬實驗室)</div>
 
         <button class="sidebar-nav-btn active" id="sidebar-btn-ccs25" onclick="switchTab('ccs25', this)">
-          <span class="nav-icon" style="color: #60a5fa;">⚡</span>
           <div class="nav-text-group">
             <span class="nav-title">CCS 2025 實驗室</span>
             <span class="nav-desc">Zyskind et al. (MPC Rounding)</span>
@@ -1174,7 +1371,6 @@
         </button>
 
         <button class="sidebar-nav-btn" id="sidebar-btn-noah" onclick="switchTab('noah', this)">
-          <span class="nav-icon" style="color: #ef4444;">🌊</span>
           <div class="nav-text-group">
             <span class="nav-title">Noah's Ark 實驗室</span>
             <span class="nav-desc">Dahl et al. 2023 (Noise Flooding / Smudging)</span>
@@ -1182,7 +1378,6 @@
         </button>
 
         <button class="sidebar-nav-btn" id="sidebar-btn-pelta" onclick="switchTab('pelta', this)">
-          <span class="nav-icon" style="color: #34d399;">🛡️</span>
           <div class="nav-text-group">
             <span class="nav-title">PELTA 實驗室</span>
             <span class="nav-desc">Chatel et al. (EPFL Malicious Shield)</span>
@@ -1190,7 +1385,6 @@
         </button>
 
         <button class="sidebar-nav-btn" id="sidebar-btn-hqfs" onclick="switchTab('hqfs', this)">
-          <span class="nav-icon" style="color: #fbbf24;">🚀</span>
           <div class="nav-text-group">
             <span class="nav-title">HQ-FS 實驗室</span>
             <span class="nav-desc">Our Work (Homomorphic Quotient Proofs)</span>
@@ -1199,7 +1393,6 @@
         </button>
 
         <button class="sidebar-nav-btn" id="sidebar-btn-ot25" onclick="switchTab('ot25', this)">
-          <span class="nav-icon" style="color: #06b6d4;">🔐</span>
           <div class="nav-text-group">
             <span class="nav-title">OT25 實驗室</span>
             <span class="nav-desc">Okada &amp; Takagi (Asiacrypt 2025, Noise Padding)</span>
@@ -1207,7 +1400,6 @@
         </button>
 
         <button class="sidebar-nav-btn" id="sidebar-btn-ajax" onclick="switchTab('ajax', this)">
-          <span class="nav-icon" style="color: #ec4899;">⚡</span>
           <div class="nav-text-group">
             <span class="nav-title">Ajax 實驗室</span>
             <span class="nav-desc">Hu et al. (USENIX Security 2025, Mask-Then-Open)</span>
@@ -1217,7 +1409,6 @@
         <div class="nav-section-label" style="margin-top: 0.85rem;">橫向綜合評測</div>
 
         <button class="sidebar-nav-btn arena-btn" id="sidebar-btn-arena" onclick="switchTab('arena', this)">
-          <span class="nav-icon" style="color: #f59e0b;">🏆</span>
           <div class="nav-text-group">
             <span class="nav-title">論文評測競技場</span>
             <span class="nav-desc">6 篇論文 7 階段直方圖與比對</span>
@@ -1225,11 +1416,7 @@
         </button>
       </nav>
 
-      <div class="sidebar-footer">
-        <div class="sidebar-shortcut-hint">
-          <span>快捷鍵 <code>[</code> 收合側欄</span>
-        </div>
-      </div>
+
     </aside>
 
     <!-- Main Content Area -->
@@ -1266,7 +1453,10 @@
         <div class="card">
           <div class="card-title">
             <span>📥 CCS 2025 雙密文輸入與各階段控制</span>
-            <span class="badge badge-blue" id="ccs-t-badge">LWE / BFV (明文空間 T = 1024)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-view-paper" onclick="openPaperViewer('ccs25')">📄 查看對應論文</button>
+              <span class="badge badge-blue" id="ccs-t-badge">LWE / BFV (明文空間 T = 1024)</span>
+            </div>
           </div>
 
           <!-- CCS 2025 SIMD Mode Toggle Bar -->
@@ -1395,7 +1585,10 @@
         <div class="card">
           <div class="card-title">
             <span>📥 Noah's Ark 密文輸入與各階段控制 (Noise Flooding)</span>
-            <span class="badge badge-red" id="noah-node-count">Noah's Ark (T = 1024)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-view-paper" onclick="openPaperViewer('noah')">📄 查看對應論文</button>
+              <span class="badge badge-red" id="noah-node-count">Noah's Ark (T = 1024)</span>
+            </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -1516,7 +1709,10 @@
         <div class="card">
           <div class="card-title">
             <span>📥 PELTA 雙密文輸入、隨機惡意節點與各階段控制</span>
-            <span class="badge badge-purple" id="pelta-node-count">RLWE (T = 1024)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-view-paper" onclick="openPaperViewer('pelta')">📄 查看對應論文</button>
+              <span class="badge badge-purple" id="pelta-node-count">RLWE (T = 1024)</span>
+            </div>
           </div>
 
           <!-- Random Malicious Party Topology Chips -->
@@ -1789,7 +1985,10 @@
         <div class="card">
           <div class="card-title">
             <span>📥 OT25 密文輸入與各階段控制 (Noise Padding &amp; PRF Masking)</span>
-            <span class="badge" id="ot25-node-count" style="background: rgba(6, 182, 212, 0.2); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.4);">OT25 (Asiacrypt 2025)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-view-paper" onclick="openPaperViewer('ot25')">📄 查看對應論文</button>
+              <span class="badge" id="ot25-node-count" style="background: rgba(6, 182, 212, 0.2); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.4);">OT25 (Asiacrypt 2025)</span>
+            </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -1909,7 +2108,10 @@
         <div class="card">
           <div class="card-title">
             <span>📥 Ajax 密文輸入與各階段控制 (Mask-Then-Open without Noise Flooding)</span>
-            <span class="badge" id="ajax-node-count" style="background: rgba(236, 72, 153, 0.2); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.4);">Ajax (USENIX 2025)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-view-paper" onclick="openPaperViewer('ajax')">📄 查看對應論文</button>
+              <span class="badge" id="ajax-node-count" style="background: rgba(236, 72, 153, 0.2); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.4);">Ajax (USENIX 2025)</span>
+            </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -2913,15 +3115,9 @@
       try {
         localStorage.setItem('thfhe_sidebar_collapsed', isCollapsed ? '1' : '0');
       } catch (e) {}
-      const arrow = document.getElementById('collapse-arrow');
-      if (arrow) arrow.innerText = isCollapsed ? '▶' : '◀';
     }
 
-    window.addEventListener('keydown', (e) => {
-      if ((e.key === '[' || e.key === ']') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
-        toggleSidebar();
-      }
-    });
+
 
     // Paper Selection & Filter Logic
     let LATEST_ARENA_RESULTS = null;
@@ -4756,13 +4952,158 @@
         if (localStorage.getItem('thfhe_sidebar_collapsed') === '1') {
           const sidebar = document.getElementById('app-sidebar');
           if (sidebar) sidebar.classList.add('collapsed');
-          const arrow = document.getElementById('collapse-arrow');
-          if (arrow) arrow.innerText = '▶';
         }
       } catch (e) {}
       syncEnvironmentUI(true);
       onPaperFilterChange();
     });
+
+    // Paper Viewer Modal Logic
+    const PAPERS_INFO = {
+      ccs25: {
+        key: 'ccs25',
+        title: 'Practical Threshold Fully Homomorphic Encryption via Rounding',
+        authors: 'Guy Zyskind et al.',
+        venue: 'ACM CCS 2025',
+        pdfUrl: '/papers/ccs2025.pdf',
+        hasLocalPdf: true,
+        externalUrl: 'https://dl.acm.org/'
+      },
+      noah: {
+        key: 'noah',
+        title: "Noah's Ark: Efficient Threshold-FHE using Noise Flooding / Smudging",
+        authors: 'Morten Dahl et al. (2023)',
+        venue: 'IACR Cryptology ePrint / Research Report 2023',
+        pdfUrl: '/papers/noah2023.pdf',
+        hasLocalPdf: false, // Noah's Ark PDF will be provided by user
+        externalUrl: 'https://eprint.iacr.org/'
+      },
+      pelta: {
+        key: 'pelta',
+        title: 'PELTA: Shielding Practical Homomorphic Encryption Against Malicious Adversaries',
+        authors: 'Juan Ramón Troncoso-Pastoriza, Christian Knabenhans, Jean-Philippe Bossuat, Pierros Papalambros, Jean-Pierre Hubaux (EPFL)',
+        venue: 'IEEE S&P / ACM CCS 2023',
+        pdfUrl: '/papers/pelta2023.pdf',
+        hasLocalPdf: true,
+        externalUrl: 'https://eprint.iacr.org/2023/1647'
+      },
+      ot25: {
+        key: 'ot25',
+        title: 'Noise Padding and PRF-based Masking for Secure Threshold FHE',
+        authors: 'Kazuhiro Okada & Tsuyoshi Takagi (2025)',
+        venue: 'Cryptology ePrint Report 2025/409 (Asiacrypt 2025)',
+        pdfUrl: '/papers/ot2025.pdf',
+        hasLocalPdf: true,
+        externalUrl: 'https://eprint.iacr.org/2025/409'
+      },
+      ajax: {
+        key: 'ajax',
+        title: 'Ajax: Practical Maliciously Secure Threshold Fully Homomorphic Encryption with Mask-Then-Open',
+        authors: 'Yu Hu, et al. (2025)',
+        venue: 'USENIX Security 2025 (sec26 prepub)',
+        pdfUrl: '/papers/ajax2025.pdf',
+        hasLocalPdf: true,
+        externalUrl: 'https://www.usenix.org/conference/usenixsecurity25'
+      }
+    };
+
+    function openPaperViewer(schemeKey) {
+      const p = PAPERS_INFO[schemeKey];
+      if (!p) return;
+
+      const modal = document.getElementById('paper-modal');
+      const badge = document.getElementById('paper-modal-badge');
+      const title = document.getElementById('paper-modal-title');
+      const meta = document.getElementById('paper-modal-meta');
+      const extLink = document.getElementById('paper-modal-external-link');
+      const iframe = document.getElementById('paper-modal-iframe');
+      const placeholder = document.getElementById('paper-modal-placeholder');
+      const placeholderTitle = document.getElementById('placeholder-title');
+      const placeholderDesc = document.getElementById('placeholder-desc');
+      const placeholderLinks = document.getElementById('placeholder-links');
+
+      if (!modal) return;
+
+      badge.innerText = p.venue;
+      title.innerText = p.title;
+      meta.innerText = `${p.authors} • ${p.venue}`;
+
+      if (p.hasLocalPdf) {
+        iframe.style.display = 'block';
+        placeholder.style.display = 'none';
+        iframe.src = p.pdfUrl;
+        extLink.href = p.pdfUrl;
+        extLink.style.display = 'inline-flex';
+        extLink.innerHTML = '<span>在新分頁開啟完整 PDF ↗</span>';
+      } else {
+        iframe.style.display = 'none';
+        placeholder.style.display = 'flex';
+        iframe.src = 'about:blank';
+        extLink.href = p.externalUrl;
+        extLink.style.display = 'inline-flex';
+        extLink.innerHTML = '<span>在外部搜尋 / 線上閱讀 ↗</span>';
+
+        placeholderTitle.innerText = `尚未收錄《${p.title}》之 PDF 檔`;
+        placeholderDesc.innerText = `目前本機系統庫中尚未上傳 Noah's Ark (${p.authors}) 的 PDF 論文檔。您可以在下一段對話中上傳該 PDF，系統將自動納入展示庫並啟用本機預覽。`;
+        placeholderLinks.innerHTML = `
+          <a href="${p.externalUrl}" target="_blank" rel="noopener noreferrer" class="btn-paper-action" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">
+            🌐 前往 IACR ePrint 搜尋 Noah's Ark ↗
+          </a>
+        `;
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closePaperViewer() {
+      const modal = document.getElementById('paper-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        const iframe = document.getElementById('paper-modal-iframe');
+        if (iframe) iframe.src = 'about:blank';
+      }
+    }
+
+    function onPaperModalOverlayClick(e) {
+      if (e.target && e.target.id === 'paper-modal') {
+        closePaperViewer();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closePaperViewer();
+      }
+    });
+
   </script>
+  <!-- Paper Viewer Modal -->
+  <div id="paper-modal" class="paper-modal-overlay" onclick="onPaperModalOverlayClick(event)">
+    <div class="paper-modal-container">
+      <div class="paper-modal-header">
+        <div class="paper-modal-title-group">
+          <span class="paper-modal-badge" id="paper-modal-badge">ACM CCS 2025</span>
+          <h3 class="paper-modal-title" id="paper-modal-title">論文預覽</h3>
+          <p class="paper-modal-meta" id="paper-modal-meta">作者與出版資訊</p>
+        </div>
+        <div class="paper-modal-actions">
+          <a id="paper-modal-external-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-paper-action" title="在新分頁開啟完整 PDF">
+            <span>在新分頁開啟 ↗</span>
+          </a>
+          <button type="button" class="paper-modal-close-btn" onclick="closePaperViewer()" title="關閉 (Esc)">✕</button>
+        </div>
+      </div>
+      <div class="paper-modal-body" id="paper-modal-body">
+        <iframe id="paper-modal-iframe" src="" class="paper-modal-iframe"></iframe>
+        <div id="paper-modal-placeholder" class="paper-modal-placeholder" style="display: none;">
+          <div class="placeholder-icon">📑</div>
+          <h4 id="placeholder-title">尚未收錄此論文 PDF 檔案</h4>
+          <p id="placeholder-desc">目前本機尚未收納該論文之完整 PDF 檔。您可在下一段對話上傳該 PDF，系統將自動同步並啟用內嵌閱讀器。</p>
+          <div class="placeholder-links" id="placeholder-links"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

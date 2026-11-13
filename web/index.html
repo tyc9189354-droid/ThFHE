@@ -1189,6 +1189,48 @@
       transform: translateY(-1px);
     }
 
+    
+    /* Word Equation Format Styling */
+    .word-eq {
+      font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
+      font-size: 0.96rem;
+      color: #93c5fd;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      display: inline-block;
+      margin: 2px 0;
+    }
+    .word-eq-block {
+      font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
+      font-size: 0.98rem;
+      color: #bfdbfe;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 0.75rem 1.1rem;
+      border-radius: 8px;
+      border-left: 3px solid #3b82f6;
+      margin: 0.7rem 0;
+      line-height: 1.6;
+      overflow-x: auto;
+    }
+    .example-box {
+      background: rgba(30, 41, 59, 0.65);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin-top: 0.8rem;
+    }
+    .example-title {
+      font-weight: 700;
+      color: #fbbf24;
+      font-size: 0.88rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
     /* Manual Modal */
     .manual-modal-overlay {
       position: fixed;
@@ -2528,10 +2570,19 @@
     <!-- TAB 7: Benchmark Arena (6 Papers Live Comparison + Table II Features) -->
     <!-- ===================================================================== -->
     <section id="tab-arena" class="tab-content">
+      <!-- Lab Hero Title Banner for Arena -->
+      <div class="lab-hero-header" style="border-color: rgba(245, 158, 11, 0.45);">
+        <h2 class="lab-hero-title">論文評測競技場</h2>
+        <div class="lab-hero-sub">6 大經典與頂會前沿門檻 FHE 論文之 7 階段微秒級延遲、通訊量與密碼學安全性橫向綜合評測</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('arena')">📘 操作手冊</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">
           <div>
-            <span>論文評測競技場 (Paper Benchmark Arena)</span>
+            <span>評測執行與模式配置 (Benchmark Runner &amp; Configuration)</span>
             <span id="arena-status-badge" class="badge badge-yellow" style="margin-left: 8px;">尚未執行實測</span>
           </div>
           <div style="display: flex; gap: 0.6rem; align-items: center;">
@@ -5404,7 +5455,7 @@
     }
 
     
-    // 1. Paper Theory Tutorials (論文學術教學：深度剖析密碼學理論、數學架構與核心突破)
+    // 1. Paper Theory Tutorials (論文學術教學：詳細數學原理、Word 等式格式、直觀範例解說)
     const PAPER_TUTORIALS_INFO = {
       ccs25: {
         badge: 'ACM CCS 2025 • MPC Rounding',
@@ -5412,21 +5463,34 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>在門檻同態加密（Threshold FHE）中，解密過程必須由 \( n \) 個分散節點共同計算 \( b - \langle \mathbf{a}, \mathbf{s} \rangle = \Delta m + e \)。為了防止節點發布的部分解密份額洩漏私鑰雜訊 \( e \)，傳統方案廣泛依賴<strong>統計雜訊淹沒（Noise Flooding）</strong>。然而，雜訊淹沒要求淹沒雜訊遠大於原始雜訊（如 \( 2^{\\text{stat}} \cdot B \)），這直接導致密文模數 \( Q \) 暴增數十至數百位元，迫使多項式環維度 \( N \) 大幅提升，使所有同態乘法與自舉運算變得極為沉重。</p>
+            <p>在門檻同態加密（Threshold FHE）中，解密過程必須由 n 個分散節點共同計算：</p>
+            <div class="word-eq-block">b - a · s = Δ · m + e (mod q)</div>
+            <p>傳統方案為了防止發布的部分解密份額洩漏私鑰雜訊 e，必須加入巨量的統計雜訊淹沒：</p>
+            <div class="word-eq-block">E_flood ≥ 2^(stat) · B_dec</div>
+            <p>這導致密文模數 q 必須急遽膨脹至數百位元，連帶迫使多項式環維度 N 翻倍，使所有同態乘法與自舉運算變慢數十倍。CCS 2025 的核心目標就是：<strong>在完全不擴張密文模數的前提下，達成兼具主動安全性與 UC 模擬安全的門檻解密！</strong></p>
           </div>
+
           <div class="tutorial-section">
             <div class="tutorial-section-title">💡 核心數學創新：MPC 協同捨入 (MPC-Based Rounding)</div>
-            <p>CCS 2025 提出拋棄雜訊淹沒，轉而利用<strong>多方安全計算（MPC）執行整數捨入</strong>：</p>
+            <p>Zyskind 等人提出徹底揚棄雜訊淹沒，利用<strong>多方安全計算（MPC）直接在秘密份額上完成整數除法與捨入</strong>：</p>
+            <div class="word-eq-block">m = ⌊ (b - a · s) · (p / q) ⌉ = ⌊ (Δ · m + e) / Δ ⌉</div>
             <ul>
-              <li><strong>密文保持標準模數</strong>：密文模數無需為了容納淹沒雜訊而擴張，大幅保持 FHE 同態運算的高效性。</li>
-              <li><strong>協同分散捨入</strong>：各節點持有私鑰的 Shamir 份額，在解密階段透過預處理生成的隨機三元組（Beaver Triples）在 2~3 輪 MPC 互動內精準計算 \( \lfloor (b - \langle \mathbf{a}, \mathbf{s} \rangle) \cdot \frac{p}{q} \rceil \)，直接濾除雜訊 \( e \)。</li>
-              <li><strong>通用可組合安全（UC Security）</strong>：證明了在靜態與自適應對手模型下具備嚴格的模擬安全性，消除了先前博弈模型（Game-based）無法作為大系統黑盒子的限制。</li>
+              <li><strong>離線預處理輔助</strong>：在離線階段預先生成隨機三元組（Beaver Triples）或隨機盲化整數 r。</li>
+              <li><strong>線上低輪數 MPC 協同</strong>：各節點持有私鑰的 Shamir 份額 s_i，在線上僅需 2~3 輪輕量 MPC 通訊，即可在不向任何單一節點公開敏感中間值的狀態下，完成定點數捨入計算。</li>
+              <li><strong>消除雜訊殘餘</strong>：整數捨入操作將小雜訊 e 直接濾除歸零，徹底瓦解了攻擊者透過雜訊反推私鑰的管道。</li>
             </ul>
           </div>
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
-            <p><strong>優勢</strong>：同態加密與密文乘法速度極快、密文尺寸小、模數無膨脹。<br>
-            <strong>理論代價</strong>：解密階段需要節點之間進行多輪網路互動以執行 MPC 協同捨入協議，在網路延遲高（WAN）的場景下解密通訊時間會略有增加。</p>
+
+          <div class="example-box">
+            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
+            <p><strong>情境設定</strong>：設密文模數 <span class="word-eq">q = 1024</span>，明文模數 <span class="word-eq">p = 16</span>，縮放因子 <span class="word-eq">Δ = ⌊1024 / 16⌉ = 64</span>。參與方共有 3 個節點，私鑰滿足 <span class="word-eq">s = s₁ + s₂ + s₃</span>。</p>
+            <p><strong>步驟 1 (加密)</strong>：加密明文 <span class="word-eq">m = 3</span>，產生密文：</p>
+            <div class="word-eq-block">b = a · s + e + Δ · m = a · s + 12 + 64 · 3 = a · s + 204 (mod 1024)</div>
+            <p>此時內部真實雜訊為 <span class="word-eq">e = 12</span>，有效資訊承載於高位 <span class="word-eq">192</span>。</p>
+            <p><strong>步驟 2 (部分評估)</strong>：各節點計算本地相減份額 <span class="word-eq">v_i = b_i - a · s_i</span>，求和還原出 <span class="word-eq">v = 204</span>。</p>
+            <p><strong>步驟 3 (MPC 捨入)</strong>：節點協同執行除以 64 並四捨五入：</p>
+            <div class="word-eq-block">v / Δ = 204 / 64 = 3.1875 ──四捨五入──→ 3</div>
+            <p><strong>結論</strong>：雜訊 12 在除法與捨入中被無損濾除，精準輸出原始明文 3！全程完全不需要將模數 q 擴增至 2¹²⁸，同態計算速度保持最佳！</p>
           </div>
         `
       },
@@ -5436,21 +5500,31 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>Torus-FHE (TFHE) 等方案因使用較小的密文模數（如 \( q = 2^{64} \)）與維度（\( \ell \approx 600 \sim 1000 \)）而擁有極快的自舉速度。但其雜訊容許間隙（Noise Gap）僅有約 \( 2^{30} \sim 2^{50} \)，完全無法容納標準雜訊淹沒所要求的 \( 2^{40} \cdot B \) 額外雜訊（會直接溢位破壞明文最高位元）。這導致 TFHE 長期被認為難以實現無交互的門檻解密。</p>
+            <p>Torus-FHE (TFHE) 等方案因使用較小的密文模數（如 <span class="word-eq">q = 2⁶⁴</span>）與維度（如 <span class="word-eq">ℓ = 1024</span>）而擁有極快的自舉速度。但其雜訊容許間隙（Noise Gap）僅有約 30~50 位元：</p>
+            <div class="word-eq-block">Δ = q / p = 2⁶⁴ / 16 = 2⁶⁰,   |e| ≈ 2³⁰</div>
+            <p>若要滿足統計安全性 <span class="word-eq">stat = 40</span> 的雜訊淹沒需求，淹沒雜訊必須達到：</p>
+            <div class="word-eq-block">E_flood ≥ 2⁴⁰ · |e| ≈ 2⁷⁰ > 2⁶⁴ = q</div>
+            <p>淹沒雜訊直接大於密文模數 q，導致明文高位元被徹底摧毀！這就是長期困擾 TFHE 門檻化的「小參數雜訊淹沒瓶頸」。</p>
           </div>
+
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：Switch-n-Squash 與 Galois 環秘密分享</div>
-            <p>Dahl 等人提出了巧妙的雙階協議：</p>
+            <div class="tutorial-section-title">💡 核心數學創新：Switch-n-Squash 與 Galois 環 Reed-Solomon 糾錯</div>
+            <p>Dahl 等人提出了巧妙的「方舟（Noah's Ark）」保護結構：</p>
             <ul>
-              <li><strong>Switch-n-Squash（切換並擠壓）</strong>：利用 TFHE 的快速自舉機制，在自舉的同時將密文由小參數 \( (\ell, q=2^{64}) \) 動態切換至大參數 \( (L=4096, Q=2^{128}) \)，同時將相對雜訊擠壓至 \( \sigma'_{BR} \approx 2^{72} \)，成功開闢出高達 50 位元的全新雜訊安全裕度！</li>
-              <li><strong>Galois 環 \( \mathbb{Z}_Q[\theta] \) 上之 Shamir 秘密分享</strong>：針對 \( Q = 2^{128} \) 是 2 的冪次（非質數）無法直接建構有限體之困難，利用 Galois 環多項式擴展實現標準 Shamir 門檻分享。</li>
-              <li><strong>非同步魯棒開啟（RobustOpen via Reed-Solomon）</strong>：在 Galois 環上執行 Berlekamp-Welch / Gao 糾錯演算法，在容許 \( t < n/3 \) 主動惡意節點的前提下，完全不依賴零知識證明（ZKP），單輪非同步通訊即可完成解密。</li>
+              <li><strong>Switch-n-Squash（切換並擠壓）</strong>：在自舉（Bootstrapping）的同時，將密文由小參數 <span class="word-eq">(ℓ=1024, q=2⁶⁴)</span> 轉換至大參數 <span class="word-eq">(L=4096, Q=2¹²⁸)</span>，同時將相對雜訊方差壓縮至 <span class="word-eq">σ'_BR ≈ 2⁷²</span>。這使得新模數下具備了整整 50 位元的全新雜訊間隙！</li>
+              <li><strong>Galois 環 Z_Q[θ] 秘密分享</strong>：針對 <span class="word-eq">Q = 2¹²⁸</span> 是 2 的冪次（非質數無法形成有限體）之困難，在度數為 d 的不可約多項式 Galois 環上構造 Shamir 門檻分享。</li>
+              <li><strong>非同步魯棒開啟（RobustOpen）</strong>：在 Galois 環上執行 Reed-Solomon 解碼，在滿足 <span class="word-eq">t < n / 3</span> 惡意節點的前提下，單輪非同步通訊即可完成解碼並自動校正惡意篡改。</li>
             </ul>
           </div>
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
-            <p><strong>優勢</strong>：解密僅需單輪發送份額、支援非同步網路、無須繁複的 ZKP 產生與校驗。<br>
-            <strong>理論代價</strong>：解密前必須先執行一次自舉以完成 Switch-n-Squash 模數擴增，適合原先就頻繁使用 TFHE 自舉的應用管線。</p>
+
+          <div class="example-box">
+            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
+            <p><strong>情境設定</strong>：4 個節點 (n=4)，容許 1 個惡意節點 (t=1 < 4/3)。待解密密文明文為 <span class="word-eq">m = 5</span>。</p>
+            <p><strong>步驟 1 (Switch-n-Squash)</strong>：原始密文模數為 2⁶⁴，雜訊為 2³⁰。執行自舉後，密文模數升級為 <span class="word-eq">Q = 2¹²⁸</span>，新縮放因子為 <span class="word-eq">Δ' = 2¹²⁸ / 16 = 2¹²⁴</span>，雜訊邊界為 <span class="word-eq">Bd ≈ 2⁷⁰</span>。</p>
+            <p><strong>步驟 2 (雜訊淹沒)</strong>：注入淹沒雜訊 <span class="word-eq">E ∈ [-2¹¹², 2¹¹²]</span>。由於 <span class="word-eq">2¹¹² < 2¹²⁴ / 2</span>，淹沒雜訊絕不會溢位破壞明文最高位元！</p>
+            <p><strong>步驟 3 (Reed-Solomon 糾錯解密)</strong>：各節點廣播部分解密份額：</p>
+            <div class="word-eq-block">節點 1: v₁ = f(γ₁),  節點 2: v₂ = f(γ₂),  節點 3: v₃ = f(γ₃),  惡意節點 4: v₄ = 999999 (偽造數值)</div>
+            <p>解碼器執行 RS-Decode，發現節點 1, 2, 3 落在同一個 1 次多項式上，而節點 4 偏離多項式。解碼器自動判定節點 4 為錯誤並予以糾正，計算多項式常數項 <span class="word-eq">f(0)</span>，精準除以 Δ' 還原明文 <span class="word-eq">m = 5</span>！</p>
           </div>
         `
       },
@@ -5460,21 +5534,32 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>在基於 RLWE 的多方同態加密（如 BFV / CKKS）中，若存在惡意敵手蓄意發布錯誤或畸形的部分解密份額，不僅會毀損聯合解密結果，更能透過多次有目的之輸入發動「選擇明文解密問詢攻擊」（Chosen-Plaintext Attacks with Decryption oracles, \( \text{CPA}^D \)），進而精確推導出誠實節點的私鑰！</p>
+            <p>在基於 RLWE 的多方同態加密（如 BFV / CKKS）中，如果惡意對手在門檻解密時蓄意提交錯誤的解密份額，不僅會讓所有人解密出亂碼，更致命的是：<strong>惡意節點可以透過精心設計的輸入與惡意份額發動 CPA^D 攻擊，在數十輪內完整還原出所有誠實節點的私鑰！</strong></p>
           </div>
+
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：格基承諾與零知識證明防護盾</div>
-            <p>EPFL 團隊提出以全套密碼學證明武裝多方同態加密：</p>
+            <div class="tutorial-section-title">💡 核心數學創新：晶格承諾與非交互式零知識證明 (NIZK Shield)</div>
+            <p>EPFL 團隊提出以全套晶格 ZKP 構築堅固盾牌：</p>
             <ul>
-              <li><strong>晶格承諾（Lattice Commitments）</strong>：在註冊階段，各節點使用公開參考矩陣 \( \mathbf{A}_{zkp} \) 對個人私鑰 \( \mathbf{s}_i \) 進行嚴格綁定：\( \mathbf{C}_i = \mathbf{A}_{zkp} \mathbf{s}_i + \mathbf{e}_{zkp} \pmod Q \)。</li>
-              <li><strong>非交互式零知識證明（NIZK with Aborts）</strong>：節點在提交部分解密份額時，必須附帶基於 Fiat-Shamir 轉換之晶格 ZKP，證明其份額確係使用已承諾之私鑰忠實計算，且誤差小於安全界限。</li>
-              <li><strong>全主動安全防護（Active Malicious Shield）</strong>：任何試圖竄改份額或偽造金鑰的惡意行為均無法通過 ZKP 驗證，直接遭到剔除，徹底杜絕 \( \text{CPA}^D \) 私鑰洩漏攻擊。</li>
+              <li><strong>金鑰綁定承諾</strong>：在初始化階段，節點私鑰 s_i 必須先使用公開晶格參考矩陣 A_zkp 綁定：
+                <div class="word-eq-block">C_i = A_zkp · s_i + e_zkp (mod Q)</div>
+              </li>
+              <li><strong>部分解密證明</strong>：解密時，節點提交解密份額 <span class="word-eq">μ_i = ⟨u, s_i⟩ + e_flood</span>，並附帶基於 Fiat-Shamir with Aborts 的 ZKP 證明 <span class="word-eq">π_i = (z_s, z_e, ch)</span>。</li>
+              <li><strong>雙重嚴格驗證</strong>：驗證者檢驗解密份額與金鑰承諾的一致性：
+                <div class="word-eq-block">A_zkp · z_s + z_e - ch · C_i ≡ T_A (mod Q)   且   ‖z_s‖_∞ ≤ B_zkp</div>
+                只要有任何竄改或注入超額雜訊，證明驗證必然失敗，惡意份額直接被剔除！
+              </li>
             </ul>
           </div>
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
-            <p><strong>優勢</strong>：具備最高等級的惡意敵手防護、全面杜絕惡意節點份額偽造、支援不誠實多數（\( t < n \)）。<br>
-            <strong>理論代價</strong>：在大模數 \( Q \) 晶格多項式環上生成與驗證 ZKP 需要較高的計算複雜度與證明傳輸頻寬。</p>
+
+          <div class="example-box">
+            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
+            <p><strong>情境設定</strong>：3 個節點參與多方解密，誠實私鑰承諾為 <span class="word-eq">C₁</span>, <span class="word-eq">C₂</span>, <span class="word-eq">C₃</span>。</p>
+            <p><strong>正常計算</strong>：誠實節點 1 依據其真實私鑰 s₁ 計算部分解密 <span class="word-eq">μ₁ = ⟨u, s₁⟩ + e₁</span>，並以隨機掩碼 y_s, y_e 生成證明：</p>
+            <div class="word-eq-block">z_s = y_s + ch · s₁,   z_e = y_e + ch · e_zkp₁</div>
+            <p>驗證者驗證等式完全吻合，且 <span class="word-eq">‖z_s‖_∞ ≤ B_zkp</span>，判定為誠實份額。</p>
+            <p><strong>惡意竄改情境</strong>：節點 2 是惡意節點，企圖提交被篡改的數值 <span class="word-eq">μ'_2 = μ₂ + 50000</span> 以破壞系統。為了讓驗證通過，節點 2 必須構造出對應的 ZKP 證明。然而，由於哈希挑戰值 <span class="word-eq">ch = H(...)</span> 是隨機且不可預測的，節點 2 無法在不使用真實 s₂ 的情況下湊出滿足矩陣關聯且不超出長度界限 B_zkp 的向量。</p>
+            <p><strong>驗證結果</strong>：驗證者計算矩陣乘積發現誤差巨大，直接報警並剔除節點 2，保證系統解密絕對安全！</p>
           </div>
         `
       },
@@ -5484,22 +5569,40 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>既有主動安全門檻 FHE 面臨兩大根本困境：<br>
-            1. <strong>ZKP 效能瓶頸</strong>：傳統方案（如 PELTA）迫使 ZKP 運算在龐大的密文模數 \( Q \)（數百位元）上進行，計算與通訊開銷巨大。<br>
-            2. <strong>\( \text{CPA}^D \) 與代數追蹤威脅</strong>：同態運算與分散式重線性化（RLKGen）產生的殘餘代數特徵會洩漏電路內部狀態，違反函數隱私（FuncCPA），且常規清洗或自舉成本高昂。</p>
+            <p>現有主動安全門檻 FHE 面臨兩大根本障礙：<br>
+            1. <strong>ZKP 運算開銷沉重</strong>：如 PELTA 等方案迫使 ZKP 在高達數百位元的完整密文模數 Q 上執行，多項式乘法速度緩慢。<br>
+            2. <strong>電路隱私與 CPA^D 攻擊</strong>：同態運算與分散式重線性化會殘留運算軌跡，使得攻擊者能透過解密問詢（CPA^D）逆向推導私鑰，違反 FuncCPA 安全。</p>
           </div>
+
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：小基線商數證明與零密文疊加</div>
-            <p>本研究提出三位一體的嶄新密碼學架構：</p>
+            <div class="tutorial-section-title">💡 核心數學創新：小基線商數證明、BFS 快篩與零密文疊加</div>
+            <p>本研究提出三項互為表裡的關鍵突破：</p>
             <ul>
-              <li><strong>同態商數 Fiat-Shamir 證明（HQ-FS ZKP）</strong>：巧妙利用 RNS 餘數系統特性——在 \( \mathbb{R}_Q \) 上成立的線性關係在任一 RNS 質數肢 \( q_1 \) 上必然成立。因此將 ZKP 嚴格限制於單一小基線模數 \( K_Q = q_1 \)（如 60 位元）上產生與驗證，使單節點證明時間劇降至 1.176 ms（降低 31.6%）！</li>
-              <li><strong>廣度優先搜尋批次快篩（BFS Queue Batch Verification）</strong>：利用同態聚合驗證將多節點證明合併檢驗，遇錯誤則二分入佇列，實現 \( O(\log N) \) 對數時間精準剔除惡意節點。</li>
-              <li><strong>零密文疊加（Zero-Ciphertext Superposition）</strong>：在同態加法與乘法末端，將帶有新鮮巨量淹沒雜訊的加密 0 疊加至結果密文（\( c_{\\text{final}} = c_{\\text{eval}} + c_{\\text{zero}} \)），以統計隱匿引理（Smudging Lemma）徹底抹除運算路徑之代數特徵，達到嚴格之 IND-FuncCPA 與電路隱私。</li>
+              <li><strong>同態商數 Fiat-Shamir 證明 (HQ-FS ZKP)</strong>：利用 RNS 餘數系統代數性質——任何在全模數 Q 上成立的線性等式，在任一質數基底 <span class="word-eq">q₁</span> 上必然同餘：
+                <div class="word-eq-block">A · s + e ≡ pk (mod Q)  ⟹  A · s + e ≡ pk (mod K_Q),  其中 K_Q = q₁</div>
+                將 ZKP 生成與驗證嚴格限制在僅 60 位元的單一小基線模數 K_Q 上執行，證明產生時間大幅縮短至 <strong>1.176 ms</strong>！
+              </li>
+              <li><strong>廣度優先搜尋批次快篩 (BFS Queue Batch Verification)</strong>：DR 首先聚合全體節點證明進行單次批量驗證。若失敗，則將集合二分推入 BFS 佇列逐層篩選，在 <strong>O(log N)</strong> 對數複雜度內精確鎖定並剔除惡意節點。</li>
+              <li><strong>零密文疊加 (Zero-Ciphertext Superposition)</strong>：同態運算後強制疊加帶有新鮮淹沒雜訊的加密 0：
+                <div class="word-eq-block">c_final = c_eval + c_zero (mod Q)</div>
+                根據統計隱匿引理（Smudging Lemma），隨機淹沒雜訊徹底淹沒了運算中間軌跡，達成嚴格之 IND-FuncCPA 電路隱私，全面瓦解 CPA^D 攻擊。
+              </li>
             </ul>
           </div>
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
-            <p><strong>優勢</strong>：同時兼顧緊湊型 RNS-GLWE 密文、小模數極速 ZKP、BFS 對數批次快篩與抗 \( \text{CPA}^D \) 攻擊，主動防禦延遲相較現有 SOTA 降低 72.1%！</p>
+
+          <div class="example-box">
+            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
+            <p><strong>情境設定</strong>：10 個節點中存在 2 個惡意節點（節點 3 與節點 8）。</p>
+            <p><strong>步驟 1 (小模數證明)</strong>：各節點生成證明時，僅在 60 位元單一質數 <span class="word-eq">K_Q = q₁</span> 上計算承諾 <span class="word-eq">T_u = ⟨u, y_s⟩ mod K_Q</span> 與響應 <span class="word-eq">z_s = y_s + ch · s_i mod K_Q</span>，無需對整個 180 位元的 Q 做多項式 CRT 擴展。</p>
+            <p><strong>步驟 2 (BFS 佇列批次快篩)</strong>：</p>
+            <div class="word-eq-block">
+              第 0 層: 驗證全集 S = {1..10} ──因含節點 3 與 8 失敗！──→ 分割為 S₁={1..5}, S₂={6..10}<br>
+              第 1 層: 驗證 S₁ ──因含節點 3 失敗！──→ 分割為 {1,2}, {3}, {4,5}<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;驗證 S₂ ──因含節點 8 失敗！──→ 分割為 {6,7}, {8}, {9,10}<br>
+              第 2 層: {1,2} 通過！{4,5} 通過！{6,7} 通過！{9,10} 通過！<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;單節點 {3} 與 {8} 驗證失敗 ──精準標記惡意並剔除！
+            </div>
+            <p><strong>步驟 3 (零密文疊加)</strong>：同態乘法後，密文注入 <span class="word-eq">c_zero</span>，殘留的敏感交叉項特徵被均勻隨機雜訊完全掩蓋，攻擊者無法發動 CPA^D 逆向分析！</p>
           </div>
         `
       },
@@ -5509,21 +5612,44 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>在門檻同態加密中，為了在解密階段保護各節點私鑰份額不被側通道或雜訊反推，傳統做法需要極大規模的雜訊淹沒。但若密文模數受限，是否有辦法在完全不擴張模數、亦不使用昂貴的零知識證明的前提下，達成嚴格的解密隱私？</p>
+            <p>在門檻 LWE 解密中，各節點計算部分解密份額：</p>
+            <div class="word-eq-block">v_i = b_i - a · s_i = Δ · m_i + e_i (mod q)</div>
+            <p>如果私鑰雜訊 e_i 未被適當盲化，攻擊者收集多個部分解密份額後，即可利用格子基底約減（Lattice Reduction）或雜訊關聯性解出私鑰 s_i。岡田與高木提出：<strong>能否以成對偽隨機函數（PRF）構造自抵銷遮罩，在完全零額外模數開銷下達成雜訊盲化？</strong></p>
           </div>
+
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：雜訊填充與 PRF 代數遮罩</div>
-            <p>Okada 與 Takagi 在 Asiacrypt 2025 提出了純代數的保護結構：</p>
+            <div class="tutorial-section-title">💡 核心數學創新：成對零和 PRF 遮罩與精確雜訊填充</div>
+            <p>OT25 設計了極為優雅的代數盲化結構：</p>
             <ul>
-              <li><strong>偽隨機函數（PRF）成對零和遮罩</strong>：參與方在 Setup 階段預先協商成對 PRF 種子金鑰。在解密時，節點 \( i \) 注入遮罩 \( \sum_{j \neq i} (\psi_{i,j} - \psi_{j,i}) \)。此遮罩在所有節點份額聚合時代數求和恆等於 0，自動抵銷消失！</li>
-              <li><strong>精確雜訊填充（Noise Padding）</strong>：每個節點僅需注入局部的有界高斯填充雜訊，搭配 PRF 遮罩即可切斷部分解密份額與真實私鑰雜訊之間的統計相關性。</li>
-              <li><strong>輕量級無自舉架構</strong>：完全運作於標準 LWE 參數體系，無須自舉亦無須大模數 Galois 環運算，大幅降低單機演算法運算開銷。</li>
+              <li><strong>成對零和 PRF 遮罩 (Pairwise Zero-Sum Masks)</strong>：各節點對 (i, j) 預先協商 PRF 種子金鑰。在解密時，節點 i 注入遮罩：
+                <div class="word-eq-block">M_i = ∑_{j > i} PRF(K_{i,j}, cnt) - ∑_{j < i} PRF(K_{j,i}, cnt)</div>
+                當所有節點的遮罩加總時：
+                <div class="word-eq-block">∑_{i=1}^n M_i = 0</div>
+                在全局求和時所有 PRF 遮罩剛好成對正負抵銷，完美歸零！
+              </li>
+              <li><strong>雜訊填充 (Noise Padding)</strong>：每個節點額外加入一個小範數的高斯填充雜訊 e_pad，切斷局部份額與私鑰雜訊的統計相關性。</li>
+              <li><strong>輕量級無自舉</strong>：直接運作於原生 LWE 參數，單機記憶體與計算開銷極小。</li>
             </ul>
           </div>
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
-            <p><strong>優勢</strong>：演算法簡潔優雅、單機記憶體與計算開銷低、無須昂貴的密文擴增。<br>
-            <strong>理論代價</strong>：在主動惡意破壞模型下，PRF 遮罩無法單獨驗證份額內容是否遭到刻意惡意竄改，需仰賴額外的一致性檢查層。</p>
+
+          <div class="example-box">
+            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
+            <p><strong>情境設定</strong>：3 個參與方 A, B, C，待解密密文還原值應為 42。</p>
+            <p><strong>步驟 1 (成對 PRF 計算)</strong>：</p>
+            <div class="word-eq-block">
+              A 與 B 的共享偽隨機數: ψ_{A,B} = 150<br>
+              B 與 C 的共享偽隨機數: ψ_{B,C} = 230<br>
+              A 與 C 的共享偽隨機數: ψ_{A,C} = 80
+            </div>
+            <p><strong>步驟 2 (各節點本地合成遮罩)</strong>：</p>
+            <div class="word-eq-block">
+              節點 A 遮罩: M_A = +ψ_{A,B} + ψ_{A,C} = 150 + 80 = +230<br>
+              節點 B 遮罩: M_B = -ψ_{A,B} + ψ_{B,C} = -150 + 230 = +80<br>
+              節點 C 遮罩: M_C = -ψ_{A,C} - ψ_{B,C} = -80 - 230 = -310
+            </div>
+            <p><strong>步驟 3 (檢驗遮罩和)</strong>：</p>
+            <div class="word-eq-block">M_A + M_B + M_C = (+230) + (+80) + (-310) = 0</div>
+            <p><strong>步驟 4 (發布份額與重構)</strong>：各節點提交含有遮罩的盲化份額。監聽者看到的是完全被 230, 80, -310 盲化的雜亂數值，無法分析真實私鑰雜訊；但當三者求和時，遮罩瞬間抵銷歸零，精準輸出 42！</p>
           </div>
         `
       },
@@ -5533,46 +5659,129 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>現有門檻 FHE 要抗惡意敵手，要麼使用雜訊淹沒（造成模數爆炸與環維度膨脹），要麼使用 MPC 協同多輪互動（導致線上延遲拉長）。如何在<strong>「無雜訊淹沒（No Noise Flooding）」</strong>且<strong>「單輪線上解密（Single-Round Online）」</strong>的極端約束下達成主動惡意安全，是學界長期未解的挑戰。</p>
+            <p>現有門檻 FHE 面臨極端抉擇：要麼使用雜訊淹沒（模數膨脹至 128~256 位元），要麼使用 MPC 多輪協同捨入（線上通訊多輪延遲長）。Ajax 的宏大目標是：<strong>如何在完全不使用雜訊淹沒的前提下，達成單輪線上通訊（Single-Round Online）的主動安全門檻 FHE！</strong></p>
           </div>
+
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：先遮罩後公開 (Mask-Then-Open, MTO)</div>
-            <p>Hu 等人設計了革命性的「先遮罩後公開」架構：</p>
+            <div class="tutorial-section-title">💡 核心數學創新：雙環秘密分享與先遮罩後公開 (Mask-Then-Open)</div>
+            <p>Hu 等人設計了創新的雙環結構與代數盲化協議：</p>
             <ul>
-              <li><strong>雙環秘密分享（Double Ring Sharing）</strong>：將秘密資訊同時分享於密文環 \( R_q \) 與明文/遮罩環 \( R_t \) 上，在離線階段預先準備隨機關聯遮罩。</li>
-              <li><strong>Mask-Then-Open 線上單輪解密</strong>：線上階段，節點直接以預先準備好的遮罩份額對密文進行代數盲化，並廣播遮罩份額。所有節點只需 1 輪公開通訊即可重構盲化值，最後在本地去除遮罩還原明文。</li>
-              <li><strong>惡意檢驗代數自帶</strong>：透過雙環的代數相容性約束，任何節點嘗試提交無效份額均會破壞雙環投影關係而被即時識別中斷，不需在線上生成龐大的晶格 ZKP。</li>
+              <li><strong>雙環架構 (Double Ring Sharing)</strong>：密文運作於大模數多項式環 R_q，而遮罩與明文運作於小模數環 R_t。私鑰與隨機遮罩在兩個環上進行雙重秘密分享。</li>
+              <li><strong>Mask-Then-Open (先遮罩後公開)</strong>：
+                <div class="word-eq-block">線上部分解密: μ_i = b_i - a · s_i + [r]_i (mod q)</div>
+                各節點只需在線上發送 1 輪盲化份額 μ_i。由於 [r]_i 是均勻隨機遮罩份額，μ_i 完全不洩漏私鑰雜訊。
+              </li>
+              <li><strong>本地去遮罩 (Local Unmasking)</strong>：聚合得到 μ = Δ · m + e + r 後，各節點在本地利用預先持有的遮罩 r 進行模數消除：
+                <div class="word-eq-block">m = ⌊ (μ - r mod q) / Δ ⌉ (mod t)</div>
+                全程僅需 1 輪網路通訊，線上解密延遲壓縮至 2 ms 以內！
+              </li>
             </ul>
           </div>
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
-            <p><strong>優勢</strong>：線上解密延遲極致壓縮至數毫秒以內、通訊開銷極小、完全免除雜訊淹沒導致的模數膨脹。<br>
-            <strong>理論代價</strong>：高度依賴離線預處理階段（Offline Preparation）生成雙環關聯遮罩份額。</p>
+
+          <div class="example-box">
+            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
+            <p><strong>情境設定</strong>：明文模數 <span class="word-eq">t = 16</span>，密文模數 <span class="word-eq">q = 1024</span>，縮放因子 <span class="word-eq">Δ = 64</span>。欲解密明文 <span class="word-eq">m = 7</span>。</p>
+            <p><strong>步驟 1 (離線遮罩預處理)</strong>：節點在離線階段預先生成隨機均勻遮罩份額，合成之全域遮罩多項式常數為 <span class="word-eq">r = 315</span>。</p>
+            <p><strong>步驟 2 (線上遮罩發布)</strong>：各節點線上計算部分解密並加上隨機遮罩份額，聚合出盲化值：</p>
+            <div class="word-eq-block">μ = Δ · m + e + r = 64 · 7 + 10 + 315 = 448 + 10 + 315 = 773 (mod 1024)</div>
+            <p>此時網路廣播的值是 773，對於任何沒有遮罩 r 的攻擊者而言，773 是完全隨機均勻的數值，完全無法推斷明文 7 或雜訊 10！</p>
+            <p><strong>步驟 3 (本地去除遮罩)</strong>：誠實節點在本地減去已知的遮罩 r = 315：</p>
+            <div class="word-eq-block">773 - 315 = 458 ──除以 64 並捨入──→ ⌊ 458 / 64 ⌉ = 7.156 ──→ 7</div>
+            <p><strong>結論</strong>：僅花費 1 輪網路傳輸便安全無損地拿回明文 7，完全免除雜訊淹沒帶來的巨大模數代價！</p>
           </div>
         `
       }
     };
 
-    // 2. Laboratory Operations Manuals (操作手冊：實驗室介面導覽、標準實測五步驟、惡意攻擊驗證流程)
+    // 2. Laboratory Operations Manuals (操作手冊：實驗室與競技場之具體介面導覽、標準實測流程、攻擊測試指南)
     const LAB_MANUALS_INFO = {
+      arena: {
+        badge: '操作手冊 • 評測競技場',
+        title: '論文評測競技場操作手冊與基準測試指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🏆 競技場功能與架構總覽</div>
+            <p>論文評測競技場提供 6 篇前沿門檻 FHE 論文之<strong>全流程微秒級橫向基準測試</strong>。支援自訂論文篩選、雙架構評測模式切換、7 階段執行時間直方圖即時繪製，以及安全性與效能深度對照表。</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚙️ 兩大評測架構模式說明</div>
+            <ul>
+              <li><strong>⚡ 演算法核心快速評測 (Local In-Memory)</strong>：直接調用本機高精度 C++/Python 密碼學核心，在純記憶體環境下即時執行 Setup、KeyGen、Encrypt、Eval、Decryption 等真實運算，適合快速除錯、參數調校與即時比對。</li>
+              <li><strong>🌐 實體分散式網路評測 (Multi-Port Sockets, 19 RNS Primes)</strong>：啟用底層真實 TCP 多埠 Sockets 通訊，模擬真實分散式節點間跨網路傳輸 19 肢 RNS 巨大多項式密文與 ZKP 證明的封包往返延遲。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🎯 論文選取晶片與快速預設組合 (Filter Chips & Presets)</div>
+            <p>您可透過勾選/取消各論文的彩色晶片標籤（CCS 2025 藍、Noah's Ark 紅、PELTA 綠、HQ-FS 琥珀黃、OT25 青、Ajax 粉紅）動態過濾對比目標，亦可直接點擊預設按鈕：</p>
+            <ul>
+              <li><strong>全部論文</strong>：一次性檢視全部 6 篇論文的完整橫向對比。</li>
+              <li><strong>本論文 vs PELTA</strong>：聚焦於主動安全 ZKP 方案的效能與驗證延遲優勢（HQ-FS 比 PELTA 快 3.58 倍）。</li>
+              <li><strong>本論文 vs CCS 2025</strong>：聚焦於 RNS 緊湊密文與 MPC Rounding 之架構取捨。</li>
+              <li><strong>本論文 vs Ajax</strong>：對比零密文疊加與 Mask-Then-Open 之線上延遲與電路隱私防禦。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">📊 7 大核心階段直方圖解讀指南</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 1: Setup 系統初始化</div>
+                <div class="tutorial-step-desc">度量環維度、RNS 質數基底、FHE 矩陣與 ZKP 參考矩陣之生成耗時。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 2: KeyGen 門檻金鑰生成</div>
+                <div class="tutorial-step-desc">評測私鑰份額抽樣、公開金鑰生成與晶格承諾綁定之多方協同時間。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 3: Offline Prep 離線預處理</div>
+                <div class="tutorial-step-desc">評測雙環遮罩、Beaver 三元組或 PRF 種子協商等離線前置作業開銷。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 4: Encrypt 明文編碼與加密</div>
+                <div class="tutorial-step-desc">度量 iNTT 多槽向量編碼與 LWE/RLWE/GLWE 密文生成延遲。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 5: Homo Eval 同態運算求值</div>
+                <div class="tutorial-step-desc">包含密文張量積相乘、RNS 數位分解重線性化與零密文疊加抹除痕跡之耗時。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 6: Decrypt / ZKP 部分解密與證明驗證</div>
+                <div class="tutorial-step-desc">核心指標！展示 HQ-FS 小基線商數證明與 BFS 快篩相較傳統大模數 ZKP 的大幅效能躍升。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">Stage 7: Aggregation 聚合重構與還原</div>
+                <div class="tutorial-step-desc">度量份額求和、CRT 多質數重構、除以縮放因子並捨入輸出明文之耗時。</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">📋 兩大對比表格查驗指南</div>
+            <p>1. <strong>安全性與架構特性比較表 (Table II)</strong>：查閱底層困難問題（LWE / RLWE / GLWE）、敵手模型（半誠實 vs 主動惡意）、私鑰雜訊防護、主動攻擊防禦手段、電路隱私與抗 CPA^D 能力。<br>
+            2. <strong>量化基準指標表 (Table III)</strong>：對照論文刊載之標準證明產生時間（HQ-FS 1.176 ms）、證明驗證時間（0.968 ms）與主動防禦總延遲（642.76 ms），驗證實測數據的一致性。</p>
+          </div>
+        `
+      },
       ccs25: {
         badge: '操作手冊 • CCS 2025',
         title: 'CCS 2025 實驗室操作手冊與實測指南',
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
-            <p>本實驗室介面分為四大核心區域：<br>
-            1. <strong>頂部實驗室標題橫幅</strong>：提供論文原創資訊、論文查看、論文理論教學與本操作手冊。<br>
-            2. <strong>即時效能監控卡 (Stat Cards)</strong>：即時反饋 Setup 耗時、同態運算耗時、線上解密延遲與實測吞吐量。<br>
-            3. <strong>密文輸入與控制面板 (左側卡片)</strong>：支援雙密文輸入、純量/SIMD切換、操作選擇與階段按鈕。<br>
-            4. <strong>即時執行控制台日誌 (右側終端)</strong>：以高對比終端格式即時輸出演算法內部微秒級日誌與密碼學變數。</p>
+            <p>本實驗室提供 CCS 2025 (Zyskind et al.) 之 MPC Rounding 實測環境：<br>
+            1. <strong>標題橫幅</strong>：包含論文查看、論文理論教學與本操作手冊。<br>
+            2. <strong>狀態監控卡</strong>：即時反饋 Setup、同態求值、線上解密延遲與實測吞吐量。<br>
+            3. <strong>輸入與控制卡片</strong>：雙密文輸入框、純量/SIMD切換、目標運算下拉選單與階段按鈕。<br>
+            4. <strong>即時終端控制台</strong>：即時記錄 MPC Rounding 輪數與密碼學變數輸出。</p>
           </div>
           <div class="tutorial-section">
             <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
             <div class="tutorial-steps-list">
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 1：Setup 初始化與金鑰生成</div>
-                <div class="tutorial-step-desc">點擊下方按鈕列的「1. Setup」與「2. KeyGen」，建立 LWE/BFV 系統公開金鑰與門檻私鑰份額。</div>
+                <div class="tutorial-step-desc">點擊下方「1. Setup」與「2. KeyGen」，建立 LWE/BFV 系統公開金鑰與門檻私鑰份額。</div>
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 2：設定明文並加密生成密文</div>
@@ -5623,7 +5832,7 @@
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 3：體驗 Switch-n-Squash 模數擴展</div>
-                <div class="tutorial-step-desc">點擊「3. Switch-n-Squash」，在控制台檢視密文維度由 \( \ell \) 升級為 \( L=4096 \) 且模數達到 \( 2^{128} \) 之過程。</div>
+                <div class="tutorial-step-desc">點擊「3. Switch-n-Squash」，在控制台檢視密文維度由 ℓ 升級為 L=4096 且模數達到 2¹²⁸ 之過程。</div>
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 4：執行淹沒雜訊注入與解密重構</div>
@@ -5637,7 +5846,7 @@
           </div>
           <div class="tutorial-section">
             <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
-            <p>1. 於頂部將惡意比例設為 <strong>20% (符合 \( t < n/3 \) 條件)</strong>。<br>
+            <p>1. 於頂部將惡意比例設為 <strong>20% (符合 t < n / 3 條件)</strong>。<br>
             2. 點擊「🎲 重新抽樣惡意節點」確認惡意節點已隨機散佈。<br>
             3. 點擊「🌊 一鍵完整執行」，日誌將顯示 RobustOpen 如何在收到帶有錯誤之份額後，利用 Reed-Solomon 解碼成功糾錯並還原正確答案。</p>
           </div>
@@ -5658,7 +5867,7 @@
             <div class="tutorial-steps-list">
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 1：Setup 初始化與格基承諾產生</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，建立 RLWE 公開金鑰與晶格承諾參考矩陣 \( \mathbf{A}_{zkp} \)。</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，建立 RLWE 公開金鑰與晶格承諾參考矩陣 A_zkp。</div>
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 2：明文加密與 NTT SIMD 向量填充</div>
@@ -5693,7 +5902,7 @@
             <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
             <p>HQ-FS 實驗室整合了本論文三項關鍵技術：<br>
             - <strong>BFS 佇列自動攔截狀態指標</strong>：即時反饋 BFS 快篩批次驗證是否精準分離惡意節點。<br>
-            - <strong>零密文疊加防護指示</strong>：展示同態運算末端注入之 \( c_{\\text{zero}} \) 如何消除 \( \text{CPA}^D \) 痕跡。<br>
+            - <strong>零密文疊加防護指示</strong>：展示同態運算末端注入之 c_zero 如何消除 CPA^D 痕跡。<br>
             - <strong>RNS-iNTT 向量多槽 SIMD 切換</strong>：支援高維度緊湊多項式批次運算。</p>
           </div>
           <div class="tutorial-section">
@@ -5701,11 +5910,11 @@
             <div class="tutorial-steps-list">
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 1：Setup 初始化與 RNS 基底構建</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」，生成 RNS 多質數基底、FHE 矩陣 \( \mathbf{A} \) 與小基線驗證模數 \( K_Q = q_1 \)。</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」，生成 RNS 多質數基底、FHE 矩陣 A 與小基線驗證模數 K_Q = q₁。</div>
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 2：金鑰與 HQ-FS 承諾產生</div>
-                <div class="tutorial-step-desc">點擊「2. KeyGen & Commitment」，產生個人金鑰份額與公開承諾 \( \mathbf{C} \)。</div>
+                <div class="tutorial-step-desc">點擊「2. KeyGen & Commitment」，產生個人金鑰份額與公開承諾 C。</div>
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">步驟 3：輸入明文並加密</div>
@@ -5725,7 +5934,7 @@
             <div class="tutorial-section-title">⚔️ 惡意節點抗性與 CPA^D 實測方法</div>
             <p>1. 於頂部選擇「雜訊淹沒污染攻擊」或「部分解密份額竄改攻擊」，將惡意比例設為 20%~40%。<br>
             2. 點擊「一鍵完整執行」，觀察右側終端中 BFS 佇列之逐步分割（Split S into sub-groups）過程。<br>
-            3. 確認終端最終成功過濾出所有誠實節點集合 \( \mathcal{V} \) 並完成正確之 CRT 解密。</p>
+            3. 確認終端最終成功過濾出所有誠實節點集合 V 並完成正確之 CRT 解密。</p>
           </div>
         `
       },
@@ -5736,7 +5945,7 @@
           <div class="tutorial-section">
             <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
             <p>OT25 實驗室展示了 Asiacrypt 2025 之 PRF 遮罩與雜訊填充流程：<br>
-            - <strong>明文空間標籤</strong>：預設明文空間 \( T=16 \)（0~15），亦可於頂部全域切換至 \( T=1024 \)。<br>
+            - <strong>明文空間標籤</strong>：預設明文空間 T=16（0~15），亦可於頂部全域切換至 T=1024。<br>
             - <strong>PRF 遮罩與重線性化面板</strong>：清晰呈現 LWE 密文張量乘法與重線性化之密鑰交換過程。</p>
           </div>
           <div class="tutorial-section">

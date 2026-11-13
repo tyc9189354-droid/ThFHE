@@ -30,6 +30,7 @@ if THFHE_DIR not in sys.path:
 from schemes.ccs25_scheme import CCS25ThFHEScheme
 from schemes.baseline_noise_flooding import BaselineNoiseFloodingScheme
 from schemes.pelta_scheme import PeltaThFHEScheme
+from schemes.hqfs_scheme import HQFSThFHEScheme
 from runner.benchmark_runner import BenchmarkRunner
 
 PORT = 3000
@@ -62,7 +63,13 @@ LIVE_LAB = {
     "pelta_last_op_label": "",
     "pelta_last_eval_ms": 0.0,
     "pelta_last_pdec_ms": 0.0,
-    "pelta_last_mu": 0
+    "pelta_last_mu": 0,
+    # HQ-FS (Our Work) state
+    "hqfs_scheme": None,
+    "hqfs_setup_ms": 0.0,
+    "hqfs_keygen_ms": 0.0,
+    "hqfs_prep_ms": 0.0,
+    "hqfs_simd_slot_count": 4
 }
 
 
@@ -120,6 +127,31 @@ def ensure_pelta_initialized(num_parties: int = 10, m: int = 10) -> PeltaThFHESc
         LIVE_LAB["pelta_keygen_ms"] = round(t_keygen, 3)
         LIVE_LAB["pelta_prep_ms"] = round(t_prep, 3)
     return pscheme
+
+
+def ensure_hqfs_initialized(num_parties: int = 10, m: int = 10) -> HQFSThFHEScheme:
+    num_parties = max(10, min(1000, int(num_parties)))
+    t_target = 1 << m if m <= 16 else 1024
+    hscheme: HQFSThFHEScheme = LIVE_LAB["hqfs_scheme"]
+    if hscheme is None or hscheme.num_parties != num_parties or hscheme.T != t_target:
+        hscheme = HQFSThFHEScheme()
+        t0 = time.perf_counter()
+        hscheme.setup(k=32, m=m, num_parties=num_parties)
+        t_setup = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        hscheme.keygen()
+        t_keygen = (time.perf_counter() - t1) * 1000.0
+
+        t2 = time.perf_counter()
+        hscheme.preprocess()
+        t_prep = (time.perf_counter() - t2) * 1000.0
+
+        LIVE_LAB["hqfs_scheme"] = hscheme
+        LIVE_LAB["hqfs_setup_ms"] = round(t_setup, 3)
+        LIVE_LAB["hqfs_keygen_ms"] = round(t_keygen, 3)
+        LIVE_LAB["hqfs_prep_ms"] = round(t_prep, 3)
+    return hscheme
 
 
 def parse_message_or_slots(raw_val: Any, p_mod: int, simd_mode: bool = False) -> Tuple[bool, Union[int, List[int]]]:
@@ -224,6 +256,21 @@ def normalize_pelta_ciphertext(raw_ct: Any, pscheme: PeltaThFHEScheme) -> Tuple[
     return c0, c1
 
 
+def normalize_hqfs_ciphertext(raw_ct: Any, hscheme: HQFSThFHEScheme) -> Tuple[List[List[List[int]]], List[List[int]]]:
+    hqfs = hscheme.hqfs
+    if isinstance(raw_ct, dict) and "u" in raw_ct and "v" in raw_ct:
+        return raw_ct["u"], raw_ct["v"]
+    if (
+        isinstance(raw_ct, list)
+        and len(raw_ct) == 2
+        and isinstance(raw_ct[0], list)
+        and isinstance(raw_ct[1], list)
+        and len(raw_ct[0]) == hqfs.n_glwe
+    ):
+        return raw_ct[0], raw_ct[1]
+    return hqfs.encrypt(12)
+
+
 class ThFHEWebHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
@@ -255,11 +302,14 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             m = int(req.get("m", 10))  # Default T = 2^10 = 1024
             ccs_simd = bool(req.get("ccs_simd", False))
             pelta_simd = bool(req.get("pelta_simd", False))
+            hqfs_simd = bool(req.get("hqfs_simd", False))
 
             LIVE_LAB["scheme"] = None
             LIVE_LAB["pelta_scheme"] = None
+            LIVE_LAB["hqfs_scheme"] = None
             scheme = ensure_ccs_initialized(num_parties=num_parties, k=k, m=m)
             pscheme = ensure_pelta_initialized(num_parties=num_parties, m=m)
+            hscheme = ensure_hqfs_initialized(num_parties=num_parties, m=m)
 
             p_mod = scheme.lwe.p
             is_simd_1, m1_parsed = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=ccs_simd)
@@ -292,6 +342,22 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 pct1, _ = pscheme.encrypt(int(pm1_parsed))
                 pct2, _ = pscheme.encrypt(int(pm2_parsed))
 
+            hqfs_p = hscheme.T
+            h_simd_1, hm1_parsed = parse_message_or_slots(req.get("hm1", 12), hqfs_p, simd_mode=hqfs_simd)
+            h_simd_2, hm2_parsed = parse_message_or_slots(req.get("hm2", 25), hqfs_p, simd_mode=hqfs_simd)
+            if h_simd_1 or h_simd_2:
+                hs1 = hm1_parsed if isinstance(hm1_parsed, list) else [hm1_parsed] * 4
+                hs2 = hm2_parsed if isinstance(hm2_parsed, list) else [hm2_parsed] * 4
+                L_len = max(len(hs1), len(hs2))
+                hs1 = (hs1 + [0] * L_len)[:L_len]
+                hs2 = (hs2 + [0] * L_len)[:L_len]
+                LIVE_LAB["hqfs_simd_slot_count"] = L_len
+                hct1 = hscheme.encrypt_simd(hs1)
+                hct2 = hscheme.encrypt_simd(hs2)
+            else:
+                hct1, _ = hscheme.encrypt(int(hm1_parsed))
+                hct2, _ = hscheme.encrypt(int(hm2_parsed))
+
             num_mal = 0 if attack_type == "none" else (num_parties * malicious_ratio) // 100
             random_mal_parties = sorted(random.sample(range(1, num_parties + 1), num_mal)) if num_mal > 0 else []
 
@@ -310,10 +376,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "pelta_setup_ms": LIVE_LAB["pelta_setup_ms"],
                 "pelta_keygen_ms": LIVE_LAB["pelta_keygen_ms"],
                 "pelta_prep_ms": LIVE_LAB["pelta_prep_ms"],
+                "hqfs_setup_ms": LIVE_LAB["hqfs_setup_ms"],
+                "hqfs_keygen_ms": LIVE_LAB["hqfs_keygen_ms"],
+                "hqfs_prep_ms": LIVE_LAB["hqfs_prep_ms"],
+                "hqfs_k_q": hscheme.hqfs.K_Q,
                 "c1": c1,
                 "c2": c2,
                 "pelta_c1": [pct1[0], pct1[1]],
-                "pelta_c2": [pct2[0], pct2[1]]
+                "pelta_c2": [pct2[0], pct2[1]],
+                "hqfs_c1": [hct1[0], hct1[1]],
+                "hqfs_c2": [hct2[0], hct2[1]]
             })
 
         elif path == "/api/encrypt":
@@ -322,7 +394,30 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             m_bits = int(req.get("m", LIVE_LAB["m"]))
             num_parties = max(10, min(1000, int(req.get("num_parties", LIVE_LAB["num_parties"]))))
 
-            if target == "pelta":
+            if target == "hqfs":
+                hscheme = ensure_hqfs_initialized(num_parties=num_parties, m=m_bits)
+                p_mod = hscheme.T
+                is_simd, parsed = parse_message_or_slots(req.get("message", 12), p_mod, simd_mode=simd_mode)
+                t0 = time.perf_counter()
+                if is_simd:
+                    LIVE_LAB["hqfs_simd_slot_count"] = len(parsed)
+                    ct = hscheme.encrypt_simd(parsed)
+                else:
+                    ct, _ = hscheme.encrypt(int(parsed))
+                enc_ms = (time.perf_counter() - t0) * 1000.0
+                self._send_json(200, {
+                    "status": "ok",
+                    "target": "hqfs",
+                    "simd_mode": is_simd,
+                    "message": parsed,
+                    "p_mod": p_mod,
+                    "t_space": p_mod,
+                    "p_ntt": hscheme.hqfs.p_ntt,
+                    "K_Q": hscheme.hqfs.K_Q,
+                    "ciphertext": [ct[0], ct[1]],
+                    "enc_time_ms": round(enc_ms, 4)
+                })
+            elif target == "pelta":
                 pscheme = ensure_pelta_initialized(num_parties=num_parties, m=m_bits)
                 p_mod = pscheme.mfhe.p
                 is_simd, parsed = parse_message_or_slots(req.get("message", 12), p_mod, simd_mode=simd_mode)
@@ -1047,12 +1142,289 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 }
             })
 
+        elif path == "/api/hqfs/stage":
+            stage = req.get("stage", "run_all")
+            num_parties = max(10, min(1000, int(req.get("num_parties", LIVE_LAB["num_parties"]))))
+            malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 20))))
+            attack_type = req.get("attack_type", "share_tampering")
+            m_bits = int(req.get("m", LIVE_LAB["m"]))
+            simd_mode = bool(req.get("simd_mode", False))
+            hscheme = ensure_hqfs_initialized(num_parties=num_parties, m=m_bits)
+            p_mod = hscheme.T
+
+            if stage == "setup":
+                t0 = time.perf_counter()
+                params = hscheme.setup(k=32, m=m_bits, num_parties=num_parties, malicious_ratio=malicious_ratio, attack_type=attack_type)
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["hqfs_setup_ms"] = ms
+                LIVE_LAB["m"] = m_bits
+                hscheme.keygen()
+                hscheme.preprocess()
+                p_mod = hscheme.T
+                is_s1, hm1 = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=simd_mode)
+                is_s2, hm2 = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=simd_mode)
+                if is_s1 or is_s2:
+                    s1 = hm1 if isinstance(hm1, list) else [hm1] * 4
+                    s2 = hm2 if isinstance(hm2, list) else [hm2] * 4
+                    L_len = max(len(s1), len(s2))
+                    LIVE_LAB["hqfs_simd_slot_count"] = L_len
+                    hct1 = hscheme.encrypt_simd((s1 + [0] * L_len)[:L_len])
+                    hct2 = hscheme.encrypt_simd((s2 + [0] * L_len)[:L_len])
+                else:
+                    hct1, _ = hscheme.encrypt(int(hm1))
+                    hct2, _ = hscheme.encrypt(int(hm2))
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "setup",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "p_ntt": hscheme.hqfs.p_ntt,
+                    "K_Q": hscheme.hqfs.K_Q,
+                    "params": params,
+                    "c1": [hct1[0], hct1[1]],
+                    "c2": [hct2[0], hct2[1]]
+                })
+
+            elif stage == "keygen":
+                t0 = time.perf_counter()
+                kg_info = hscheme.keygen()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["hqfs_keygen_ms"] = ms
+                hscheme.preprocess()
+                is_s1, hm1 = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=simd_mode)
+                is_s2, hm2 = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=simd_mode)
+                if is_s1 or is_s2:
+                    s1 = hm1 if isinstance(hm1, list) else [hm1] * 4
+                    s2 = hm2 if isinstance(hm2, list) else [hm2] * 4
+                    L_len = max(len(s1), len(s2))
+                    LIVE_LAB["hqfs_simd_slot_count"] = L_len
+                    hct1 = hscheme.encrypt_simd((s1 + [0] * L_len)[:L_len])
+                    hct2 = hscheme.encrypt_simd((s2 + [0] * L_len)[:L_len])
+                else:
+                    hct1, _ = hscheme.encrypt(int(hm1))
+                    hct2, _ = hscheme.encrypt(int(hm2))
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "keygen",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "keygen_info": kg_info,
+                    "c1": [hct1[0], hct1[1]],
+                    "c2": [hct2[0], hct2[1]]
+                })
+
+            elif stage == "preprocess":
+                t0 = time.perf_counter()
+                prep_data = hscheme.preprocess()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["hqfs_prep_ms"] = ms
+                off_metrics = hscheme.get_offline_metrics(prep_data)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "preprocess",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "rlk_entries": prep_data["rlk_entries"],
+                    "rns_limbs": prep_data["rns_limbs"],
+                    "K_Q": prep_data["K_Q"],
+                    "offline_metrics": off_metrics
+                })
+
+            elif stage == "encrypt":
+                is_s1, hm1 = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=simd_mode)
+                is_s2, hm2 = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=simd_mode)
+                t0 = time.perf_counter()
+                if is_s1 or is_s2:
+                    s1 = hm1 if isinstance(hm1, list) else [hm1] * 4
+                    s2 = hm2 if isinstance(hm2, list) else [hm2] * 4
+                    L_len = max(len(s1), len(s2))
+                    s1 = (s1 + [0] * L_len)[:L_len]
+                    s2 = (s2 + [0] * L_len)[:L_len]
+                    LIVE_LAB["hqfs_simd_slot_count"] = L_len
+                    hct1 = hscheme.encrypt_simd(s1)
+                    hct2 = hscheme.encrypt_simd(s2)
+                    m1_out, m2_out = s1, s2
+                else:
+                    hct1, _ = hscheme.encrypt(int(hm1))
+                    hct2, _ = hscheme.encrypt(int(hm2))
+                    m1_out, m2_out = int(hm1), int(hm2)
+                ms = round((time.perf_counter() - t0) * 1000.0, 4)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "encrypt",
+                    "simd_mode": (is_s1 or is_s2),
+                    "t_space": p_mod,
+                    "p_ntt": hscheme.hqfs.p_ntt,
+                    "K_Q": hscheme.hqfs.K_Q,
+                    "time_ms": ms,
+                    "m1": m1_out,
+                    "m2": m2_out,
+                    "c1": [hct1[0], hct1[1]],
+                    "c2": [hct2[0], hct2[1]]
+                })
+
+            elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
+                raw_c1 = req.get("c1", [])
+                raw_c2 = req.get("c2", [])
+                op_mode = req.get("op_mode", "eval_mul")
+                ct1 = normalize_hqfs_ciphertext(raw_c1, hscheme)
+                ct2 = normalize_hqfs_ciphertext(raw_c2, hscheme)
+
+                is_s1, hm1_p = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=simd_mode)
+                is_s2, hm2_p = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=simd_mode)
+                use_simd = simd_mode or is_s1 or is_s2
+                slot_count = LIVE_LAB["hqfs_simd_slot_count"]
+                if isinstance(hm1_p, list):
+                    slot_count = max(slot_count, len(hm1_p))
+                if isinstance(hm2_p, list):
+                    slot_count = max(slot_count, len(hm2_p))
+
+                if use_simd:
+                    m1_slots = hscheme.hqfs.decrypt_simd(ct1, slot_count=slot_count)
+                    m2_slots = hscheme.hqfs.decrypt_simd(ct2, slot_count=slot_count)
+                    t0 = time.perf_counter()
+                    if op_mode == "eval_mul":
+                        ct_eval = hscheme.eval_mul(ct1, ct2)
+                        expected_mu = [(a * b) % p_mod for a, b in zip(m1_slots, m2_slots)]
+                        op_label = f"RNS-GLWE SIMD 同態乘法 + 零密文疊加 (Alg 8) Dec(c₁ ⊗ c₂ + c_zero) = ({m1_slots} ⊙ {m2_slots}) mod {p_mod} (T={p_mod})"
+                    elif op_mode == "eval_add":
+                        ct_eval = hscheme.eval_add(ct1, ct2)
+                        expected_mu = [(a + b) % p_mod for a, b in zip(m1_slots, m2_slots)]
+                        op_label = f"RNS-GLWE SIMD 同態加法 + 零密文疊加 (Alg 7) Dec(c₁ ⊕ c₂ + c_zero) = ({m1_slots} ⊕ {m2_slots}) mod {p_mod} (T={p_mod})"
+                    elif op_mode == "dec_1":
+                        ct_eval = ct1
+                        expected_mu = m1_slots
+                        op_label = f"RNS-GLWE SIMD 解密 Dec(c₁) (T={p_mod})"
+                    else:
+                        ct_eval = ct2
+                        expected_mu = m2_slots
+                        op_label = f"RNS-GLWE SIMD 解密 Dec(c₂) (T={p_mod})"
+                    eval_ms = round((time.perf_counter() - t0) * 1000.0, 4)
+
+                    if stage == "eval":
+                        self._send_json(200, {
+                            "status": "ok",
+                            "stage": "eval",
+                            "simd_mode": True,
+                            "slot_count": slot_count,
+                            "t_space": p_mod,
+                            "time_ms": eval_ms,
+                            "op_label": op_label,
+                            "ct_eval": [ct_eval[0], ct_eval[1]],
+                            "expected_mu": expected_mu
+                        })
+                        return
+
+                    mu_slots, zk_ms, agg_ms = hscheme.decrypt_simd_with_stages(
+                        ct_eval,
+                        slot_count=slot_count,
+                        malicious_ratio=malicious_ratio,
+                        attack_type=attack_type
+                    )
+                    self._send_json(200, {
+                        "status": "ok",
+                        "stage": stage,
+                        "simd_mode": True,
+                        "slot_count": slot_count,
+                        "t_space": p_mod,
+                        "K_Q": hscheme.hqfs.K_Q,
+                        "op_mode": op_mode,
+                        "op_label": op_label,
+                        "num_parties": num_parties,
+                        "malicious_ratio": malicious_ratio,
+                        "attack_type": attack_type,
+                        "m1": m1_slots,
+                        "m2": m2_slots,
+                        "expected_plaintext": expected_mu,
+                        "decrypted_plaintext": mu_slots,
+                        "verified": (mu_slots == expected_mu),
+                        "audit_info": hscheme.last_audit,
+                        "timings": {
+                            "setup_time_ms": LIVE_LAB["hqfs_setup_ms"],
+                            "keygen_time_ms": LIVE_LAB["hqfs_keygen_ms"],
+                            "prep_time_ms": LIVE_LAB["hqfs_prep_ms"],
+                            "eval_time_ms": eval_ms,
+                            "partial_dec_time_ms": round(zk_ms, 3),
+                            "agg_time_ms": round(agg_ms, 3),
+                            "total_online_ms": round(zk_ms + agg_ms, 3)
+                        }
+                    })
+                    return
+
+                # Scalar path
+                m1_val = hscheme.hqfs.decrypt(ct1)
+                m2_val = hscheme.hqfs.decrypt(ct2)
+                t0 = time.perf_counter()
+                if op_mode == "eval_mul":
+                    ct_eval = hscheme.eval_mul(ct1, ct2)
+                    expected_mu = (m1_val * m2_val) % p_mod
+                    op_label = f"RNS-GLWE 同態乘法 + 零密文疊加 (Alg 8) Dec(c₁ ⊗ c₂ + c_zero) = ({m1_val} × {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "eval_add":
+                    ct_eval = hscheme.eval_add(ct1, ct2)
+                    expected_mu = (m1_val + m2_val) % p_mod
+                    op_label = f"RNS-GLWE 同態加法 + 零密文疊加 (Alg 7) Dec(c₁ ⊕ c₂ + c_zero) = ({m1_val} + {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "dec_1":
+                    ct_eval = ct1
+                    expected_mu = m1_val
+                    op_label = f"RNS-GLWE 單獨解密 Dec(c₁) (T={p_mod})"
+                else:
+                    ct_eval = ct2
+                    expected_mu = m2_val
+                    op_label = f"RNS-GLWE 單獨解密 Dec(c₂) (T={p_mod})"
+                eval_ms = round((time.perf_counter() - t0) * 1000.0, 4)
+
+                if stage == "eval":
+                    self._send_json(200, {
+                        "status": "ok",
+                        "stage": "eval",
+                        "simd_mode": False,
+                        "t_space": p_mod,
+                        "time_ms": eval_ms,
+                        "op_label": op_label,
+                        "ct_eval": [ct_eval[0], ct_eval[1]],
+                        "expected_mu": expected_mu
+                    })
+                    return
+
+                mu_dec, zk_ms, agg_ms = hscheme.decrypt_with_stages(
+                    ct_eval,
+                    malicious_ratio=malicious_ratio,
+                    attack_type=attack_type
+                )
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": stage,
+                    "simd_mode": False,
+                    "t_space": p_mod,
+                    "K_Q": hscheme.hqfs.K_Q,
+                    "op_mode": op_mode,
+                    "op_label": op_label,
+                    "num_parties": num_parties,
+                    "malicious_ratio": malicious_ratio,
+                    "attack_type": attack_type,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "expected_plaintext": expected_mu,
+                    "decrypted_plaintext": mu_dec,
+                    "verified": (mu_dec == expected_mu),
+                    "audit_info": hscheme.last_audit,
+                    "timings": {
+                        "setup_time_ms": LIVE_LAB["hqfs_setup_ms"],
+                        "keygen_time_ms": LIVE_LAB["hqfs_keygen_ms"],
+                        "prep_time_ms": LIVE_LAB["hqfs_prep_ms"],
+                        "eval_time_ms": eval_ms,
+                        "partial_dec_time_ms": round(zk_ms, 3),
+                        "agg_time_ms": round(agg_ms, 3),
+                        "total_online_ms": round(zk_ms + agg_ms, 3)
+                    }
+                })
+
         elif path == "/api/benchmark":
             num_parties = max(10, min(1000, int(req.get("num_parties", 10))))
             malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 0))))
             attack_type = req.get("attack_type", "none")
             k = int(req.get("k", 64))
-            m = int(req.get("m", 1))
+            m = int(req.get("m", 10))
             b = int(req.get("b", 8 if k >= 64 else 4))
             iterations = max(1, min(3, int(req.get("iterations", 1))))
 
@@ -1061,6 +1433,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             ccs_scheme = CCS25ThFHEScheme()
             noah_scheme = BaselineNoiseFloodingScheme()
             pelta_scheme = PeltaThFHEScheme()
+            hqfs_scheme = HQFSThFHEScheme()
 
             res_ccs = runner.run_local(
                 ccs_scheme, k=k, m=m, num_parties=num_parties, b=b,
@@ -1072,6 +1445,10 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             )
             res_pelta = runner.run_local(
                 pelta_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                malicious_ratio=malicious_ratio, attack_type=attack_type
+            )
+            res_hqfs = runner.run_local(
+                hqfs_scheme, k=k, m=m, num_parties=num_parties, b=b,
                 malicious_ratio=malicious_ratio, attack_type=attack_type
             )
 
@@ -1102,7 +1479,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "results": {
                     "ccs25": format_res(res_ccs),
                     "noah": format_res(res_noah),
-                    "pelta": format_res(res_pelta)
+                    "pelta": format_res(res_pelta),
+                    "hqfs": format_res(res_hqfs)
                 }
             })
 
@@ -1113,6 +1491,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
 def run():
     ensure_ccs_initialized(num_parties=10, k=32, m=10)
     ensure_pelta_initialized(num_parties=10, m=10)
+    ensure_hqfs_initialized(num_parties=10, m=10)
     server_address = ("0.0.0.0", PORT)
     httpd = HTTPServer(server_address, ThFHEWebHandler)
     print("=" * 68)

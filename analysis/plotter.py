@@ -51,7 +51,7 @@ class ResultPlotter:
         throughputs = [max(0.1, r.online.throughput_dec_per_sec) for r in results]
 
         fig, ax = plt.subplots(figsize=(8, 5))
-        bars = ax.bar(schemes, throughputs, color=["#2ca02c", "#1f77b4", "#9467bd"][:len(schemes)], alpha=0.85)
+        bars = ax.bar(schemes, throughputs, color=["#2ca02c", "#1f77b4", "#9467bd", "#f59e0b"][:len(schemes)], alpha=0.85)
         ax.set_yscale("log")
         ax.set_ylabel("Throughput (Decryptions / sec) [Log Scale]", fontsize=12)
         ax.set_title("Threshold Decryption Throughput Comparison", fontsize=14, fontweight="bold")

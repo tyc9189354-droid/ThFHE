@@ -1,7 +1,9 @@
 scheme_name,mode,k,m,num_parties,setup_time_ms,keygen_time_ms,offline_prep_time_ms,offline_mults,offline_rand_bits,gate_storage_bits,gate_storage_bytes,eval_add_time_ms,eval_mul_time_ms,partial_dec_time_ms,agg_time_ms,online_latency_ms,online_std_latency_ms,online_throughput_dec_per_sec,online_rounds,online_opens,online_opened_bits,online_mults,comm_sent_bytes,comm_recv_bytes,correctness_verified
-CCS25_MPC_Rounding,local,16,1,10,0.105,7.184,0.798,63,20,312,39,0.0032,0.9597,0.065,0.006,0.071,0.067,14110.7,3,3,36,0,0,0,True
-Baseline_Dahl23_NoiseFlooding,local,16,1,10,0.009,7.686,0.0,0,0,0,0,0.0029,1.1019,0.122,0.002,0.123,0.016,8104.9,1,1,144,1,0,0,True
-PELTA_Malicious_MFHE,local,16,1,10,0.117,0.859,1.758,20,320,2560,320,0.0051,0.592,4.898,0.052,4.95,1.019,202.0,2,2,512,0,0,0,True
-CCS25_MPC_Rounding,local,64,1,10,0.112,7.738,34.463,2351,72,17792,2224,0.0043,1.5267,0.068,0.005,0.073,0.009,13606.7,3,3,136,0,0,0,True
-Baseline_Dahl23_NoiseFlooding,local,64,1,10,0.014,7.826,0.0,0,0,0,0,0.004,1.7784,0.142,0.005,0.147,0.025,6816.2,1,1,192,1,0,0,True
-PELTA_Malicious_MFHE,local,64,1,10,0.079,0.493,1.052,20,320,2560,320,0.0038,0.4598,3.981,0.046,4.027,0.19,248.3,2,2,512,0,0,0,True
+CCS25_MPC_Rounding,local,16,1,10,0.089,5.25,0.527,63,20,312,39,0.0027,0.5731,0.027,0.003,0.029,0.01,34134.6,3,3,36,0,0,0,True
+Baseline_Dahl23_NoiseFlooding,local,16,1,10,0.007,3.816,0.0,0,0,0,0,0.0018,0.466,0.056,0.001,0.057,0.003,17460.8,1,1,144,1,0,0,True
+PELTA_Malicious_MFHE,local,16,1,10,0.047,0.318,0.57,20,320,2560,320,0.003,0.3969,2.381,0.059,2.44,0.161,409.9,2,2,512,0,0,0,True
+"HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)",local,16,1,10,1.555,7.986,7.675,192,1536,6144,768,0.6302,4.3561,5.235,5.341,10.576,0.652,94.6,1,1,34560,0,0,0,True
+CCS25_MPC_Rounding,local,64,1,10,0.075,4.369,21.031,2351,72,17792,2224,0.0032,0.9421,0.04,0.004,0.044,0.004,22896.3,3,3,136,0,0,0,True
+Baseline_Dahl23_NoiseFlooding,local,64,1,10,0.007,4.432,0.0,0,0,0,0,0.002,0.9904,0.09,0.001,0.091,0.002,10996.0,1,1,192,1,0,0,True
+PELTA_Malicious_MFHE,local,64,1,10,0.047,0.319,0.589,20,320,2560,320,0.0027,0.3801,2.448,0.058,2.506,0.094,399.0,2,2,512,0,0,0,True
+"HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)",local,64,1,10,1.56,8.063,7.71,192,1536,6144,768,0.6385,4.4547,5.234,5.723,10.957,0.879,91.3,1,1,34560,0,0,0,True

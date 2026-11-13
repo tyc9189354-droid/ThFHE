@@ -17,10 +17,8 @@ class HQFSThFHEScheme(BaseThFHEScheme):
       - 零密文疊加 (Zero-Ciphertext Superposition) 截斷代數計算軌跡以抵抗 CPA^D 並達成 IND-FuncCPA 電路隱私 (Algorithm 7 & 8)
     """
 
-    def __init__(self):
-        super().__init__(
-            scheme_name="HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)"
-        )
+    def __init__(self, name: str = "HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)"):
+        super().__init__(name)
         self.d: int = 16
         self.n_glwe: int = 2
         self.m_glwe: int = 2
@@ -195,18 +193,26 @@ class HQFSThFHEScheme(BaseThFHEScheme):
         }
         return m_vec[0], t_partial_ms, t_agg_ms
 
-    def get_offline_metrics(self, preprocessed_data: Any) -> Dict[str, int]:
+    def get_offline_metrics(self, preprocessed_data: Optional[Any] = None) -> Dict[str, Any]:
         num_rlk = preprocessed_data.get("rlk_entries", 12) if isinstance(preprocessed_data, dict) else 12
+        storage_bits = num_rlk * self.d * 32
         return {
             "num_mults": num_rlk * self.d,
-            "gate_storage_bits": num_rlk * self.d * 32
+            "num_rand_bits": num_rlk * self.d * 8,
+            "gate_storage_bits": storage_bits,
+            "gate_storage_bytes": (storage_bits + 7) // 8
         }
 
-    def get_online_metrics(self, ciphertext: Any, preprocessed_data: Any) -> Dict[str, int]:
+    def get_online_metrics(self, ciphertext: Optional[Any] = None, preprocessed_data: Optional[Any] = None) -> Dict[str, Any]:
         # Each node sends sh^{(i)} (in R_Q) and HQ-FS proof pi^{(i)} (confined to small baseline modulus K_Q!)
-        bits_per_party = self.d * 32 * self.hqfs.rns.r + self.d * 20 * (self.n_glwe + self.m_glwe + 2)
+        rns_r = self.hqfs.rns.r if (self.hqfs and self.hqfs.rns) else 2
+        bits_per_party = self.d * 32 * rns_r + self.d * 20 * (self.n_glwe + self.m_glwe + 2)
+        total_comm = self.num_parties * bits_per_party
         return {
+            "num_rounds": 1,
             "online_rounds": 1,
-            "comm_bits": self.num_parties * bits_per_party,
+            "num_opens": 1,
+            "opened_bits": total_comm,
+            "comm_bits": total_comm,
             "num_openings": self.num_parties
         }

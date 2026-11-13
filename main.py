@@ -62,9 +62,11 @@ def run_benchmark_cmd(args):
         {"k": 16, "m": 1, "b": 4},
         {"k": 64, "m": 1, "b": 8}
     ])
-    scheme_names = cfg.get("schemes", ["ccs25", "baseline_noise_flooding", "pelta"])
+    scheme_names = cfg.get("schemes", ["ccs25", "baseline_noise_flooding", "pelta", "hqfs"])
     if "pelta" not in scheme_names:
         scheme_names.append("pelta")
+    if "hqfs" not in scheme_names:
+        scheme_names.append("hqfs")
     server_url = args.server_url or cfg.get("remote_server", {}).get("url", "http://127.0.0.1:8000")
 
     runner = BenchmarkRunner(iterations=iterations, warmup=warmup)

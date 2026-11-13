@@ -1903,61 +1903,63 @@
           <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem; color: #fde68a;">
             🛡️ 論文安全性與密碼學架構特性比較表 (Qualitative Security Comparison — Paper Table II)
           </div>
+          <div style="overflow-x: auto;">
           <table>
             <thead>
               <tr>
-                <th>安全屬性 / 架構維度 (Feature)</th>
-                <th class="col-ccs">CCS 2025 [Zyskind et al.]</th>
-                <th class="col-noah">Noah's Ark [4] (Smudging)</th>
-                <th class="col-pelta">PELTA [19] (Chatel et al.)</th>
-                <th class="col-hqfs" style="color: #fbbf24;">HQ-FS [Our Work]</th>
+                <th style="min-width: 200px;">安全屬性 / 架構維度 (Feature)</th>
+                <th class="col-ccs" style="min-width: 140px;">CCS 2025 [Zyskind et al.]</th>
+                <th class="col-noah" style="min-width: 140px;">Noah's Ark [4] (Smudging)</th>
+                <th class="col-pelta" style="min-width: 140px;">PELTA [19] (Chatel et al.)</th>
+                <th class="col-hqfs" style="color: #fbbf24; min-width: 160px;">HQ-FS [Our Work]</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>底層數學困難假設 (Hardness Assumption)</strong></td>
-                <td>LWE / BFV + 3-Round MPC</td>
-                <td>LWE / RLWE (超多項式模數)</td>
-                <td>RLWE + MSIS + MLWE</td>
-                <td style="color: #fde68a; font-weight: 600;">RNS-GLWE + MLWE + MSIS</td>
+                <td class="col-ccs">LWE / BFV + 3-Round MPC</td>
+                <td class="col-noah">LWE / RLWE (超多項式模數)</td>
+                <td class="col-pelta">RLWE + MSIS + MLWE</td>
+                <td class="col-hqfs" style="color: #fde68a; font-weight: 600;">RNS-GLWE + MLWE + MSIS</td>
               </tr>
               <tr>
                 <td><strong>威脅模型 (Adversary Model)</strong></td>
-                <td>Dishonest Majority (F_ABB MAC)</td>
-                <td>Passive / Semi-Honest</td>
-                <td>Active Malicious (t &lt; N)</td>
-                <td style="color: #34d399; font-weight: 600;">✓ Active Malicious (t &lt; N)</td>
+                <td class="col-ccs">Dishonest Majority (F_ABB MAC)</td>
+                <td class="col-noah">Passive / Semi-Honest</td>
+                <td class="col-pelta">Active Malicious (t &lt; N)</td>
+                <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ Active Malicious (t &lt; N)</td>
               </tr>
               <tr>
                 <td><strong>防止部分解密洩漏私鑰 (Key Leakage Prevention)</strong></td>
-                <td>MPC 位元分解捨入隱藏低位雜訊</td>
-                <td>超大多項式雜訊淹沒 (Smudging)</td>
-                <td>線性雜訊淹沒 (Noise Flooding)</td>
-                <td style="color: #34d399; font-weight: 600;">✓ 緊緻雜訊淹沒 e_sm + 商數隱藏 k_dec·Q</td>
+                <td class="col-ccs">MPC 位元分解捨入隱藏低位雜訊</td>
+                <td class="col-noah">超大多項式雜訊淹沒 (Smudging)</td>
+                <td class="col-pelta">線性雜訊淹沒 (Noise Flooding)</td>
+                <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 緊緻雜訊淹沒 e_sm + 商數隱藏 k_dec·Q</td>
               </tr>
               <tr>
                 <td><strong>主動攻擊零知識驗證機制 (Active Attack Verification)</strong></td>
-                <td>資訊理論 MAC 驗證</td>
-                <td>✗ 無 (僅被動安全)</td>
-                <td>Commit-then-Prove + Schwartz-Zippel</td>
-                <td style="color: #34d399; font-weight: 600;">✓ 同態商數證明 (HQ-FS mod K_Q) + BFS 佇列</td>
+                <td class="col-ccs">資訊理論 MAC 驗證</td>
+                <td class="col-noah">✗ 無 (僅被動安全)</td>
+                <td class="col-pelta">Commit-then-Prove + Schwartz-Zippel</td>
+                <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 同態商數證明 (HQ-FS mod K_Q) + BFS 佇列</td>
               </tr>
               <tr>
                 <td><strong>電路隱私與抗代數追蹤 (Circuit Privacy &amp; Anti-Tracing)</strong></td>
-                <td>MPC 捨入消除雜訊殘留</td>
-                <td>僅靠解密端大雜訊遮蔽</td>
-                <td>依賴標準重隨機化</td>
-                <td style="color: #34d399; font-weight: 600;">✓ 明文空間擴展零密文疊加 (C_zero Rerandomization)</td>
+                <td class="col-ccs">MPC 捨入消除雜訊殘留</td>
+                <td class="col-noah">僅靠解密端大雜訊遮蔽</td>
+                <td class="col-pelta">依賴標準重隨機化</td>
+                <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 明文空間擴展零密文疊加 (C_zero Rerandomization)</td>
               </tr>
               <tr>
                 <td><strong>抗解密預言機選擇明文攻擊 (Resistance against CPA^D)</strong></td>
-                <td>✓ 具備 (MPC 隱藏中間態)</td>
-                <td>△ 需指數級模數膨脹</td>
-                <td>✓ 具備 (零知識驗證過濾)</td>
-                <td style="color: #34d399; font-weight: 600;">✓ 完整具備 (Theorem 1~2: 雙層防護 + 緊緻模數)</td>
+                <td class="col-ccs">✓ 具備 (MPC 隱藏中間態)</td>
+                <td class="col-noah">△ 需指數級模數膨脹</td>
+                <td class="col-pelta">✓ 具備 (零知識驗證過濾)</td>
+                <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 完整具備 (Theorem 1~2: 雙層防護 + 緊緻模數)</td>
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </section>
@@ -2404,25 +2406,34 @@
     function onPaperFilterChange() {
       const selected = getSelectedPapers();
 
-      ['ccs25', 'noah', 'pelta', 'hqfs'].forEach(p => {
-        const isChecked = selected.includes(p);
-        const label = document.getElementById('chip-label-' + p);
+      const paperDefs = [
+        { key: 'ccs25', colClass: 'col-ccs', barSuffix: 'ccs', legendClass: 'legend-ccs' },
+        { key: 'noah', colClass: 'col-noah', barSuffix: 'noah', legendClass: 'legend-noah' },
+        { key: 'pelta', colClass: 'col-pelta', barSuffix: 'pelta', legendClass: 'legend-pelta' },
+        { key: 'hqfs', colClass: 'col-hqfs', barSuffix: 'hqfs', legendClass: 'legend-hqfs' }
+      ];
+
+      paperDefs.forEach(p => {
+        const isChecked = selected.includes(p.key);
+        const label = document.getElementById('chip-label-' + p.key);
         if (label) {
           if (isChecked) label.classList.add('active');
           else label.classList.remove('active');
         }
 
-        const legendItem = document.querySelector('.legend-' + p);
+        const legendItem = document.querySelector('.' + p.legendClass);
         if (legendItem) {
           legendItem.style.opacity = isChecked ? '1' : '0.25';
         }
 
-        document.querySelectorAll('.col-' + p).forEach(el => {
+        // Show/hide all corresponding table headers and cells across BOTH tables!
+        document.querySelectorAll('.' + p.colClass).forEach(el => {
           el.style.display = isChecked ? '' : 'none';
         });
 
+        // Show/hide histogram bars
         for (let s = 1; s <= 7; s++) {
-          const bar = document.getElementById(`bar-s${s}-${p}`);
+          const bar = document.getElementById(`bar-s${s}-${p.barSuffix}`);
           if (bar) {
             bar.style.display = isChecked ? 'block' : 'none';
           }
@@ -3504,21 +3515,33 @@
       ];
 
       mapRow.forEach(([shortKey, prop]) => {
-        document.getElementById(`tbl-ccs-${shortKey}`).innerText = `${ccs[prop]} ms`;
-        document.getElementById(`tbl-noah-${shortKey}`).innerText = `${noah[prop]} ms`;
-        document.getElementById(`tbl-pelta-${shortKey}`).innerText = `${pelta[prop]} ms`;
-        document.getElementById(`tbl-hqfs-${shortKey}`).innerText = `${hqfs[prop]} ms`;
+        const elCcs = document.getElementById(`tbl-ccs-${shortKey}`);
+        if (elCcs) elCcs.innerText = ccs[prop] !== undefined ? `${ccs[prop]} ms` : '--';
+        const elNoah = document.getElementById(`tbl-noah-${shortKey}`);
+        if (elNoah) elNoah.innerText = noah[prop] !== undefined ? `${noah[prop]} ms` : '--';
+        const elPelta = document.getElementById(`tbl-pelta-${shortKey}`);
+        if (elPelta) elPelta.innerText = pelta[prop] !== undefined ? `${pelta[prop]} ms` : '--';
+        const elHqfs = document.getElementById(`tbl-hqfs-${shortKey}`);
+        if (elHqfs) elHqfs.innerText = hqfs[prop] !== undefined ? `${hqfs[prop]} ms` : '--';
       });
 
-      document.getElementById('tbl-ccs-thru').innerText = `${Number(ccs.throughput_dec_per_sec).toLocaleString()} Dec/s`;
-      document.getElementById('tbl-noah-thru').innerText = `${Number(noah.throughput_dec_per_sec).toLocaleString()} Dec/s`;
-      document.getElementById('tbl-pelta-thru').innerText = `${Number(pelta.throughput_dec_per_sec).toLocaleString()} Dec/s`;
-      document.getElementById('tbl-hqfs-thru').innerText = `${Number(hqfs.throughput_dec_per_sec).toLocaleString()} Dec/s`;
+      const elCcsThru = document.getElementById('tbl-ccs-thru');
+      if (elCcsThru) elCcsThru.innerText = ccs.throughput_dec_per_sec ? `${Number(ccs.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elNoahThru = document.getElementById('tbl-noah-thru');
+      if (elNoahThru) elNoahThru.innerText = noah.throughput_dec_per_sec ? `${Number(noah.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elPeltaThru = document.getElementById('tbl-pelta-thru');
+      if (elPeltaThru) elPeltaThru.innerText = pelta.throughput_dec_per_sec ? `${Number(pelta.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elHqfsThru = document.getElementById('tbl-hqfs-thru');
+      if (elHqfsThru) elHqfsThru.innerText = hqfs.throughput_dec_per_sec ? `${Number(hqfs.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
 
-      document.getElementById('tbl-ccs-ok').innerHTML = ccs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
-      document.getElementById('tbl-noah-ok').innerHTML = noah.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
-      document.getElementById('tbl-pelta-ok').innerHTML = pelta.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
-      document.getElementById('tbl-hqfs-ok').innerHTML = hqfs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul + CPA^D Safe)</span>' : '<span class="badge badge-red">✗ 失敗</span>';
+      const elCcsOk = document.getElementById('tbl-ccs-ok');
+      if (elCcsOk) elCcsOk.innerHTML = ccs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ccs25') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elNoahOk = document.getElementById('tbl-noah-ok');
+      if (elNoahOk) elNoahOk.innerHTML = noah.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('noah') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elPeltaOk = document.getElementById('tbl-pelta-ok');
+      if (elPeltaOk) elPeltaOk.innerHTML = pelta.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('pelta') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elHqfsOk = document.getElementById('tbl-hqfs-ok');
+      if (elHqfsOk) elHqfsOk.innerHTML = hqfs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul + CPA^D Safe)</span>' : (selected.includes('hqfs') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
 
       // New network & architecture metrics
       function formatComm(obj) {

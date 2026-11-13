@@ -21,6 +21,7 @@ import time
 import random
 import signal
 import subprocess
+import numpy as np
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Dict, Any, List, Tuple, Union
 
@@ -347,10 +348,14 @@ def normalize_pelta_ciphertext(raw_ct: Any, pscheme: PeltaThFHEScheme) -> Tuple[
     return c0, c1
 
 
-def normalize_hqfs_ciphertext(raw_ct: Any, hscheme: HQFSThFHEScheme) -> Tuple[List[List[List[int]]], List[List[int]]]:
+def normalize_hqfs_ciphertext(raw_ct: Any, hscheme: HQFSThFHEScheme):
     hqfs = hscheme.hqfs
+    def _to_rns_pair(u_raw, v_raw):
+        u_arr = [[np.array(limb, dtype=np.int64) for limb in poly] for poly in u_raw]
+        v_arr = [np.array(limb, dtype=np.int64) for limb in v_raw]
+        return u_arr, v_arr
     if isinstance(raw_ct, dict) and "u" in raw_ct and "v" in raw_ct:
-        return raw_ct["u"], raw_ct["v"]
+        return _to_rns_pair(raw_ct["u"], raw_ct["v"])
     if (
         isinstance(raw_ct, list)
         and len(raw_ct) == 2
@@ -358,7 +363,7 @@ def normalize_hqfs_ciphertext(raw_ct: Any, hscheme: HQFSThFHEScheme) -> Tuple[Li
         and isinstance(raw_ct[1], list)
         and len(raw_ct[0]) == hqfs.n_glwe
     ):
-        return raw_ct[0], raw_ct[1]
+        return _to_rns_pair(raw_ct[0], raw_ct[1])
     return hqfs.encrypt(12)
 
 
@@ -800,11 +805,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "e2": e2
                 })
 
-            elif stage in ("eval", "partial_dec", "aggregate"):
+            elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
                 raw_c1 = req.get("c1", [])
                 raw_c2 = req.get("c2", [])
                 op_mode = req.get("op_mode", "eval_mul")
                 use_simd = simd_mode or is_ccs_simd_batch(raw_c1) or is_ccs_simd_batch(raw_c2)
+                if stage == "run_all" and not raw_c1 and not raw_c2 and not use_simd:
+                    _, m1_p = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=False)
+                    _, m2_p = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=False)
+                    raw_c1, _ = scheme.encrypt(int(m1_p))
+                    raw_c2, _ = scheme.encrypt(int(m2_p))
 
                 if use_simd:
                     batch_c1 = normalize_ccs_simd_batch(raw_c1, scheme)
@@ -855,6 +865,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     mu_slots, partial_dec_ms, agg_ms = scheme.decrypt_simd_with_stages(
                         c_eval, malicious_ratio=malicious_ratio, attack_type=attack_type
                     )
+                    aborted = bool(scheme.last_audit.get("aborted", False))
+                    dec_out = "ABORT (SPDZ2^k MAC Failed)" if aborted else mu_slots
+                    verified_out = False if aborted else (mu_slots == expected_mu)
                     self._send_json(200, {
                         "status": "ok",
                         "stage": stage,
@@ -868,9 +881,10 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         "throughput_dec_per_sec": round((len(mu_slots) * 1000.0) / max(0.001, partial_dec_ms + agg_ms), 1),
                         "rounds_info": rounds_info,
                         "audit_info": scheme.last_audit,
-                        "decrypted_plaintext": mu_slots,
+                        "decrypted_plaintext": dec_out,
                         "expected_plaintext": expected_mu,
-                        "verified": (mu_slots == expected_mu)
+                        "aborted": aborted,
+                        "verified": verified_out
                     })
                     return
 
@@ -922,6 +936,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     malicious_ratio=malicious_ratio,
                     attack_type=attack_type
                 )
+                aborted = bool(scheme.last_audit.get("aborted", False))
+                dec_out = "ABORT (SPDZ2^k MAC Failed)" if aborted else mu_party
+                verified_out = False if aborted else (mu_party == expected_mu)
                 self._send_json(200, {
                     "status": "ok",
                     "stage": stage,
@@ -934,10 +951,13 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "throughput_dec_per_sec": round(1000.0 / max(0.001, partial_dec_ms + agg_ms), 1),
                     "rounds_info": rounds_info,
                     "audit_info": scheme.last_audit,
-                    "decrypted_plaintext": mu_party,
+                    "decrypted_plaintext": dec_out,
                     "expected_plaintext": expected_mu,
-                    "verified": (mu_party == expected_mu)
+                    "aborted": aborted,
+                    "verified": verified_out
                 })
+            else:
+                self._send_json(400, {"error": f"Unknown stage '{stage}' for /api/ccs/stage"})
 
         elif path == "/api/pelta/stage":
             stage = req.get("stage", "setup")
@@ -1111,6 +1131,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         attack_type=attack_type
                     )
                     audit = pscheme.last_audit
+                    aborted = bool(audit.get("aborted", False))
+                    dec_simd_out: Any = "ABORT (Cheater Rejected)" if aborted else mu_slots
+                    verified_simd = (not aborted) and bool(audit.get("schwartz_zippel_passed", False)) and (mu_slots == expected_mu)
                     self._send_json(200, {
                         "status": "ok",
                         "stage": stage,
@@ -1126,8 +1149,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         "m1": m1_slots,
                         "m2": m2_slots,
                         "expected_plaintext": expected_mu,
-                        "decrypted_plaintext": mu_slots,
-                        "verified": (mu_slots == expected_mu),
+                        "decrypted_plaintext": dec_simd_out,
+                        "verified": verified_simd,
                         "evaluated_ciphertext": [ct_eval[0], ct_eval[1]],
                         "audit_info": audit,
                         "alpha": audit.get("fiat_shamir_alpha", pscheme.mfhe.alpha),
@@ -1185,6 +1208,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     attack_type=attack_type
                 )
                 audit = pscheme.last_audit
+                aborted = bool(audit.get("aborted", False) or mu_party < 0)
+                dec_out: Any = "ABORT (Cheater Rejected)" if aborted else mu_party
+                verified_scalar = (not aborted) and bool(audit.get("schwartz_zippel_passed", False)) and (mu_party == expected_mu)
                 self._send_json(200, {
                     "status": "ok",
                     "stage": stage,
@@ -1198,8 +1224,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "m1": m1_val,
                     "m2": m2_val,
                     "expected_plaintext": expected_mu,
-                    "decrypted_plaintext": mu_party,
-                    "verified": (mu_party == expected_mu),
+                    "decrypted_plaintext": dec_out,
+                    "verified": verified_scalar,
                     "evaluated_ciphertext": [ct_eval[0], ct_eval[1]],
                     "audit_info": audit,
                     "alpha": audit.get("fiat_shamir_alpha", pscheme.mfhe.alpha),
@@ -1267,6 +1293,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 )
                 total_online_ms = partial_dec_ms + agg_ms
                 throughput = (len(mu_slots) * 1000.0) / total_online_ms if total_online_ms > 0 else 0.0
+                aborted = bool(scheme.last_audit.get("aborted", False))
+                dec_out = "ABORT (SPDZ2^k MAC Failed)" if aborted else mu_slots
+                verified_out = False if aborted else (mu_slots == expected_mu)
 
                 self._send_json(200, {
                     "status": "ok",
@@ -1283,8 +1312,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "m1": m1_slots,
                     "m2": m2_slots,
                     "expected_plaintext": expected_mu,
-                    "decrypted_plaintext": mu_slots,
-                    "verified": (mu_slots == expected_mu),
+                    "decrypted_plaintext": dec_out,
+                    "aborted": aborted,
+                    "verified": verified_out,
                     "evaluated_ciphertext": c_eval,
                     "rounds_info": rounds_info,
                     "timings": {
@@ -1337,6 +1367,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
 
             total_online_ms = partial_dec_ms + agg_ms
             throughput = 1000.0 / total_online_ms if total_online_ms > 0 else 0.0
+            aborted = bool(scheme.last_audit.get("aborted", False))
+            dec_out = "ABORT (SPDZ2^k MAC Failed)" if aborted else mu_party
+            verified_out = False if aborted else (mu_party == expected_mu)
 
             self._send_json(200, {
                 "status": "ok",
@@ -1352,8 +1385,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "m1": m1_val,
                 "m2": m2_val,
                 "expected_plaintext": expected_mu,
-                "decrypted_plaintext": mu_party,
-                "verified": (mu_party == expected_mu and mu_interactive == expected_mu),
+                "decrypted_plaintext": dec_out,
+                "aborted": aborted,
+                "verified": verified_out,
                 "evaluated_ciphertext": c_eval,
                 "rounds_info": rounds_info,
                 "timings": {
@@ -1453,6 +1487,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "rlk_entries": prep_data["rlk_entries"],
                     "rns_limbs": prep_data["rns_limbs"],
                     "K_Q": prep_data["K_Q"],
+                    "rlk_info": {"B_bgv": prep_data.get("B_bgv", 0), "l_bgv": prep_data.get("l_bgv", 6)},
                     "offline_metrics": off_metrics
                 })
 
@@ -1763,13 +1798,14 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     })
                     return
 
-                mu_dec, pdec_ms, agg_ms = nscheme.decrypt_with_stages(ct_eval)
+                mu_dec, pdec_ms, agg_ms = nscheme.decrypt_with_stages(
+                    ct_eval, malicious_ratio=malicious_ratio, attack_type=attack_type
+                )
+                audit_info = dict(getattr(nscheme, "last_audit_info", {}))
                 is_tampered = (malicious_ratio > 0 and attack_type != "none")
-                if is_tampered:
-                    mu_dec = (mu_dec + 137) % p_mod
-                    verified = False
-                else:
-                    verified = (mu_dec == expected_mu)
+                aborted = bool(audit_info.get("aborted", False) or mu_dec < 0)
+                verified = (not aborted) and (mu_dec == expected_mu)
+                dec_out: Any = "ABORT (Exceeds t < n/3)" if aborted else mu_dec
 
                 self._send_json(200, {
                     "status": "ok",
@@ -1783,9 +1819,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "m1": m1_val,
                     "m2": m2_val,
                     "expected_plaintext": expected_mu,
-                    "decrypted_plaintext": mu_dec,
+                    "decrypted_plaintext": dec_out,
                     "verified": verified,
                     "is_tampered": is_tampered,
+                    "protocol_mode": nscheme.protocol_mode,
+                    "t_threshold": nscheme.t,
+                    "audit_info": audit_info,
                     "timings": {
                         "setup_time_ms": LIVE_LAB["noah_setup_ms"],
                         "keygen_time_ms": LIVE_LAB["noah_keygen_ms"],
@@ -1886,8 +1925,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 else:
                     c1 = normalize_ot25_ciphertext(req.get("c1", []), otscheme)
                     c2 = normalize_ot25_ciphertext(req.get("c2", []), otscheme)
-                    m1_val, _, _ = otscheme.ot25.decrypt_full(c1)
-                    m2_val, _, _ = otscheme.ot25.decrypt_full(c2)
+                    m1_val = otscheme.ot25.decrypt_direct(c1)
+                    m2_val = otscheme.ot25.decrypt_direct(c2)
                 op_mode = req.get("op_mode", "eval_mul")
 
                 t0 = time.perf_counter()
@@ -1921,13 +1960,13 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     })
                     return
 
-                mu_dec, pdec_ms, agg_ms = otscheme.decrypt_with_stages(ct_eval)
+                mu_dec, pdec_ms, agg_ms = otscheme.decrypt_with_stages(
+                    ct_eval,
+                    malicious_ratio=malicious_ratio,
+                    attack_type=attack_type,
+                )
                 is_tampered = (malicious_ratio > 0 and attack_type != "none")
-                if is_tampered:
-                    mu_dec = (mu_dec + 7) % p_mod
-                    verified = False
-                else:
-                    verified = (mu_dec == expected_mu)
+                verified = (mu_dec == expected_mu)
 
                 self._send_json(200, {
                     "status": "ok",
@@ -1944,6 +1983,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "decrypted_plaintext": mu_dec,
                     "verified": verified,
                     "is_tampered": is_tampered,
+                    "audit_info": otscheme.last_audit,
                     "timings": {
                         "setup_time_ms": LIVE_LAB["ot25_setup_ms"],
                         "keygen_time_ms": LIVE_LAB["ot25_keygen_ms"],
@@ -2044,8 +2084,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 else:
                     c1 = normalize_ajax_ciphertext(req.get("c1", []), ajscheme)
                     c2 = normalize_ajax_ciphertext(req.get("c2", []), ajscheme)
-                    m1_val, _, _ = ajscheme.ajax.decrypt_full(c1)
-                    m2_val, _, _ = ajscheme.ajax.decrypt_full(c2)
+                    m1_val = ajscheme.ajax.decrypt_direct(c1)
+                    m2_val = ajscheme.ajax.decrypt_direct(c2)
                 op_mode = req.get("op_mode", "eval_mul")
 
                 t0 = time.perf_counter()
@@ -2079,13 +2119,13 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     })
                     return
 
-                mu_dec, pdec_ms, agg_ms = ajscheme.decrypt_with_stages(ct_eval)
+                mu_dec, pdec_ms, agg_ms = ajscheme.decrypt_with_stages(
+                    ct_eval,
+                    malicious_ratio=malicious_ratio,
+                    attack_type=attack_type,
+                )
                 is_tampered = (malicious_ratio > 0 and attack_type != "none")
-                if is_tampered:
-                    mu_dec = (mu_dec + 3) % p_mod
-                    verified = False
-                else:
-                    verified = (mu_dec == expected_mu)
+                verified = (mu_dec == expected_mu)
 
                 self._send_json(200, {
                     "status": "ok",
@@ -2102,6 +2142,7 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "decrypted_plaintext": mu_dec,
                     "verified": verified,
                     "is_tampered": is_tampered,
+                    "audit_info": ajscheme.last_audit,
                     "timings": {
                         "setup_time_ms": LIVE_LAB["ajax_setup_ms"],
                         "keygen_time_ms": LIVE_LAB["ajax_keygen_ms"],
@@ -2163,22 +2204,40 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             if mode == "distributed":
                 # Real Multi-Port Distributed TCP Socket Mode
                 if "ccs25" in schemes_requested:
-                    res_ccs = runner.run_distributed("ccs25", k=k, m=m, num_parties=num_parties, b=b)
+                    res_ccs = runner.run_distributed(
+                        "ccs25", k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type,
+                    )
                     results_map["ccs25"] = format_res(res_ccs)
                 if "noah" in schemes_requested:
-                    res_noah = runner.run_distributed("noah", k=k, m=m, num_parties=num_parties, b=b)
+                    res_noah = runner.run_distributed(
+                        "noah", k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type,
+                    )
                     results_map["noah"] = format_res(res_noah)
                 if "pelta" in schemes_requested:
-                    res_pelta = runner.run_distributed("pelta", k=k, m=m, num_parties=num_parties, b=b)
+                    res_pelta = runner.run_distributed(
+                        "pelta", k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type,
+                    )
                     results_map["pelta"] = format_res(res_pelta)
                 if "hqfs" in schemes_requested:
-                    res_hqfs = runner.run_distributed("hqfs", k=k, m=m, num_parties=num_parties, b=b)
+                    res_hqfs = runner.run_distributed(
+                        "hqfs", k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type,
+                    )
                     results_map["hqfs"] = format_res(res_hqfs)
                 if "ot25" in schemes_requested:
-                    res_ot25 = runner.run_distributed("ot25", k=k, m=m, num_parties=num_parties, b=b)
+                    res_ot25 = runner.run_distributed(
+                        "ot25", k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type,
+                    )
                     results_map["ot25"] = format_res(res_ot25)
                 if "ajax" in schemes_requested:
-                    res_ajax = runner.run_distributed("ajax", k=k, m=m, num_parties=num_parties, b=b)
+                    res_ajax = runner.run_distributed(
+                        "ajax", k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type,
+                    )
                     results_map["ajax"] = format_res(res_ajax)
             else:
                 # Fast In-Memory Local Algorithm Mode

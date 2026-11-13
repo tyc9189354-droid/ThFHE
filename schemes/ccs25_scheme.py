@@ -173,9 +173,11 @@ class CCS25ThFHEScheme(BaseThFHEScheme):
             mu, pdec_ms, agg_ms = self.decrypt_with_stages(
                 ct, gates, malicious_ratio=mr, attack_type=at
             )
-            decrypted_slots.append(mu)
             total_pdec_ms += pdec_ms
             total_agg_ms += agg_ms
+            if self.last_audit.get("aborted", False) or mu < 0:
+                return [-1] * len(batch_ciphertext), total_pdec_ms, total_agg_ms
+            decrypted_slots.append(mu)
         return decrypted_slots, total_pdec_ms, total_agg_ms
 
     def decrypt_with_stages(

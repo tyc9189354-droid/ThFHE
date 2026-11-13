@@ -66,7 +66,7 @@ def client_worker(server_ip, port, node_index, total_ports, is_malicious=False, 
     T = init_msg.get("T", 65537)
 
     # 構造環管理器
-    start_bit = 30 if d >= 128 else 20
+    start_bit = 48 if total_n > 50 else 30
     all_primes = get_ntt_primes(19, start_bit, d)
     q_primes = all_primes[:6]
     p_primes = all_primes[6:]
@@ -98,14 +98,13 @@ def client_worker(server_ip, port, node_index, total_ports, is_malicious=False, 
                 else:
                     local_acc_e[target_j][dim] = R.add(local_acc_e[target_j][dim], sub_e[target_j][dim])
 
-    del sub_s, sub_e, C_coeffs
-
     send_msg(sock, {
         "type": "DKG_DEALER_SUBMIT",
         "node_id": assigned_id,
-        "pub_key": pub_key
+        "pub_key": pub_key,
+        "C_coeffs": C_coeffs
     })
-    del pub_key
+    del sub_s, sub_e, C_coeffs, pub_key
 
     # 等待本地節點完成累加
     dkg_dealer_barrier.wait()
@@ -113,12 +112,13 @@ def client_worker(server_ip, port, node_index, total_ports, is_malicious=False, 
     # 4. 接收廣播承諾並執行接收者驗證
     routed_msg = recv_msg(sock)
     assert routed_msg["type"] in ("DKG_ROUTED_COMMITMENTS", "DKG_ROUTED_SHARES")
+    C_coeffs_use = routed_msg.get("C_coeffs_global") or local_C_coeffs_global
 
     with compute_semaphore:
         commitment = node.execute_dkg_receiver_phase(
             local_acc_s[assigned_id],
             local_acc_e[assigned_id],
-            local_C_coeffs_global
+            C_coeffs_use
         )
         node.save_to_json(data_dir=data_dir)
 
@@ -128,20 +128,20 @@ def client_worker(server_ip, port, node_index, total_ports, is_malicious=False, 
         "commitment": commitment
     })
 
-    # 5. 分散式 RLK 份額計算
-    rlk_req = recv_msg(sock)
-    assert rlk_req["type"] == "RLK_GEN_REQ"
-    A_rlk_global = rlk_req["A_rlk"]
-
+    # 5. 2-Round 協同分散式 RLK 份額計算 (不洩漏 s_base)
+    rlk_r1_req = recv_msg(sock)
+    assert rlk_r1_req["type"] == "RLK_R1_REQ"
     with compute_semaphore:
-        node_rlk_shares = node.compute_collective_rlk_share(A_rlk_global)
+        r1_shares = node.rlk_round1(rlk_r1_req["A_rlk_crs"])
+    send_msg(sock, {"type": "RLK_R1_SUBMIT", "node_id": assigned_id, "r1_shares": r1_shares})
+    del r1_shares, rlk_r1_req
 
-    send_msg(sock, {
-        "type": "RLK_SHARE_SUBMIT",
-        "node_id": assigned_id,
-        "rlk_shares": node_rlk_shares
-    })
-    del node_rlk_shares, A_rlk_global
+    rlk_r2_req = recv_msg(sock)
+    assert rlk_r2_req["type"] == "RLK_R2_REQ"
+    with compute_semaphore:
+        node_rlk_shares = node.rlk_round2(rlk_r2_req["A_rlk"], rlk_r2_req["H_agg"], clear_s_base=True)
+    send_msg(sock, {"type": "RLK_R2_SUBMIT", "node_id": assigned_id, "rlk_shares": node_rlk_shares})
+    del node_rlk_shares, rlk_r2_req
 
     # 6. 等待門限解密請求
     dec_req = recv_msg(sock)

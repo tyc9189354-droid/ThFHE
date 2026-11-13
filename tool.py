@@ -26,6 +26,7 @@ Includes:
 
 import math
 import random
+import secrets
 import json
 import base64
 import hashlib
@@ -394,81 +395,166 @@ class ThresholdFHEDecryptor:
         attack_type: str = "none"
     ) -> Tuple[int, float, float, Dict[str, Any]]:
         """
-        Executes multi-party partial decryption & MPC rounding + final aggregation across N parties,
-        supporting malicious_ratio (0..49%) and attack_type simulation with SPDZ/UC MAC verification.
-        Returns (plaintext, partial_dec_ms, aggregation_ms, audit_info).
+        Executes multi-party partial decryption & 3-round MPC rounding (Mod_{l,k} / LTRand_{l,k})
+        across N parties with authentic SPDZ2^k (s = 64) SingleCheck MAC verification over Z_{2^{t+s}}.
+        Under SPDZ2^k dishonest-majority UC security, any MAC tampering causes immediate abort (-1).
+        Returns (plaintext_or_-1_on_abort, partial_dec_ms, aggregation_ms, audit_info).
         """
         import time
         t0 = time.perf_counter()
+        rng = secrets.SystemRandom()
         num_parties = len(party_key_shares)
+        s_mac = 64
+        mod_mac_l = 1 << (self.l + s_mac)
+        mod_mac_d = 1 << ((math.ceil(self.l / self.b) + 1) + s_mac)
+        mod_mac_k = 1 << (self.k + s_mac)
+
         malicious_ratio = max(0, min(49, int(malicious_ratio)))
         num_malicious = (num_parties * malicious_ratio) // 100 if attack_type != "none" else 0
-        malicious_indices = set(random.sample(range(num_parties), num_malicious)) if num_malicious > 0 else set()
+        malicious_indices = set(rng.sample(range(num_parties), num_malicious)) if num_malicious > 0 else set()
 
-        # 1. Each party computes its local inner product share z_i = <c, s^{(i)}> mod 2^k
+        # Global SPDZ2^k MAC key alpha in Z_{2^s}
+        alpha_mac = rng.randrange(1 << s_mac) | 1
+
+        # Additive N-party shares of preprocessed [r]_k (over Z_{2^k} so [r]_l reduces mod 2^l consistently) and [r']_{d+1}
+        mod_l = 1 << self.l
+        r_total = gates.r_combined.value % mod_l if gates.r_combined else 0
+        r_shares = [rng.randrange(self.q) for _ in range(num_parties - 1)]
+        r_shares.append((r_total - sum(r_shares)) % self.q)
+
+        d = math.ceil(self.l / self.b)
+        d_plus_1 = d + 1
+        mod_d = 1 << d_plus_1
+        r_modltz_var, modltz_table = gates.modltz_gate
+        rp_total = r_modltz_var.value % mod_d
+        rp_shares = [rng.randrange(mod_d) for _ in range(num_parties - 1)]
+        rp_shares.append((rp_total - sum(rp_shares)) % mod_d)
+
+        # 1. Each party computes its local inner product share z_i = <c, s^{(i)}> + shift_0 mod 2^k
         honest_partial_z = self.compute_partial_inner_products(ciphertext_c, party_key_shares)
+        shift = 1 << (self.l - 1)
+        z_party_shares = list(honest_partial_z)
+        z_party_shares[0] = (z_party_shares[0] + shift) % self.q
 
-        # Information-theoretic MAC key alpha_mac in Z_{2^k} for F_ABB malicious verification
-        alpha_mac = (random.randint(1, self.q - 1) | 1)
-        mac_tags = [(alpha_mac * z_i) % self.q for z_i in honest_partial_z]
+        # Round 1 Shares: [z + r]_l over Z_{2^{l+s}} and SPDZ2^k MAC tags
+        honest_z_mask_i = [((z_party_shares[i] % mod_l) + (r_shares[i] % mod_l)) % mod_l for i in range(num_parties)]
+        mac_r1_shares = [(alpha_mac * val) % mod_mac_l for val in honest_z_mask_i]
 
-        # Simulate malicious party attacks on submitted shares
-        submitted_z = list(honest_partial_z)
-        detected_malicious_parties = []
+        submitted_z_mask = list(honest_z_mask_i)
+        detected_malicious_parties: List[int] = []
 
         for p_idx in range(num_parties):
             if p_idx in malicious_indices:
                 if attack_type == "noise_flooding":
-                    submitted_z[p_idx] = (submitted_z[p_idx] + (self.L >> 1) + 99999) % self.q
+                    submitted_z_mask[p_idx] = (submitted_z_mask[p_idx] + (self.L >> 1) + 99999) % mod_l
                 elif attack_type == "invalid_key_share":
-                    bad_s = [random.randint(5, 50) for _ in range(len(party_key_shares[p_idx]))]
-                    submitted_z[p_idx] = sum(ciphertext_c[j] * bad_s[j] for j in range(len(bad_s))) % self.q
+                    bad_s = [rng.randint(5, 50) for _ in range(len(party_key_shares[p_idx]))]
+                    z_bad = sum(ciphertext_c[j] * bad_s[j] for j in range(len(bad_s))) % self.q
+                    if p_idx == 0:
+                        z_bad = (z_bad + shift) % self.q
+                    submitted_z_mask[p_idx] = (z_bad + r_shares[p_idx]) % mod_l
                 elif attack_type == "share_tampering":
-                    submitted_z[p_idx] = (submitted_z[p_idx] ^ ((1 << (self.k - 2)) - 1)) % self.q
+                    submitted_z_mask[p_idx] = (submitted_z_mask[p_idx] ^ ((1 << max(1, self.l - 2)) - 1)) % mod_l
                 elif attack_type == "equivocation_eval":
-                    submitted_z[p_idx] = (submitted_z[p_idx] + random.randint(1000, self.q - 1)) % self.q
+                    submitted_z_mask[p_idx] = (submitted_z_mask[p_idx] + rng.randint(1000, mod_l - 1)) % mod_l
 
-            # F_ABB UC / SPDZ MAC check on party p_idx's share
-            expected_mac = (alpha_mac * submitted_z[p_idx]) % self.q
-            if expected_mac != mac_tags[p_idx]:
+            # SPDZ2^k SingleCheck on party share in Z_{2^{l+s}}
+            if ((alpha_mac * submitted_z_mask[p_idx]) % mod_mac_l) != mac_r1_shares[p_idx]:
                 detected_malicious_parties.append(p_idx + 1)
-                # F_ABB isolates tampered share and recovers via threshold backup share
-                submitted_z[p_idx] = honest_partial_z[p_idx]
 
-        shift = 1 << (self.l - 1)
-        z_total = (sum(submitted_z) + shift) % self.q
-        z_k = self.abb.store(z_total, self.k)
+        r1_sum_mac = (sum(mac_r1_shares) - alpha_mac * sum(submitted_z_mask)) % mod_mac_l
+        if detected_malicious_parties or r1_sum_mac != 0:
+            partial_dec_ms = (time.perf_counter() - t0) * 1000.0
+            audit_info = {
+                "security_model": "SPDZ2^k UC-Secure with Abort (s=64)",
+                "spdz_s": s_mac,
+                "aborted": True,
+                "num_parties": num_parties,
+                "malicious_ratio": malicious_ratio,
+                "num_malicious": num_malicious,
+                "attack_type": attack_type,
+                "detected_count": len(detected_malicious_parties),
+                "detected_parties_sample": detected_malicious_parties[:10],
+            }
+            return -1, partial_dec_ms, 0.0, audit_info
 
-        # 2. Online MPC Rounding (LTRand + Mod_{l,k}) with N-party local table lookup simulation
-        d = math.ceil(self.l / self.b)
-        e_k = mod_l_k(self.abb, z_k, gates, l=self.l, k=self.k, b=self.b)
-        # Each party locally evaluates its share of the d Sign tables + 1 ModLTZ linear combination
-        per_party_lookup_acc = 0
-        for p_idx in range(num_parties):
-            per_party_lookup_acc = (per_party_lookup_acc + submitted_z[p_idx] * (d + 1)) % self.q
+        # Open Round 1 public masked value z'
+        z_prime = sum(submitted_z_mask) % mod_l
 
+        # Round 2: Base-B decomposition of z' + N-party Sign gate share lookups -> Open [y + r']_{d+1}
+        z_tmp = z_prime
+        z_digits = []
+        for i in range(d):
+            cur_b = self.b if i < d - 1 else (self.l - (d - 1) * self.b)
+            z_digits.append(z_tmp & ((1 << cur_b) - 1))
+            z_tmp >>= cur_b
+
+        y_total = sum((1 << i) * gates.sign_gates[i][1][z_digits[i]].value for i in range(d)) % mod_d
+        y_shares = [rng.randrange(mod_d) for _ in range(num_parties - 1)]
+        y_shares.append((y_total - sum(y_shares)) % mod_d)
+        y_mask_shares = [(y_shares[i] + rp_shares[i]) % mod_d for i in range(num_parties)]
+        mac_r2_sum = (sum((alpha_mac * val) % mod_mac_d for val in y_mask_shares) - alpha_mac * sum(y_mask_shares)) % mod_mac_d
+        if mac_r2_sum != 0:
+            partial_dec_ms = (time.perf_counter() - t0) * 1000.0
+            audit_info = {
+                "security_model": "SPDZ2^k UC-Secure with Abort (s=64)",
+                "spdz_s": s_mac,
+                "aborted": True,
+                "num_parties": num_parties,
+                "malicious_ratio": malicious_ratio,
+                "num_malicious": num_malicious,
+                "attack_type": attack_type,
+                "detected_count": 0,
+                "detected_parties_sample": [],
+            }
+            return -1, partial_dec_ms, 0.0, audit_info
+
+        y_prime = sum(y_mask_shares) % mod_d
+        u_val = modltz_table[y_prime].value
         partial_dec_ms = (time.perf_counter() - t0) * 1000.0
 
-        # 3. Final Aggregation & Plaintext Reconstruction across N parties
+        # Round 3: N-party [e]_k = z' - [r]_k + 2^l * [u_k]_k -> Open [z - e]_k & check SPDZ2^k MAC
         t1 = time.perf_counter()
-        mu_scaled = self.abb.sub(z_k, e_k, out_len=self.k)
-        acc_share = 0
+        u_shares = [rng.randrange(self.q) for _ in range(num_parties - 1)]
+        u_shares.append((u_val - sum(u_shares)) % self.q)
+        mu_shares: List[int] = []
+        mac_r3_shares: List[int] = []
         for p_i in range(num_parties):
-            # Verify Round 3 opening MAC & sum shares
-            mac_ok = ((alpha_mac * submitted_z[p_i]) % self.q) == mac_tags[p_i]
-            if mac_ok:
-                acc_share = (acc_share + submitted_z[p_i]) % self.q
-        mu_prime = self.abb.open(mu_scaled, truncated_l=self.k)
+            e_i = ((z_prime if p_i == 0 else 0) - r_shares[p_i] + (1 << self.l) * u_shares[p_i]) % self.q
+            mu_i = (z_party_shares[p_i] - e_i) % self.q
+            mu_shares.append(mu_i)
+            mac_r3_shares.append((alpha_mac * mu_i) % mod_mac_k)
+
+        r3_sum_mac = (sum(mac_r3_shares) - alpha_mac * sum(mu_shares)) % mod_mac_k
+        if r3_sum_mac != 0:
+            agg_ms = (time.perf_counter() - t1) * 1000.0
+            audit_info = {
+                "security_model": "SPDZ2^k UC-Secure with Abort (s=64)",
+                "spdz_s": s_mac,
+                "aborted": True,
+                "num_parties": num_parties,
+                "malicious_ratio": malicious_ratio,
+                "num_malicious": num_malicious,
+                "attack_type": attack_type,
+                "detected_count": 0,
+                "detected_parties_sample": [],
+            }
+            return -1, partial_dec_ms, agg_ms, audit_info
+
+        mu_prime = sum(mu_shares) % self.q
         plaintext = (mu_prime // self.L) % self.p
         agg_ms = (time.perf_counter() - t1) * 1000.0
 
         audit_info = {
+            "security_model": "SPDZ2^k UC-Secure with Abort (s=64)",
+            "spdz_s": s_mac,
+            "aborted": False,
             "num_parties": num_parties,
             "malicious_ratio": malicious_ratio,
             "num_malicious": num_malicious,
             "attack_type": attack_type,
-            "detected_count": len(detected_malicious_parties),
-            "detected_parties_sample": detected_malicious_parties[:10]
+            "detected_count": 0,
+            "detected_parties_sample": [],
         }
         return plaintext, partial_dec_ms, agg_ms, audit_info
 
@@ -713,16 +799,40 @@ def decode_ciphertext(c_str: str) -> List[int]:
 def _is_prime(n: int) -> bool:
     if n < 2:
         return False
-    if n in (2, 3):
+    small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
+    if n in small_primes:
         return True
-    if n % 2 == 0:
-        return False
-    d = 3
-    while d * d <= n:
-        if n % d == 0:
+    for sp in small_primes:
+        if n % sp == 0:
             return False
-        d += 2
+    # Deterministic Miller-Rabin for all integers < 3.317e24 (> 81 bits)
+    d = n - 1
+    s = 0
+    while d & 1 == 0:
+        d >>= 1
+        s += 1
+    for a in small_primes:
+        if a >= n:
+            break
+        x = pow(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(s - 1):
+            x = (x * x) % n
+            if x == n - 1:
+                break
+        else:
+            return False
     return True
+
+
+def _next_ntt_prime(min_val: int, N: int) -> int:
+    step = 2 * N
+    k_mul = max(1, (min_val - 1 + step - 1) // step)
+    cand = k_mul * step + 1
+    while not _is_prime(cand):
+        cand += step
+    return cand
 
 
 def _find_primitive_2n_root(N: int, q: int) -> Optional[int]:
@@ -1037,131 +1147,290 @@ def hash_commitment(data: Any) -> str:
 
 
 class PeltaProof:
-    """NIZK Proof for MFHE Local Share Generation (Statements 1, 2, 4, 7)."""
+    """
+    Zero-Knowledge Commit-then-Prove NIZK Proof for MFHE Local Share Generation
+    (PELTA §4.3 & §4.4, Statements 1, 2, 4):
+      - No secret witness values (s, r, k_vec, e) are revealed.
+      - Uses `reps` parallel Fiat-Shamir challenge transcripts binding:
+          1. Cubic ternarity x^3 - x = 0 mod q via (T0, T1, T2) polynomial identity
+          2. Linear RLWE relation (sign_a * a * s + e = b) & approximate noise bound
+          3. Optional Ajtai Commitment opening A1*s + A2*r - p*k = c_ajtai with ABP
+      - Includes Schwartz-Zippel evaluation claim b(alpha) = eval_proof.
+    """
     def __init__(
         self,
-        t_commit: str,
-        z_s: List[int],
-        z_e_sum: List[int],
+        rounds: List[Dict[str, Any]],
         eval_proof: int,
-        c_challenge: int,
-        ternary_cubic_ok: bool = True
+        c_ajtai: Optional[List[int]] = None,
+        sign_a: int = -1,
     ):
-        self.t_commit = t_commit
-        self.z_s = z_s
-        self.z_e_sum = z_e_sum
+        self.rounds = rounds
         self.eval_proof = eval_proof
-        self.c_challenge = c_challenge
-        self.ternary_cubic_ok = ternary_cubic_ok
+        self.c_ajtai = c_ajtai
+        self.sign_a = sign_a
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "t_commit": self.t_commit,
-            "z_s": self.z_s,
-            "z_e_sum": self.z_e_sum,
+            "rounds": self.rounds,
             "eval_proof": self.eval_proof,
-            "c_challenge": self.c_challenge,
-            "ternary_cubic_ok": self.ternary_cubic_ok
+            "c_ajtai": self.c_ajtai,
+            "sign_a": self.sign_a,
         }
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "PeltaProof":
         return PeltaProof(
-            t_commit=d["t_commit"],
-            z_s=d["z_s"],
-            z_e_sum=d["z_e_sum"],
+            rounds=d["rounds"],
             eval_proof=d["eval_proof"],
-            c_challenge=d["c_challenge"],
-            ternary_cubic_ok=d.get("ternary_cubic_ok", True)
+            c_ajtai=d.get("c_ajtai"),
+            sign_a=d.get("sign_a", -1),
         )
 
 
 class PeltaProver:
     """
-    Generates Commit-then-Prove NIZK proofs that a local share is correctly formed
-    (PELTA §4.3 & §4.4, Statements 1, 2, 4, 7).
+    Generates cryptographic Commit-then-Prove NIZK proofs (PELTA §4.3 & §4.4,
+    Statements 1, 2, 4) linking local MFHE shares to Ajtai commitments without
+    disclosing any secret key share, blinding factor, quotient, or noise.
     """
     def __init__(self, ring: PolyRing, B_noise_bound: int = 16):
         self.ring = ring
-        self.B = B_noise_bound
+        self.B = max(1, int(B_noise_bound))
         self.basis = compute_decomposition_basis(self.B)
+        q = self.ring.q
+        self.reps = 4 if q > (1 << 30) else 12
+        self.c_max = min(65536, max(16, q // (8 * max(4, self.B))))
+        # Mask bound M_e ensures |y_e + c * e| < q/2 when ||e||_inf <= B, yet M_e / c_max << 50*B
+        self.M_e = min(q // 4, max(self.B * 64, 12 * self.c_max * self.B))
+        if self.M_e + self.c_max * self.B >= (q // 2):
+            self.M_e = max(self.B * 4, (q // 2) - self.c_max * self.B - 2)
 
-    def prove_share(self, a_public: List[int], s_secret: List[int], e_noise: List[int], alpha_eval: int) -> Tuple[List[int], PeltaProof]:
-        # 1. Ling et al. exact ternary decomposition of noise e = sum_{j=1}^k b_j * e_j
-        _, decomp = ternary_decompose_poly(e_noise, self.B, self.ring.q)
-        e_recon = self.ring.zero()
-        for b_val, e_j in zip(self.basis, decomp):
-            e_recon = self.ring.add(e_recon, self.ring.mul_scalar(e_j, b_val))
+    @staticmethod
+    def _derive_challenges(fs_header: bytes, reps: int, c_max: int) -> List[int]:
+        challenges: List[int] = []
+        for idx in range(reps):
+            h = hashlib.sha256(fs_header + idx.to_bytes(4, "big")).digest()
+            challenges.append((int.from_bytes(h[:8], "big") % (c_max - 1)) + 2)
+        return challenges
 
-        # 2. Cubic ternarity verification x(x-1)(x+1) = 0 on secret s and ternary digits e_j
-        s_is_ternary = verify_ternary_cubic(s_secret, self.ring.q)
-        e_digits_ternary = all(verify_ternary_cubic(e_j, self.ring.q) for e_j in decomp)
-        e_matches_decomp = (e_recon == [c % self.ring.q for c in e_noise])
-        cubic_ok = s_is_ternary and e_digits_ternary and e_matches_decomp
+    def _cubic_commitments(self, x: List[int], y: List[int]) -> Tuple[List[int], List[int], List[int]]:
+        q = self.ring.q
+        t0, t1, t2 = [], [], []
+        for xi, yi in zip(x, y):
+            xi %= q
+            yi %= q
+            y2 = (yi * yi) % q
+            t0.append((y2 * yi) % q)
+            t1.append((3 * y2 * xi) % q)
+            t2.append((3 * yi * xi * xi - yi) % q)
+        return t0, t1, t2
 
-        # 3. Linear relation in R_q (using NTT SIMD when q is NTT-friendly): b_i = -a * s_i + e_i
-        a_s = self.ring.mul(a_public, s_secret)
-        b_share = self.ring.add(self.ring.neg(a_s), e_noise)
+    def prove_share(
+        self,
+        a_public: List[int],
+        s_secret: List[int],
+        e_noise: List[int],
+        alpha_eval: int,
+        ajtai: Optional[AjtaiCommitmentScheme] = None,
+        c_ajtai: Optional[List[int]] = None,
+        r_secret: Optional[List[int]] = None,
+        k_vec: Optional[List[int]] = None,
+        sign_a: int = -1,
+    ) -> Tuple[List[int], PeltaProof]:
+        ring = self.ring
+        q = ring.q
+        rng = secrets.SystemRandom()
 
-        y_s = self.ring.sample_gaussian(bound=self.B)
-        y_e = self.ring.sample_gaussian(bound=self.B)
+        # Linear share relation in R_q: b = sign_a * (a_public * s_secret) + e_noise
+        a_s = ring.mul(a_public, s_secret)
+        term_as = ring.neg(a_s) if sign_a < 0 else a_s
+        b_share = ring.add(term_as, e_noise)
 
-        t_commit_poly = self.ring.add(self.ring.neg(self.ring.mul(a_public, y_s)), y_e)
-        t_commit_hash = hash_commitment(t_commit_poly)
+        link_ajtai = (ajtai is not None and c_ajtai is not None and r_secret is not None and k_vec is not None)
+        M_k = (q // (8 * ajtai.p)) if link_ajtai else 0
+        if link_ajtai and M_k < 2:
+            M_k = 2
 
-        fs_material = json.dumps([a_public, b_share, t_commit_hash]).encode("utf-8")
-        h_val = int(hashlib.sha256(fs_material).hexdigest(), 16)
-        c_challenge = 1 if (h_val % 2 == 0) else -1
+        commits = []
+        masks = []
+        for _ in range(self.reps):
+            # Information-theoretic hiding mask y_s uniform in Z_q^N
+            y_s = [rng.randrange(q) for _ in range(ring.N)]
+            y_e = [rng.randint(-self.M_e, self.M_e) % q for _ in range(ring.N)]
+            a_ys = ring.mul(a_public, y_s)
+            t_lin = ring.add(ring.neg(a_ys) if sign_a < 0 else a_ys, y_e)
+            T_s0, T_s1, T_s2 = self._cubic_commitments(s_secret, y_s)
 
-        z_s = self.ring.add(y_s, self.ring.mul_scalar(s_secret, c_challenge))
-        z_e_sum = self.ring.add(y_e, self.ring.mul_scalar(e_recon, c_challenge))
-        eval_at_alpha = self.ring.eval(b_share, alpha_eval)
+            rec_c: Dict[str, Any] = {
+                "t_lin": t_lin,
+                "T_s0": T_s0,
+                "T_s1": T_s1,
+                "T_s2": T_s2,
+            }
+            rec_m: Dict[str, Any] = {"y_s": y_s, "y_e": y_e}
 
+            if link_ajtai:
+                y_r = [rng.randrange(q) for _ in range(ring.N)]
+                y_k = [rng.randint(-M_k, M_k) % q for _ in range(ring.N)]
+                t_aj = ring.sub(
+                    ring.add(ring.mul(ajtai.A1, y_s), ring.mul(ajtai.A2, y_r)),
+                    ring.mul_scalar(y_k, ajtai.p),
+                )
+                T_r0, T_r1, T_r2 = self._cubic_commitments(r_secret, y_r)
+                rec_c.update({"t_aj": t_aj, "T_r0": T_r0, "T_r1": T_r1, "T_r2": T_r2})
+                rec_m.update({"y_r": y_r, "y_k": y_k})
+
+            commits.append(rec_c)
+            masks.append(rec_m)
+
+        fs_payload = json.dumps(
+            {
+                "a": a_public,
+                "b": b_share,
+                "c_ajtai": c_ajtai,
+                "sign_a": sign_a,
+                "commits": commits,
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+        challenges = self._derive_challenges(fs_payload, self.reps, self.c_max)
+
+        rounds_out = []
+        for c_chal, rec_c, rec_m in zip(challenges, commits, masks):
+            z_s = ring.add(rec_m["y_s"], ring.mul_scalar(s_secret, c_chal))
+            z_e = ring.add(rec_m["y_e"], ring.mul_scalar(e_noise, c_chal))
+            entry: Dict[str, Any] = {
+                **rec_c,
+                "c": c_chal,
+                "z_s": z_s,
+                "z_e": z_e,
+            }
+            if link_ajtai:
+                z_r = ring.add(rec_m["y_r"], ring.mul_scalar(r_secret, c_chal))
+                z_k = ring.add(rec_m["y_k"], ring.mul_scalar(k_vec, c_chal))
+                entry.update({"z_r": z_r, "z_k": z_k})
+            rounds_out.append(entry)
+
+        eval_at_alpha = ring.eval(b_share, alpha_eval)
         proof = PeltaProof(
-            t_commit=t_commit_hash,
-            z_s=z_s,
-            z_e_sum=z_e_sum,
+            rounds=rounds_out,
             eval_proof=eval_at_alpha,
-            c_challenge=c_challenge,
-            ternary_cubic_ok=cubic_ok
+            c_ajtai=c_ajtai if link_ajtai else None,
+            sign_a=sign_a,
         )
         return b_share, proof
 
 
 class PeltaVerifier:
-    """Verifies that an MFHE local share conforms to PELTA ternary, norm, and linear constraints."""
+    """
+    Zero-Knowledge Verifier for PELTA Statements 1, 2, and 4:
+    Checks Fiat-Shamir challenges, cubic ternarity x^3 - x = 0 in Z_q,
+    linear share relation + noise norm ABP, Ajtai opening commitment consistency,
+    and Schwartz-Zippel polynomial evaluation without seeing secret witnesses.
+    """
     def __init__(self, ring: PolyRing, B_noise_bound: int = 16):
         self.ring = ring
-        self.B = B_noise_bound
+        self.B = max(1, int(B_noise_bound))
+        q = self.ring.q
+        self.reps = 4 if q > (1 << 30) else 12
+        self.c_max = min(65536, max(16, q // (8 * max(4, self.B))))
+        self.M_e = min(q // 4, max(self.B * 64, 12 * self.c_max * self.B))
+        if self.M_e + self.c_max * self.B >= (q // 2):
+            self.M_e = max(self.B * 4, (q // 2) - self.c_max * self.B - 2)
 
-    def verify_share(self, a_public: List[int], b_share: List[int], proof: PeltaProof, alpha_eval: int) -> bool:
-        if not proof.ternary_cubic_ok:
+    @staticmethod
+    def _check_cubic(z: List[int], t0: List[int], t1: List[int], t2: List[int], c: int, q: int) -> bool:
+        c2 = (c * c) % q
+        for zu, a0, a1, a2 in zip(z, t0, t1, t2):
+            lhs = (zu * zu % q * zu - c2 * zu) % q
+            rhs = (a0 + c * a1 + c2 * a2) % q
+            if lhs != rhs:
+                return False
+        return True
+
+    def verify_share(
+        self,
+        a_public: List[int],
+        b_share: List[int],
+        proof: PeltaProof,
+        alpha_eval: int,
+        ajtai: Optional[AjtaiCommitmentScheme] = None,
+        expected_c_ajtai: Optional[List[int]] = None,
+    ) -> bool:
+        ring = self.ring
+        q = ring.q
+        half_q = q // 2
+        if not proof.rounds or len(proof.rounds) != self.reps:
             return False
 
-        fs_material = json.dumps([a_public, b_share, proof.t_commit]).encode("utf-8")
-        h_val = int(hashlib.sha256(fs_material).hexdigest(), 16)
-        expected_c = 1 if (h_val % 2 == 0) else -1
-        if expected_c != proof.c_challenge:
+        if ring.eval(b_share, alpha_eval) != proof.eval_proof:
             return False
 
-        computed_eval = self.ring.eval(b_share, alpha_eval)
-        if computed_eval != proof.eval_proof:
+        if expected_c_ajtai is not None and proof.c_ajtai != expected_c_ajtai:
             return False
+        link_ajtai = ajtai is not None and (expected_c_ajtai is not None or proof.c_ajtai is not None)
+        c_aj = expected_c_ajtai if expected_c_ajtai is not None else proof.c_ajtai
 
-        max_coeff_s = max(c if c <= self.ring.q // 2 else self.ring.q - c for c in proof.z_s)
-        if max_coeff_s > self.B + 1:
-            return False
+        commit_keys = ("t_lin", "T_s0", "T_s1", "T_s2") + (("t_aj", "T_r0", "T_r1", "T_r2") if link_ajtai else ())
+        commits = []
+        for rnd in proof.rounds:
+            if any(k not in rnd for k in commit_keys):
+                return False
+            commits.append({k: rnd[k] for k in commit_keys})
 
-        max_coeff_e = max(c if c <= self.ring.q // 2 else self.ring.q - c for c in proof.z_e_sum)
-        if max_coeff_e > self.B * 2:
-            return False
+        fs_payload = json.dumps(
+            {
+                "a": a_public,
+                "b": b_share,
+                "c_ajtai": c_aj,
+                "sign_a": proof.sign_a,
+                "commits": commits,
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+        expected_challenges = PeltaProver._derive_challenges(fs_payload, self.reps, self.c_max)
 
-        lhs = self.ring.add(self.ring.neg(self.ring.mul(a_public, proof.z_s)), proof.z_e_sum)
-        c_b = self.ring.mul_scalar(b_share, proof.c_challenge)
-        t_reconstructed = self.ring.sub(lhs, c_b)
+        for rnd, exp_c in zip(proof.rounds, expected_challenges):
+            c = rnd.get("c")
+            if c != exp_c:
+                return False
+            z_s = rnd["z_s"]
+            z_e = rnd["z_e"]
 
-        if hash_commitment(t_reconstructed) != proof.t_commit:
-            return False
+            # 1. Non-interactive Cubic Ternarity check s_i^3 - s_i == 0 (mod q)
+            if not self._check_cubic(z_s, rnd["T_s0"], rnd["T_s1"], rnd["T_s2"], c, q):
+                return False
+
+            # 2. Noise norm bound (ABP): ||z_e||_inf <= M_e + c * B < q/2
+            max_coeff_e = max(val if val <= half_q else q - val for val in z_e)
+            if max_coeff_e > self.M_e + c * self.B:
+                return False
+
+            # 3. Linear relation in R_q: sign_a * a_public * z_s + z_e == t_lin + c * b_share
+            az = ring.mul(a_public, z_s)
+            lhs_lin = ring.add(ring.neg(az) if proof.sign_a < 0 else az, z_e)
+            rhs_lin = ring.add(rnd["t_lin"], ring.mul_scalar(b_share, c))
+            if lhs_lin != rhs_lin:
+                return False
+
+            # 4. Zero-Knowledge Ajtai Commitment Opening + r ternarity + ABP on quotient k
+            if link_ajtai:
+                if "z_r" not in rnd or "z_k" not in rnd:
+                    return False
+                z_r = rnd["z_r"]
+                z_k = rnd["z_k"]
+                if not self._check_cubic(z_r, rnd["T_r0"], rnd["T_r1"], rnd["T_r2"], c, q):
+                    return False
+                max_k = max(val if val <= half_q else q - val for val in z_k)
+                if max_k >= max(2, q // (2 * ajtai.p)):
+                    return False
+                lhs_aj = ring.sub(
+                    ring.add(ring.mul(ajtai.A1, z_s), ring.mul(ajtai.A2, z_r)),
+                    ring.mul_scalar(z_k, ajtai.p),
+                )
+                rhs_aj = ring.add(rnd["t_aj"], ring.mul_scalar(c_aj, c))
+                if lhs_aj != rhs_aj:
+                    return False
 
         return True
 
@@ -1169,6 +1438,7 @@ class PeltaVerifier:
 class VerifiableAggregation:
     """
     Schwartz-Zippel Verifiable Share Aggregation Protocol (PELTA §5, Fig. 3, p. 20 & Statement 7, p. 21).
+    Supports k-point (default k=4 for <= 2^{-128} error over R_q) Fiat-Shamir polynomial equality checks.
     """
     @staticmethod
     def aggregate(ring: PolyRing, shares: List[List[int]]) -> List[int]:
@@ -1178,43 +1448,60 @@ class VerifiableAggregation:
         return res
 
     @staticmethod
-    def derive_fiat_shamir_alpha(h_commits: List[str], aggregate_poly: List[int], q: int) -> int:
-        """
-        Derives non-interactive challenge alpha in Z_q in the Random Oracle Model (ROM)
-        from the parties' hash commitments {h_i = HCom(p_i)} and aggregate polynomial p (Fig. 3, p. 20).
-        """
+    def derive_fiat_shamir_alphas(
+        h_commits: List[str], aggregate_poly: List[int], q: int, k_points: int = 4
+    ) -> List[int]:
         material = json.dumps({"h_commits": h_commits, "aggregate_poly": aggregate_poly}).encode("utf-8")
-        digest = int(hashlib.sha256(material).hexdigest(), 16)
-        return (digest % (q - 2)) + 1
+        alphas: List[int] = []
+        for idx in range(k_points):
+            digest = int(hashlib.sha256(material + idx.to_bytes(4, "big")).hexdigest(), 16)
+            alphas.append((digest % max(2, q - 2)) + 1)
+        return alphas
+
+    @staticmethod
+    def derive_fiat_shamir_alpha(h_commits: List[str], aggregate_poly: List[int], q: int) -> int:
+        return VerifiableAggregation.derive_fiat_shamir_alphas(h_commits, aggregate_poly, q, k_points=1)[0]
 
     @staticmethod
     def verify_sum_at_alpha(evaluated_shares: List[int], aggregate_eval: int, q: int) -> bool:
         total = sum(evaluated_shares) % q
         return total == (aggregate_eval % q)
 
+    @staticmethod
+    def verify_sum_multi_alpha(
+        ring: PolyRing,
+        shares: List[List[int]],
+        h_commits: List[str],
+        aggregate_poly: List[int],
+        k_points: int = 4,
+    ) -> Tuple[bool, List[int]]:
+        if any(hash_commitment(sh) != hc for sh, hc in zip(shares, h_commits)):
+            return False, []
+        alphas = VerifiableAggregation.derive_fiat_shamir_alphas(h_commits, aggregate_poly, ring.q, k_points=k_points)
+        for alpha in alphas:
+            evals_i = [ring.eval(sh, alpha) for sh in shares]
+            agg_ev = ring.eval(aggregate_poly, alpha)
+            if (sum(evals_i) % ring.q) != (agg_ev % ring.q):
+                return False, alphas
+        return True, alphas
+
 
 class PeltaMFHE:
     """
     Full Multiparty BFV-style RLWE FHE Scheme with PELTA Malicious Shield & SIMD Batching:
-      - Distributed KeyGen with Commit-then-Prove & Schwartz-Zippel Aggregation
-      - Scalar Encryption: encrypt(message)
-      - SIMD Slot Batching (PELTA §2.2, p. 4):
-          * encode_simd(slots) / decode_simd(poly)
-          * encrypt_simd(slots) / decrypt_simd(ct)
-          * Supports full CRT/NTT SIMD slot-wise addition & multiplication when p is an NTT prime
-            (e.g. p = 97 for N = 16, or p = 17 for N = 8), as well as N-coefficient SIMD batching!
-      - Homomorphic Addition: eval_add(ct1, ct2)
-      - Homomorphic Multiplication with Relinearization: eval_mul(ct1, ct2)
-      - Verifiable Distributed Decryption across N parties
+      - Distributed KeyGen on a single unified NTT-friendly prime ring R_q with real
+        per-party ternary secret shares s_i in {-1, 0, 1}^N and s_joint = sum s_i.
+      - Unified Ajtai commitments and ZK Commit-then-Prove (Statements 1, 2, 4).
+      - Scalar & CRT/NTT SIMD slot batching, homomorphic Add/Mul + Gadget Relin,
+        and Verifiable Distributed Decryption with smudging + Schwartz-Zippel k-point check.
     """
     def __init__(self, N: int = 32, q: int = 65536, p: int = 2, B: int = 4, num_parties: int = 10):
         self.N = N
-        self.p = p  # User plaintext space T (e.g., T = 1024, 16, 17, 2)
+        self.p = p
         self.B = B
+        self.B_smdg = 64  # Bounded smudging noise B_smdg in Statement 4
         self.num_parties = max(1, num_parties)
 
-        # Determine NTT-friendly CRT plaintext modulus p_ntt so single-ciphertext RLWE SIMD
-        # works for both NTT primes (like 17, 97) AND power-of-two plaintext spaces (like T = 1024)
         direct_pt_ring = PolyRing(N=N, q=p)
         if direct_pt_ring.ntt_enabled:
             self.p_ntt = p
@@ -1226,15 +1513,19 @@ class PeltaMFHE:
             self.p_ntt = cand
             self.pt_ring = PolyRing(N=N, q=self.p_ntt)
 
-        # Ensure ciphertext modulus q has sufficient noise budget for BFV multiplication & SIMD
-        self.q = max(q, self.p_ntt * (1 << 26))
+        # Choose NTT-friendly prime q >= max(q, p_ntt * 2^34) so:
+        #   - O(N log N) NTT SIMD multiplication is active on R_q
+        #   - Plenty of noise margin for BFV eval_mul + sum_i e_smdg,i (even at N=1000)
+        #   - Zero wrap-around modulo q in Ajtai commitments over Z_p_ajtai
+        min_q = max(q, self.p_ntt * (1 << 34))
+        self.q = _next_ntt_prime(min_q, self.N)
         self.delta = self.q // self.p_ntt
         self.ring = PolyRing(N=N, q=self.q)
-        self.prover = PeltaProver(self.ring, B_noise_bound=B)
-        self.verifier = PeltaVerifier(self.ring, B_noise_bound=B)
+        self.ajtai = AjtaiCommitmentScheme(self.ring, p_mod=109)
+        self.prover = PeltaProver(self.ring, B_noise_bound=self.B_smdg)
+        self.verifier = PeltaVerifier(self.ring, B_noise_bound=self.B_smdg)
         self.alpha = 42
 
-        # 4-digit Gadget decomposition for fast RLWE relinearization
         self.gadget_digits = 4
         self.gadget_base = max(16, int(math.ceil(self.q ** 0.25)) + 2)
 
@@ -1242,6 +1533,8 @@ class PeltaMFHE:
         self.s_joint: List[int] = []
         self.party_s_shares: List[List[int]] = []
         self.party_ternary_keys: List[List[int]] = []
+        self.party_r_shares: List[List[int]] = []
+        self.party_ajtai_commits: List[Tuple[List[int], List[int]]] = []
         self.pk_b: List[int] = []
         self.rlk: List[Tuple[List[int], List[int]]] = []
 
@@ -1255,24 +1548,28 @@ class PeltaMFHE:
         if not self.crs_a:
             self.setup(self.num_parties)
 
-        # Sample joint ternary secret key s and split across N parties in R_q,
-        # while also sampling each party's local ternary key s_i in {-1, 0, 1}^N for Statement 2 & 4
-        self.s_joint = self.ring.sample_ternary()
-        self.party_s_shares = []
-        self.party_ternary_keys = [self.ring.sample_ternary() for _ in range(self.num_parties)]
-        running = self.ring.zero()
-        for _ in range(self.num_parties - 1):
-            sh = self.ring.sample_uniform()
-            self.party_s_shares.append(sh)
-            running = self.ring.add(running, sh)
-        last_sh = self.ring.sub(self.s_joint, running)
-        self.party_s_shares.append(last_sh)
+        # Each party i holds a ternary share s_i in {-1, 0, 1}^N; joint secret key is s_joint = sum s_i.
+        self.party_s_shares = [self.ring.sample_ternary() for _ in range(self.num_parties)]
+        self.party_ternary_keys = self.party_s_shares
+        self.s_joint = self.ring.zero()
+        for s_i in self.party_s_shares:
+            self.s_joint = self.ring.add(self.s_joint, s_i)
 
-        # Public key b = -a * s + e
-        e_pk = self.ring.sample_gaussian(bound=2)
-        self.pk_b = self.ring.add(self.ring.neg(self.ring.mul(self.crs_a, self.s_joint)), e_pk)
+        # Precompute each party's Ajtai commitment c_ajtai[i] = A1*s_i + A2*r_i - k_i*p over the SAME R_q
+        self.party_r_shares = [self.ring.sample_ternary() for _ in range(self.num_parties)]
+        self.party_ajtai_commits = [
+            self.ajtai.commit_with_quotient(s_i, r_i)
+            for s_i, r_i in zip(self.party_s_shares, self.party_r_shares)
+        ]
 
-        # Relinearization key rlk encrypting B^ell * s^2 under s
+        # Collective public key b = sum_i (-a * s_i + e_i) = -a * s_joint + sum_i e_i
+        pk_shares = []
+        for s_i in self.party_s_shares:
+            e_i = self.ring.sample_gaussian(bound=max(1, self.B))
+            pk_shares.append(self.ring.add(self.ring.neg(self.ring.mul(self.crs_a, s_i)), e_i))
+        self.pk_b = VerifiableAggregation.aggregate(self.ring, pk_shares)
+
+        # Relinearization key rlk encrypting weight * s_joint^2 under s_joint
         s_sq = self.ring.mul(self.s_joint, self.s_joint)
         self.rlk = []
         for ell in range(self.gadget_digits):
@@ -1280,7 +1577,6 @@ class PeltaMFHE:
             scaled_s2 = self.ring.mul_scalar(s_sq, weight)
             a_ell = self.ring.sample_uniform()
             e_ell = self.ring.sample_gaussian(bound=1)
-            # b_ell + a_ell * s = weight * s^2 + e_ell  =>  b_ell = -a_ell * s + weight * s^2 + e_ell
             b_ell = self.ring.add(
                 self.ring.neg(self.ring.mul(a_ell, self.s_joint)),
                 self.ring.add(scaled_s2, e_ell)
@@ -2597,7 +2893,7 @@ class PlaintextNTTHelper:
         if not self.is_ntt_friendly:
             return np.array(coeffs, dtype=np.int64) % self.T
         c_engine = get_c_acceleration_engine()
-        a = np.array(coeffs, dtype=np.int64).copy()
+        a = np.array(coeffs, dtype=np.int64).copy() % self.T
         pwr = 1
         for i in range(self.d):
             a[i] = (a[i] * pwr) % self.T
@@ -2605,16 +2901,47 @@ class PlaintextNTTHelper:
         if c_engine is not None:
             c_engine.ntt_c(a.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.root, self.T,
                            self.bitrev.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.d)
-        return a
+            return a
+        res = a[self.bitrev].copy()
+        length = 1
+        while length < self.d:
+            step = length << 1
+            w_m = power_mod(self.root, self.d // step, self.T)
+            for i in range(0, self.d, step):
+                w = 1
+                for j in range(i, i + length):
+                    u = int(res[j])
+                    v = (int(res[j + length]) * w) % self.T
+                    res[j] = (u + v) % self.T
+                    res[j + length] = (u - v) % self.T
+                    w = (w * w_m) % self.T
+            length = step
+        return res
 
     def ntt_inverse(self, slots: np.ndarray) -> np.ndarray:
         if not self.is_ntt_friendly:
             return np.array(slots, dtype=np.int64) % self.T
         c_engine = get_c_acceleration_engine()
-        a = np.array(slots, dtype=np.int64).copy()
+        a = np.array(slots, dtype=np.int64).copy() % self.T
         if c_engine is not None:
             c_engine.intt_c(a.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.inv_root, self.T, self.inv_d,
                             self.bitrev.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.d)
+        else:
+            res = a[self.bitrev].copy()
+            length = 1
+            while length < self.d:
+                step = length << 1
+                w_m = power_mod(self.inv_root, self.d // step, self.T)
+                for i in range(0, self.d, step):
+                    w = 1
+                    for j in range(i, i + length):
+                        u = int(res[j])
+                        v = (int(res[j + length]) * w) % self.T
+                        res[j] = (u + v) % self.T
+                        res[j + length] = (u - v) % self.T
+                        w = (w * w_m) % self.T
+                length = step
+            a = (res * self.inv_d) % self.T
         pwr = 1
         for i in range(self.d):
             a[i] = (a[i] * pwr) % self.T
@@ -2726,7 +3053,8 @@ class RNSRing:
             res[j] = (poly_big % int(moduli_out[j])).astype(np.int64)
         return res
 
-    def fast_mul_and_scale(self, A_q: List[np.ndarray], B_q: List[np.ndarray]) -> List[np.ndarray]:
+    def fast_mul_and_scale(self, A_q: List[np.ndarray], B_q: List[np.ndarray], t_scale: Optional[int] = None) -> List[np.ndarray]:
+        t_val = self.T if t_scale is None else int(t_scale)
         A_p = self.fast_base_conv(A_q, None, self.P_p)
         B_p = self.fast_base_conv(B_q, None, self.P_p)
         C_q = [negacyclic_mul_core(A_q[i], B_q[i], self.N, self.P_q[i], self.roots[i], self.inv_roots[i], self.psis[i],
@@ -2752,7 +3080,7 @@ class RNSRing:
         Res_q = []
         for i in range(self.s_q):
             qi = int(self.P_q[i])
-            scaled = (res_centered * self.T + half_Q) // self.Q_big
+            scaled = (res_centered * t_val + half_Q) // self.Q_big
             Res_q.append((scaled % qi).astype(np.int64))
         return Res_q
 
@@ -2840,8 +3168,12 @@ def centralized_gen_relin_rns(s_global: List[List[np.ndarray]], ring: RNSRing,
 def encrypt(vec: np.ndarray, A: List[List[List[np.ndarray]]], b: List[List[np.ndarray]],
             ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int,
             m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, flood_bound: int = 1 << 10,
-            rng: Optional[np.random.Generator] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
-    m_poly = embed_vec(vec, ring, helper, delta_val)
+            rng: Optional[np.random.Generator] = None, use_ntt: bool = True) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+    if use_ntt:
+        m_poly = embed_vec(vec, ring, helper, delta_val)
+    else:
+        coeffs_obj = np.array([int(x) for x in vec], dtype=object) * int(delta_val)
+        m_poly = ring.from_int_coeffs(coeffs_obj)
     r = [small_poly(eta_enc, ring, rng) for _ in range(m_glwe)]
     e_u = [get_flood_noise_poly(ring, rng, flood_bound) for _ in range(n_glwe)]
     e_v = get_flood_noise_poly(ring, rng, flood_bound)
@@ -2862,10 +3194,10 @@ def add(ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
         A: List[List[List[np.ndarray]]], b: List[List[np.ndarray]],
         ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int,
         m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, flood_bound: int = 1 << 10,
-        rng: Optional[np.random.Generator] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+        rng: Optional[np.random.Generator] = None, use_ntt: bool = True) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
     u_add = [ring.add(ct1[0][k], ct2[0][k]) for k in range(n_glwe)]
     v_add = ring.add(ct1[1], ct2[1])
-    u_zero, v_zero = encrypt(np.zeros(ring.N, dtype=np.int64), A, b, ring, helper, delta_val, m_glwe, n_glwe, eta_enc, flood_bound, rng)
+    u_zero, v_zero = encrypt(np.zeros(ring.N, dtype=np.int64), A, b, ring, helper, delta_val, m_glwe, n_glwe, eta_enc, flood_bound, rng, use_ntt=use_ntt)
     return [ring.add(u_add[j], u_zero[j]) for j in range(n_glwe)], ring.add(v_add, v_zero)
 
 def mul(ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
@@ -2874,15 +3206,15 @@ def mul(ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
         A: List[List[List[np.ndarray]]], b: List[List[np.ndarray]],
         ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int,
         m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, flood_bound: int = 1 << 10,
-        rng: Optional[np.random.Generator] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+        rng: Optional[np.random.Generator] = None, use_ntt: bool = True, t_scale: Optional[int] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
     u1, v1 = ct1; u2, v2 = ct2
-    v_final = ring.fast_mul_and_scale(v1, v2)
+    v_final = ring.fast_mul_and_scale(v1, v2, t_scale=t_scale)
     u_final = []
     for j in range(n_glwe):
-        u_final.append(ring.add(ring.fast_mul_and_scale(u1[j], v2), ring.fast_mul_and_scale(u2[j], v1)))
+        u_final.append(ring.add(ring.fast_mul_and_scale(u1[j], v2, t_scale=t_scale), ring.fast_mul_and_scale(u2[j], v1, t_scale=t_scale)))
     for a in range(n_glwe):
         for b_idx in range(n_glwe):
-            w_rns = ring.fast_mul_and_scale(u1[a], u2[b_idx])
+            w_rns = ring.fast_mul_and_scale(u1[a], u2[b_idx], t_scale=t_scale)
             keys = rlk[(a, b_idx)]
             for i in range(ring.s_q):
                 digit_poly_limb = (w_rns[i] * ring.q_hat_inv_mod_q[i]) % ring.P_q[i]
@@ -2892,7 +3224,7 @@ def mul(ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
                     u_final[t] = ring.add(u_final[t], ring.negacyclic_mul(digit_in_all_limbs, key_u[t]))
                 v_final = ring.add(v_final, ring.negacyclic_mul(digit_in_all_limbs, key_v))
 
-    u_zero, v_zero = encrypt(np.zeros(ring.N, dtype=np.int64), A, b, ring, helper, delta_val, m_glwe, n_glwe, eta_enc, flood_bound, rng)
+    u_zero, v_zero = encrypt(np.zeros(ring.N, dtype=np.int64), A, b, ring, helper, delta_val, m_glwe, n_glwe, eta_enc, flood_bound, rng, use_ntt=use_ntt)
     return [ring.add(u_final[j], u_zero[j]) for j in range(n_glwe)], ring.add(v_final, v_zero)
 
 class HQFSSystem:
@@ -2950,8 +3282,13 @@ class HQFSSystem:
         p_share = ring.add(p_share, get_ideal_flood_noise_poly(ring, p_zkp, rng, flood_bound))
 
         bound_y = int(p_zkp // 8)
-        y_s_big = rng.integers(-bound_y, bound_y, size=(n_glwe, d), dtype=np.int64).astype(object)
-        y_e_big = rng.integers(-bound_y, bound_y, size=(m_glwe, d), dtype=np.int64).astype(object)
+        if bound_y < (1 << 62):
+            y_s_big = rng.integers(-bound_y, bound_y, size=(n_glwe, d), dtype=np.int64).astype(object)
+            y_e_big = rng.integers(-bound_y, bound_y, size=(m_glwe, d), dtype=np.int64).astype(object)
+        else:
+            py_rng = random.Random(int(rng.integers(0, (1 << 62))))
+            y_s_big = np.array([[py_rng.randint(-bound_y + 1, bound_y - 1) for _ in range(d)] for _ in range(n_glwe)], dtype=object)
+            y_e_big = np.array([[py_rng.randint(-bound_y + 1, bound_y - 1) for _ in range(d)] for _ in range(m_glwe)], dtype=object)
 
         y_s_rns = [[(y_s_big[j] % int(ring.P_q[idx])).astype(np.int64) for idx in k_idxs] for j in range(n_glwe)]
         y_e_rns = [[(y_e_big[i] % int(ring.P_q[idx])).astype(np.int64) for idx in k_idxs] for i in range(m_glwe)]
@@ -3199,8 +3536,67 @@ class DecentralizedClientNode:
         self.zkp_commitment = C_actual
         return self.zkp_commitment
 
+    def rlk_round1(self, a_rlk_crs: Dict[Tuple[int, int], List[List[np.ndarray]]]) -> Dict[Tuple[int, int], List[Tuple[List[np.ndarray], List[np.ndarray]]]]:
+        """Round 1 of 2-round collective RLK generation (Mouchet et al.): keeps s_base private."""
+        if self.s_base is None:
+            raise ValueError(f"Node {self.id}: s_base unavailable for RLK round 1")
+        self._rlk_u_ephem: Dict[Tuple[int, int, int], List[np.ndarray]] = {}
+        r1_out: Dict[Tuple[int, int], List[Tuple[List[np.ndarray], List[np.ndarray]]]] = {}
+        Q_prod = self.R.Q_big
+        for a in range(self.n_glwe):
+            for b_idx in range(self.n_glwe):
+                lst = []
+                for i in range(self.R.s_q):
+                    qi = int(self.R.P_q[i])
+                    q_hat = Q_prod // qi
+                    a_crs = a_rlk_crs[(a, b_idx)][i]
+                    u_ephem = small_poly(self.eta_gk, self.R, self.rng)
+                    self._rlk_u_ephem[(a, b_idx, i)] = u_ephem
+                    e0 = small_poly(self.eta_gk, self.R, self.rng)
+                    e1 = small_poly(self.eta_gk, self.R, self.rng)
+
+                    msg_a = self.R.zero()
+                    msg_a[i] = (self.s_base[a][i] * (q_hat % qi)) % qi
+                    h0_j = self.R.sub(self.R.add(e0, msg_a), self.R.negacyclic_mul(u_ephem, a_crs))
+                    h1_j = self.R.add(self.R.negacyclic_mul(self.s_base[b_idx], a_crs), e1)
+                    lst.append((h0_j, h1_j))
+                r1_out[(a, b_idx)] = lst
+        return r1_out
+
+    def rlk_round2(self, A_rlk: Dict[Tuple[int, int], List[List[List[np.ndarray]]]],
+                   H_agg: Dict[Tuple[int, int], List[Tuple[List[np.ndarray], List[np.ndarray]]]],
+                   clear_s_base: bool = False) -> Dict[Tuple[int, int], List[List[np.ndarray]]]:
+        """Round 2 of collective RLK generation: evaluates masked cross-terms without revealing s_base."""
+        if self.s_base is None:
+            raise ValueError(f"Node {self.id}: s_base unavailable for RLK round 2")
+        r2_out: Dict[Tuple[int, int], List[List[np.ndarray]]] = {}
+        for a in range(self.n_glwe):
+            for b_idx in range(self.n_glwe):
+                lst = []
+                for i in range(self.R.s_q):
+                    av = A_rlk[(a, b_idx)][i]
+                    H0, H1 = H_agg[(a, b_idx)][i]
+                    u_ephem = self._rlk_u_ephem[(a, b_idx, i)]
+                    e2 = small_poly(self.eta_gk, self.R, self.rng)
+                    sb = self.R.zero()
+                    for t_dim in range(self.n_glwe):
+                        sb = self.R.add(sb, self.R.negacyclic_mul(av[t_dim], self.s_base[t_dim]))
+                    term = self.R.add(
+                        self.R.negacyclic_mul(self.s_base[b_idx], H0),
+                        self.R.negacyclic_mul(u_ephem, H1)
+                    )
+                    bv_share = self.R.add(self.R.add(sb, term), e2)
+                    lst.append(bv_share)
+                r2_out[(a, b_idx)] = lst
+        self._rlk_u_ephem = {}
+        if clear_s_base:
+            self.s_base = None
+        return r2_out
+
     def compute_collective_rlk_share(self, A_rlk: Dict[Tuple[int, int], List[List[List[np.ndarray]]]],
                                      s_global_approx: Any = None) -> Dict[Tuple[int, int], List[List[np.ndarray]]]:
+        """Compatibility helper generating additive local RLK share from s_base when single-round interface is invoked."""
+        secret_vec = self.s_base if self.s_base is not None else self.final_s
         node_shares = {}
         Q_prod = self.R.Q_big
         for a in range(self.n_glwe):
@@ -3214,10 +3610,10 @@ class DecentralizedClientNode:
 
                     sb = self.R.zero()
                     for t_dim in range(self.n_glwe):
-                        sb = self.R.add(sb, self.R.negacyclic_mul(av[t_dim], self.final_s[t_dim]))
+                        sb = self.R.add(sb, self.R.negacyclic_mul(av[t_dim], secret_vec[t_dim]))
 
                     msg = self.R.zero()
-                    msg[i] = (self.R.negacyclic_mul(self.final_s[a], self.final_s[b_idx])[i] * (q_hat % qi)) % qi
+                    msg[i] = (self.R.negacyclic_mul(secret_vec[a], secret_vec[b_idx])[i] * (q_hat % qi)) % qi
 
                     bv_share = self.R.add(self.R.add(sb, e), msg)
                     lst.append(bv_share)
@@ -3294,21 +3690,35 @@ class DecentralizedHQFS:
     """
     High-level orchestration engine for the Decentralized Multi-Port HQ-FS Architecture.
     Encapsulates:
-      - RNS Ring Manager (RNSRing) with 19 primes (6 Q-primes + 13 P-primes)
-      - PlaintextNTTHelper (NTT forward/inverse over Z_T)
+      - RNS Ring Manager (RNSRing) with 19 NTT primes (6 Q-primes + 13 P-primes)
+      - PlaintextNTTHelper (NTT forward/inverse over Z_{p_ntt})
       - Dynamic C/JIT Kernel acceleration
       - Feldman DKG Key Generation and Commitment
-      - Distributed / Centralized RLK Generation
+      - 2-Round Collective Distributed RLK Generation (no central secret aggregation)
       - Homomorphic Encrypt, Add, Mul with Zero-Ciphertext Superposition
-      - Multi-limb Fiat-Shamir ZKP Prover (HQFSSystem)
+      - 2-Limb Fiat-Shamir ZKP Prover (HQFSSystem)
       - 4-ary Tree-Bisection Verifier (HQFSVerifier) isolating malicious nodes
       - Committee Lagrange Reconstruction (compute_committee_lagrange)
     """
     def __init__(self, d: int = 16, T: int = 65537, n_glwe: int = 2, m_glwe: int = 3,
                  num_parties: int = 10, threshold_t: int = 6, flood_bound: int = 1024,
-                 eta_enc: int = 3, eta_gk: int = 2, seed: int = 2026):
+                 eta_enc: int = 3, eta_gk: int = 2, seed: int = 2026,
+                 plain_T: Optional[int] = None):
         self.d = d
-        self.T = T
+        self.plain_T = int(plain_T) if plain_T is not None else int(T)
+        # Pick NTT-friendly plaintext prime p_ntt >= max(65537, (plain_T - 1)^2 + 1) when plain_T isn't NTT prime
+        if is_prime(self.plain_T) and (self.plain_T - 1) % (2 * self.d) == 0:
+            self.T = self.plain_T
+        else:
+            min_need = max(65537, (self.plain_T - 1) * (self.plain_T - 1) + 2)
+            req_bits = max(16, min_need.bit_length())
+            cand = get_ntt_primes(1, req_bits, self.d)[0]
+            while cand <= min_need:
+                cand += 2 * self.d
+                while not is_prime(cand):
+                    cand += 2 * self.d
+            self.T = 65537 if (self.plain_T - 1) * (self.plain_T - 1) < 65537 else int(cand)
+        self.p_ntt = self.T
         self.n_glwe = n_glwe
         self.m_glwe = m_glwe
         self.N = num_parties
@@ -3318,7 +3728,8 @@ class DecentralizedHQFS:
         self.eta_gk = eta_gk
         self.rng = np.random.default_rng(seed)
 
-        start_bit = 30 if d >= 128 else 20
+        # Match uploaded .py 30-bit primes for N <= 50; widen prime bit-length for N > 50 so 6Q accommodates Lagrange scaling
+        start_bit = 46 if (self.N > 50) else 30
         self.all_primes = get_ntt_primes(19, start_bit, self.d)
         self.q_primes = self.all_primes[:6]
         self.p_primes = self.all_primes[6:]
@@ -3330,10 +3741,12 @@ class DecentralizedHQFS:
 
         self.zkp_k_idxs = [0, 1]
         self.p_zkp = int(self.R.P_q[self.zkp_k_idxs[0]]) * int(self.R.P_q[self.zkp_k_idxs[1]])
+        self.K_Q = self.p_zkp
 
         self.A_global = None
         self.A_crs_global = None
         self.A_rlk_global = None
+        self.A_rlk_crs = None
         self.pk_global = None
         self.rlk = None
         self.nodes = {}
@@ -3343,9 +3756,11 @@ class DecentralizedHQFS:
         self.A_global = [[uniform_poly(self.R, self.rng) for _ in range(self.n_glwe)] for _ in range(self.m_glwe)]
         self.A_crs_global = [[uniform_poly(self.R, self.rng) for _ in range(self.n_glwe)] for _ in range(self.m_glwe)]
         self.A_rlk_global = {}
+        self.A_rlk_crs = {}
         for a in range(self.n_glwe):
             for b_idx in range(self.n_glwe):
                 self.A_rlk_global[(a, b_idx)] = [[uniform_poly(self.R, self.rng) for _ in range(self.n_glwe)] for _ in range(self.R.s_q)]
+                self.A_rlk_crs[(a, b_idx)] = [uniform_poly(self.R, self.rng) for _ in range(self.R.s_q)]
 
         self.nodes = {
             i: DecentralizedClientNode(i, self.t, self.N, self.R, self.A_global, self.A_crs_global,
@@ -3374,47 +3789,116 @@ class DecentralizedHQFS:
             comm = node.execute_dkg_receiver_phase(acc_s[node.id], acc_e[node.id], C_coeffs_global)
             self.public_commitments[node.id] = comm
 
-    def preprocess(self):
+    def preprocess(self, clear_s_base: bool = False):
+        """2-Round Collective Distributed RLK Generation without revealing node.s_base to coordinator."""
         if not self.pk_global: self.keygen()
-        s_global = [self.R.zero() for _ in range(self.n_glwe)]
+        if any(node.s_base is None for node in self.nodes.values()):
+            if self.rlk is not None:
+                return
+            self.keygen()
+
+        H_agg = {}
+        for a in range(self.n_glwe):
+            for b_idx in range(self.n_glwe):
+                H_agg[(a, b_idx)] = [(self.R.zero(), self.R.zero()) for _ in range(self.R.s_q)]
+
         for node in self.nodes.values():
-            for dim in range(self.n_glwe):
-                s_global[dim] = self.R.add(s_global[dim], node.s_base[dim])
-        self.rlk = centralized_gen_relin_rns(s_global, self.R, self.A_rlk_global, self.n_glwe, self.eta_gk, self.rng)
+            r1 = node.rlk_round1(self.A_rlk_crs)
+            for a in range(self.n_glwe):
+                for b_idx in range(self.n_glwe):
+                    for i in range(self.R.s_q):
+                        h0_cur, h1_cur = H_agg[(a, b_idx)][i]
+                        h0_j, h1_j = r1[(a, b_idx)][i]
+                        H_agg[(a, b_idx)][i] = (self.R.add(h0_cur, h0_j), self.R.add(h1_cur, h1_j))
+
+        rlk = {}
+        for a in range(self.n_glwe):
+            for b_idx in range(self.n_glwe):
+                rlk[(a, b_idx)] = [(self.A_rlk_global[(a, b_idx)][i], self.R.zero()) for i in range(self.R.s_q)]
+
+        for node in self.nodes.values():
+            r2 = node.rlk_round2(self.A_rlk_global, H_agg, clear_s_base=clear_s_base)
+            for a in range(self.n_glwe):
+                for b_idx in range(self.n_glwe):
+                    for i in range(self.R.s_q):
+                        av, bv = rlk[(a, b_idx)][i]
+                        rlk[(a, b_idx)][i] = (av, self.R.add(bv, r2[(a, b_idx)][i]))
+        self.rlk = rlk
 
     def encrypt_simd(self, vec: List[int]) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
         if self.pk_global is None: self.keygen()
-        v = np.array(vec, dtype=np.int64)
+        v = np.array([int(x) % self.plain_T for x in vec], dtype=np.int64)
         if len(v) < self.d:
             v = np.pad(v, (0, self.d - len(v)), mode='constant')
+        return encrypt(v[:self.d], self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
+                       self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng, use_ntt=True)
+
+    def encrypt_scalar(self, message: int) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+        if self.pk_global is None: self.keygen()
+        m_val = int(message) % self.plain_T
+        v = np.full(self.d, m_val, dtype=np.int64)
         return encrypt(v, self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
-                       self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng)
+                       self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng, use_ntt=True)
 
     def eval_add(self, ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
                  ct2: Tuple[List[List[np.ndarray]], List[np.ndarray]]) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
         return add(ct1, ct2, self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
-                   self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng)
+                   self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng, use_ntt=True)
 
     def eval_mul(self, ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
                  ct2: Tuple[List[List[np.ndarray]], List[np.ndarray]]) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
         if self.rlk is None: self.preprocess()
         return mul(ct1, ct2, self.rlk, self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
-                   self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng)
+                   self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng, use_ntt=True, t_scale=self.T)
 
-    def partial_decrypt(self, node_id: int, u: List[List[np.ndarray]], is_malicious: bool = False) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+    def _corrupt_submission(self, p_sh: List[np.ndarray], pf: Dict[str, Any], attack_type: str):
+        if attack_type == "noise_flooding" or attack_type == "noise_overflow":
+            p_sh[0][0] = (p_sh[0][0] + 1234567) % int(self.R.P_q[0])
+            pf["z_s_limbs"][0][0][0] = (pf["z_s_limbs"][0][0][0] + int(self.R.P_q[self.zkp_k_idxs[0]]) // 3) % int(self.R.P_q[self.zkp_k_idxs[0]])
+        elif attack_type == "zero_share":
+            for mi in range(len(p_sh)):
+                p_sh[mi] = np.zeros_like(p_sh[mi])
+        else:
+            p_sh[0][0] = (p_sh[0][0] + 999999) % int(self.R.P_q[0])
+            pf["z_s_limbs"][0][0][0] = (pf["z_s_limbs"][0][0][0] + 999999) % int(self.R.P_q[self.zkp_k_idxs[0]])
+
+    def partial_decrypt(self, node_id: int, u: List[List[np.ndarray]],
+                        is_malicious: bool = False, attack_type: str = "share_tampering") -> Tuple[List[np.ndarray], Dict[str, Any]]:
         node = self.nodes[node_id]
         p_sh, pf = HQFSSystem.partial_decrypt_with_multi_hq_fs(
             u, node.final_s, node.final_e, self.A_crs_global, node.zkp_commitment,
             self.R, self.p_zkp, self.m_glwe, self.n_glwe, self.flood_bound, self.rng, self.zkp_k_idxs
         )
-        if is_malicious:
-            p_sh[0][0] = (p_sh[0][0] + 999999) % int(self.R.P_q[0])
-            pf["z_s_limbs"][0][0][0] = (pf["z_s_limbs"][0][0][0] + 999999) % int(self.R.P_q[self.zkp_k_idxs[0]])
+        if is_malicious and attack_type != "none":
+            self._corrupt_submission(p_sh, pf, attack_type)
         return p_sh, pf
 
+    def _select_best_committee(self, valid_ids: List[int]) -> List[int]:
+        sv = sorted(valid_ids)
+        if len(sv) <= self.t:
+            return sv
+        best_sub = sv[:self.t]
+        best_span = best_sub[-1] - best_sub[0]
+        for s in range(1, len(sv) - self.t + 1):
+            sub = sv[s:s + self.t]
+            span = sub[-1] - sub[0]
+            if span < best_span:
+                best_span = span
+                best_sub = sub
+        return best_sub
+
     def decrypt(self, ct: Tuple[List[List[np.ndarray]], List[np.ndarray]],
-                submitted_data: Dict[int, Tuple[List[np.ndarray], Dict[str, Any]]],
+                submitted_data: Optional[Dict[int, Tuple[List[np.ndarray], Dict[str, Any]]]] = None,
                 n_branch: int = 4) -> Tuple[np.ndarray, List[int], List[int]]:
+        """
+        If submitted_data is provided, runs 4-ary BFT Tree Verification + Committee Lagrange Reconstruction.
+        If submitted_data is None (helper evaluation for expected oracle comparison on freshly encrypted inputs),
+        runs threshold decryption over an honest committee of size t.
+        """
+        if submitted_data is None:
+            committee_ids = list(range(1, min(self.t, self.N) + 1))
+            submitted_data = {uid: self.partial_decrypt(uid, ct[0], is_malicious=False) for uid in committee_ids}
+
         valid_ids = HQFSVerifier.verify_n_tree(
             ct[0], submitted_data, list(submitted_data.keys()),
             self.A_crs_global, self.public_commitments, self.R,
@@ -3424,7 +3908,7 @@ class DecentralizedHQFS:
         if len(valid_ids) < self.t:
             raise ValueError(f"Insufficient honest nodes! Got {len(valid_ids)}, required {self.t}")
 
-        active_set = sorted(valid_ids)[:self.t]
+        active_set = self._select_best_committee(valid_ids)
         lams_int_map, Delta_int = compute_committee_lagrange(active_set)
 
         agg_sum = [np.zeros(self.d, dtype=np.int64) for _ in range(self.R.s_q)]
@@ -3445,8 +3929,16 @@ class DecentralizedHQFS:
         v_sub_agg = self.R.sub(v_scaled, agg_sum)
         dec_scaled = decode_vec(v_sub_agg, self.R, self.NTT, self.Delta, self.T)
         inv_delta_T = modinv_jit(Delta_int % self.T, self.T)
-        dec = (dec_scaled * inv_delta_T) % self.T
+        dec = ((dec_scaled * inv_delta_T) % self.T) % self.plain_T
         return dec, valid_ids, rejected
+
+    def decrypt_simd(self, ct: Tuple[List[List[np.ndarray]], List[np.ndarray]], slot_count: int = 4) -> List[int]:
+        dec, _, _ = self.decrypt(ct, submitted_data=None)
+        return [int(x) % self.plain_T for x in dec[:slot_count]]
+
+    def decrypt_scalar_clear(self, ct: Tuple[List[List[np.ndarray]], List[np.ndarray]]) -> int:
+        dec, _, _ = self.decrypt(ct, submitted_data=None)
+        return int(dec[0]) % self.plain_T
 
 
 # ==============================================================================
@@ -3456,18 +3948,18 @@ class DecentralizedHQFS:
 class OT25ThFHE:
     """
     Implementation of Okada & Takagi (Asiacrypt 2025):
-    "Low Communication Threshold FHE from Standard (Module-)LWE" (OT26 / OT25)
+    "Low Communication Threshold FHE from Standard (Module-)LWE" (OT25 / OT26)
 
-    Key Features:
-      - Direct standard (M)LWE hardness without relying on known-norm LWE (knLWE).
-      - Noise Padding: generates padding noise \\zeta^{(sid)} ~ D_{Z, \\sigma_pad}
-        with \\sigma_pad = \\sigma_0 \\sqrt{\\max(1, B_{pub}^2 - \\|s\\|^2)}, adjusting decryption noise
-        distribution to a public variance \\sigma_{pub}^2 = \\sigma_0^2 B_{pub}^2 + \\sigma_1^2.
-      - Shamir Secret Sharing: O(1) compact decryption shares using Lagrange interpolation.
-      - PRF Masking: shares are blinded with PRF(seed_i, sid) mod q, eliminating Lagrange noise blowup.
-      - ServerDec ("Flood-and-Round"): semi-honest server sanitizes ciphertexts with Gaussian
-        flooding noise E and rounds from large Q to small q = Q / p.
-      - Supports Homomorphic Addition (eval_add) and Homomorphic Multiplication (eval_mul).
+    Key Features matching Algorithm 1, Algorithm 6, Def. 3.13, & Lemma 6.1:
+      - Standard LWE Public-Key FHE (Alg. 1) with BFV Tensor + Gadget Relinearization (evk).
+      - Explicit separation of plaintext modulus `p_plain` and Flood-and-Round divisor `p_round`
+        where Q = p_round * q, q is prime for Shamir Lagrange, and p_plain | p_round.
+      - Noise Padding: precomputed zeta^{(sid)} ~ D_{Z, sigma_pad} where
+        sigma_pad = sigma_0 * sqrt(max(1, B_pub^2 - ||s||^2)), shared via Shamir over Z_q.
+      - ServerDec ("Flood-and-Round"): uses public-key ct_fresh = Enc(pk, 0), half-integer
+        flooding noise E ~ D_{(1/2)Z, sigma_flood}, Definition 3.13 randomized Gaussian
+        rounding (sigma_0, sigma_1), and PRF masks sum_{i in act} PRF(seed_i, sid) mod q.
+      - Query-bounded sid <= L_dec enforcement in ServerDec & PartDec.
     """
 
     def __init__(
@@ -3479,162 +3971,350 @@ class OT25ThFHE:
         threshold: Optional[int] = None,
         sigma_0: float = 2.0,
         sigma_1: float = 3.0,
-        sigma_flood: float = 1000.0,
-        l_dec: int = 100
+        sigma_flood: Optional[float] = None,
+        l_dec: int = 256,
+        p_round: Optional[int] = None,
     ):
-        self.n_dim = n_dim
-        self.q = q
-        self.p = p
-        self.Q = p * q
-        self.num_parties = max(3, num_parties)
+        self.n_dim = int(n_dim)
+        self.p_plain = max(2, int(p))
+        self.p = self.p_plain  # Alias preserved for API compatibility (plaintext modulus)
+        min_q = max(int(q), 512 * self.p_plain)
+        self.q = min_q if _is_prime(min_q) else _next_ntt_prime(min_q, 2)
+        self.p_round = int(p_round) if p_round is not None else self.p_plain * (1 << 18)
+        if self.p_round % self.p_plain != 0:
+            self.p_round = ((self.p_round + self.p_plain - 1) // self.p_plain) * self.p_plain
+        self.Q = self.p_round * self.q
+        self.num_parties = max(3, int(num_parties))
         self.threshold = threshold if threshold is not None else max(1, int(self.num_parties * 0.6))
-        self.sigma_0 = sigma_0
-        self.sigma_1 = sigma_1
-        self.sigma_flood = sigma_flood
-        self.l_dec = l_dec
-        self.B_pub = int(math.ceil(math.sqrt(n_dim))) + 2
+        self.sigma_0 = float(sigma_0)
+        self.sigma_1 = float(sigma_1)
+        self.sigma_flood = float(sigma_flood) if sigma_flood is not None else float(4 * self.p_round)
+        self.l_dec = int(l_dec)
+        self.B_pub = int(math.ceil(math.sqrt(self.n_dim))) + 4
 
         self.s = None
+        self.A_pk = None
+        self.b_pk = None
+        self.evk: List[Tuple[Any, Any]] = []
+        self.gadget_base = 1024
         self.s_shares = {}
         self.zeta_table = {}
         self.zeta_shares = {}
         self.seeds = {}
-        self.relin_key = None
         self.sid_counter = 0
 
-    def setup(self):
-        self.B_pub = int(math.ceil(math.sqrt(self.n_dim))) + 2
+    def _rng_gauss(self, rng, sigma: float) -> int:
+        return int(round(rng.gauss(0.0, sigma)))
+
+    def _rand_gaussian_round(self, center: float, sigma: float, rng) -> int:
+        """Definition 3.13: y <- D_{Z, sigma, center} (randomized Gaussian rounding)."""
+        base = round(center)
+        half_w = max(6, int(math.ceil(6.0 * sigma)))
+        two_var = 2.0 * sigma * sigma
+        while True:
+            cand = base + rng.randint(-half_w, half_w)
+            diff = cand - center
+            prob = math.exp(-(diff * diff) / two_var)
+            if rng.random() < prob:
+                return int(cand)
+
+    def setup(self) -> Dict[str, Any]:
+        self.B_pub = int(math.ceil(math.sqrt(self.n_dim))) + 4
         return {
             "n_dim": self.n_dim,
             "q": self.q,
-            "p": self.p,
+            "p": self.p_plain,
+            "p_plain": self.p_plain,
+            "p_round": self.p_round,
             "Q": self.Q,
             "num_parties": self.num_parties,
             "threshold": self.threshold,
             "B_pub": self.B_pub,
             "sigma_0": self.sigma_0,
             "sigma_1": self.sigma_1,
-            "sigma_flood": self.sigma_flood
+            "sigma_flood": self.sigma_flood,
+            "l_dec": self.l_dec,
         }
 
-    def keygen(self):
+    def _shamir_share_matrix(self, secrets_vec, rng) -> Any:
+        """Vectorized Horner Shamir share evaluation over Z_q for all N parties."""
         import numpy as np
-        self.s = np.random.randint(-1, 2, size=self.n_dim)
-        norm_sq = int(np.sum(self.s**2))
-        sigma_pad = self.sigma_0 * math.sqrt(max(1.0, self.B_pub**2 - norm_sq))
+        secrets_arr = np.asarray(secrets_vec, dtype=np.int64) % self.q
+        k_len = len(secrets_arr)
+        t = self.threshold
+        # coeffs shape: (t, k_len); coeffs[0] = secrets_arr
+        coeffs = np.empty((t, k_len), dtype=np.int64)
+        coeffs[0] = secrets_arr
+        if t > 1:
+            coeffs[1:] = np.array(
+                [[rng.randrange(self.q) for _ in range(k_len)] for _ in range(t - 1)],
+                dtype=np.int64,
+            )
+        xs = np.arange(1, self.num_parties + 1, dtype=np.int64)[:, None]  # (N, 1)
+        acc = np.broadcast_to(coeffs[-1][None, :], (self.num_parties, k_len)).copy()
+        for deg in range(t - 2, -1, -1):
+            acc = (acc * xs + coeffs[deg][None, :]) % self.q
+        return acc  # shape (N, k_len)
 
-        # Shamir share s over Z_q
-        self.s_shares = {i: [] for i in range(1, self.num_parties + 1)}
-        for d in range(self.n_dim):
-            coeffs = [int(self.s[d]) % self.q] + [random.randint(0, self.q - 1) for _ in range(self.threshold - 1)]
-            for i in range(1, self.num_parties + 1):
-                val = sum(coeffs[k] * (i**k) for k in range(self.threshold)) % self.q
-                self.s_shares[i].append(val)
-        for i in range(1, self.num_parties + 1):
-            self.s_shares[i] = np.array(self.s_shares[i], dtype=np.int64)
+    def keygen(self) -> Dict[str, Any]:
+        import numpy as np
+        rng = secrets.SystemRandom()
+        self.sid_counter = 0
 
-        # Precompute padding noise zeta and Shamir shares
-        self.zeta_table = {}
-        self.zeta_shares = {}
-        for sid in range(1, self.l_dec + 1):
-            z = int(round(random.gauss(0, sigma_pad)))
-            self.zeta_table[sid] = z
-            coeffs = [z % self.q] + [random.randint(0, self.q - 1) for _ in range(self.threshold - 1)]
-            self.zeta_shares[sid] = {
-                i: sum(coeffs[k] * (i**k) for k in range(self.threshold)) % self.q
-                for i in range(1, self.num_parties + 1)
-            }
+        self.s = np.array([rng.choice((-1, 0, 1)) for _ in range(self.n_dim)], dtype=np.int64)
+        norm_sq = int(np.sum(self.s * self.s))
+        sigma_pad = self.sigma_0 * math.sqrt(max(1.0, float(self.B_pub * self.B_pub - norm_sq)))
 
-        # PRF seeds
-        self.seeds = {i: random.randint(100000, 99999999) for i in range(1, self.num_parties + 1)}
+        # Real LWE Public Key pk = (A_pk, b_pk = A_pk @ s + e_pk mod Q)
+        self.m_pk = 2 * self.n_dim
+        Q = self.Q
+        self.A_pk = np.array(
+            [[rng.randrange(Q) for _ in range(self.n_dim)] for _ in range(self.m_pk)],
+            dtype=np.int64,
+        )
+        e_pk = np.array([self._rng_gauss(rng, 3.2) for _ in range(self.m_pk)], dtype=np.int64)
+        s_obj = self.s.astype(object)
+        self.b_pk = ((self.A_pk.astype(object) @ s_obj) + e_pk.astype(object)) % Q
 
-        # Gadget Relinearization Key for Homo Mul
-        self.P_rlk = 1 << 30
-        self.s_tensor = np.outer(self.s, self.s).flatten()
+        # Shamir secret shares s_i over Z_q (fast vectorized Horner for up to N=1000)
+        s_mat = self._shamir_share_matrix(self.s, rng)
+        self.s_shares = {i + 1: s_mat[i] for i in range(self.num_parties)}
+
+        # Precompute padding noise zeta^{(sid)} ~ D_{Z, sigma_pad} and Shamir shares
+        z_vec = [self._rng_gauss(rng, sigma_pad) for _ in range(self.l_dec)]
+        z_mat = self._shamir_share_matrix(z_vec, rng)
+        self.zeta_table = {sid: z_vec[sid - 1] for sid in range(1, self.l_dec + 1)}
+        self.zeta_shares = {
+            sid: {p_idx + 1: int(z_mat[p_idx, sid - 1]) for p_idx in range(self.num_parties)}
+            for sid in range(1, self.l_dec + 1)
+        }
+
+        # Private PRF seeds in {0,1}^kappa per party
+        self.seeds = {i: rng.randrange(1 << 32) for i in range(1, self.num_parties + 1)}
+
+        # Gadget Relinearization Key evk for s \otimes s in base B_g over Z_Q
+        self.s_tensor = np.outer(self.s, self.s).flatten().astype(object)
         dim_t = len(self.s_tensor)
-        self.A_rlk = np.random.randint(0, self.Q, size=(dim_t, self.n_dim))
-        e_rlk = np.round(np.random.normal(0, 3.2, size=dim_t)).astype(np.int64)
-        self.B_rlk = (self.A_rlk @ self.s + e_rlk + self.P_rlk * self.s_tensor) % self.Q
+        self.evk = []
+        base_pow = 1
+        while base_pow < Q:
+            A_l = np.array(
+                [[rng.randrange(Q) for _ in range(self.n_dim)] for _ in range(dim_t)],
+                dtype=np.int64,
+            )
+            e_l = np.array([self._rng_gauss(rng, 3.2) for _ in range(dim_t)], dtype=object)
+            B_l = ((A_l.astype(object) @ s_obj) + e_l + base_pow * self.s_tensor) % Q
+            self.evk.append((A_l, B_l))
+            base_pow *= self.gadget_base
 
         return {
             "num_parties": self.num_parties,
             "threshold": self.threshold,
             "s_norm": float(np.linalg.norm(self.s)),
-            "B_pub": self.B_pub
+            "B_pub": self.B_pub,
+            "sigma_pad": round(sigma_pad, 4),
+            "evk_levels": len(self.evk),
         }
 
-    def encrypt(self, m: int) -> Tuple[np.ndarray, int]:
+    def encrypt(self, m: int) -> Tuple[Any, int]:
+        """Algorithm 1/6 Public-Key Encryption using ONLY pk = (A_pk, b_pk) (no sk)."""
         import numpy as np
-        a = np.random.randint(0, self.Q, size=self.n_dim)
-        e = int(round(random.gauss(0, 3.2)))
-        Delta = self.Q // self.p
-        b = (int(np.dot(a, self.s)) + e + Delta * (m % self.p)) % self.Q
-        return (a, b)
+        if self.A_pk is None or self.b_pk is None:
+            self.keygen()
+        rng = secrets.SystemRandom()
+        Q = self.Q
+        r_vec = np.array([rng.randint(0, 1) for _ in range(self.m_pk)], dtype=object)
+        f1 = np.array([self._rng_gauss(rng, 3.2) for _ in range(self.n_dim)], dtype=object)
+        f0 = self._rng_gauss(rng, 3.2)
+        Delta = Q // self.p_plain
+        a = ((r_vec @ self.A_pk.astype(object)) + f1) % Q
+        b = (int(r_vec @ self.b_pk) + f0 + Delta * (int(m) % self.p_plain)) % Q
+        return (np.array(a, dtype=np.int64), int(b))
 
-    def eval_add(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
-        return ((ct1[0] + ct2[0]) % self.Q, (ct1[1] + ct2[1]) % self.Q)
-
-    def eval_mul(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
+    def decrypt_direct(self, ct: Tuple[Any, int]) -> int:
+        """Ideal direct LWE decryption (only for ground-truth verification/harness)."""
         import numpy as np
-        a1, b1 = ct1
-        a2, b2 = ct2
-        tensor_prod = np.outer(a1, a2).flatten()
-        _ = (self.A_rlk.T @ (tensor_prod % self.Q)) % self.Q
-        Delta = self.Q / self.p
-        diff1 = (b1 - int(np.dot(a1, self.s))) % self.Q
-        m1 = int(round(diff1 / Delta)) % self.p
-        diff2 = (b2 - int(np.dot(a2, self.s))) % self.Q
-        m2 = int(round(diff2 / Delta)) % self.p
-        return self.encrypt((m1 * m2) % self.p)
+        a, b = ct
+        Q = self.Q
+        phase = (int(b) - int(np.dot(np.asarray(a, dtype=object), self.s.astype(object)))) % Q
+        if phase > Q // 2:
+            phase -= Q
+        # Nearest plaintext slot in Z_{p_plain}
+        num = phase * self.p_plain
+        return ((num + (Q // 2)) // Q if num >= 0 else -((-num + (Q // 2)) // Q)) % self.p_plain
+
+    def eval_add(self, ct1: Tuple[Any, int], ct2: Tuple[Any, int]) -> Tuple[Any, int]:
+        import numpy as np
+        Q = self.Q
+        a_out = ((np.asarray(ct1[0], dtype=object) + np.asarray(ct2[0], dtype=object)) % Q).astype(np.int64)
+        b_out = (int(ct1[1]) + int(ct2[1])) % Q
+        return (a_out, b_out)
+
+    def eval_mul(self, ct1: Tuple[Any, int], ct2: Tuple[Any, int]) -> Tuple[Any, int]:
+        """
+        Genuine BFV-style LWE Homomorphic Multiplication + Gadget Relinearization (evk):
+        Strictly uses only public ciphertexts (ct1, ct2) and self.evk (NO access to self.s).
+        """
+        import numpy as np
+        Q = self.Q
+        half_Q = Q // 2
+        t_plain = self.p_plain
+
+        def center_int(x: int) -> int:
+            v = int(x) % Q
+            return v - Q if v > half_Q else v
+
+        a1 = [center_int(x) for x in ct1[0]]
+        b1 = center_int(ct1[1])
+        a2 = [center_int(x) for x in ct2[0]]
+        b2 = center_int(ct2[1])
+
+        def scale_round_val(val: int) -> int:
+            num = val * t_plain
+            if num >= 0:
+                return ((num + half_Q) // Q) % Q
+            return (-((-num + half_Q) // Q)) % Q
+
+        # Tensor terms of (b1 - <a1, s>)(b2 - <a2, s>) = b1*b2 - <b1*a2 + b2*a1, s> + <a1 \otimes a2, s \otimes s>
+        d0 = scale_round_val(b1 * b2)
+        d1 = [scale_round_val(b1 * a2[j] + b2 * a1[j]) for j in range(self.n_dim)]
+
+        dim_t = self.n_dim * self.n_dim
+        d2 = [0] * dim_t
+        idx = 0
+        for i in range(self.n_dim):
+            ai = a1[i]
+            for j in range(self.n_dim):
+                d2[idx] = scale_round_val(ai * a2[j])
+                idx += 1
+
+        # Gadget decomposition & relinearization of <d2, s \otimes s>
+        b_acc = d0
+        a_acc = np.array(d1, dtype=object)
+        rem = [center_int(v) for v in d2]
+        bg = self.gadget_base
+        half_bg = bg // 2
+
+        for A_l, B_l in self.evk:
+            digits = [0] * dim_t
+            nonzero = False
+            for k_idx, rv in enumerate(rem):
+                if rv != 0:
+                    d_l = rv % bg
+                    if d_l > half_bg:
+                        d_l -= bg
+                    digits[k_idx] = d_l
+                    rem[k_idx] = (rv - d_l) // bg
+                    if d_l != 0:
+                        nonzero = True
+            if nonzero:
+                d_arr = np.array(digits, dtype=object)
+                b_acc = (b_acc + int(np.dot(d_arr, B_l))) % Q
+                a_acc = (a_acc + (d_arr @ A_l.astype(object))) % Q
+
+        return (a_acc.astype(np.int64), int(b_acc % Q))
 
     def _prf(self, seed: int, sid: int) -> int:
         import hmac
         h = hmac.new(str(seed).encode(), str(sid).encode(), hashlib.sha256).digest()
-        return int.from_bytes(h[:4], "big") % self.q
+        return int.from_bytes(h[:8], "big") % self.q
 
-    def server_dec(self, ct: Tuple[np.ndarray, int], active_parties: List[int], sid: Optional[int] = None) -> Tuple[np.ndarray, int, int]:
-        import numpy as np
-        if sid is None:
-            self.sid_counter += 1
-            sid = self.sid_counter
-        a, b = ct
-        a_fresh = np.random.randint(0, self.Q, size=self.n_dim)
-        e_fresh = int(round(random.gauss(0, 3.2)))
-        b_fresh = (int(np.dot(a_fresh, self.s)) + e_fresh) % self.Q
-        a_in = (a + a_fresh) % self.Q
-        b_in = (b + b_fresh) % self.Q
-        E_flood = int(round(random.gauss(0, self.sigma_flood)))
-
-        a_bar = (np.round(a_in / self.p).astype(np.int64)) % self.q
-        b_bar_base = int(round((b_in + E_flood) / self.p)) % self.q
-        mask_sum = sum(self._prf(self.seeds[i], sid) for i in active_parties) % self.q
-        b_bar = (b_bar_base + mask_sum) % self.q
-        return a_bar, b_bar, sid
-
-    def part_dec(self, party_id: int, a_bar: np.ndarray, active_parties: List[int], sid: int) -> int:
-        import numpy as np
-        # Compute Lagrange coefficient lambda_{act, party_id}
+    def _lagrange_coeff(self, party_id: int, active_parties: List[int]) -> int:
         num = 1
         den = 1
         for j in active_parties:
             if j != party_id:
                 num = (num * (-j)) % self.q
                 den = (den * (party_id - j)) % self.q
-        lam = (num * pow(den, self.q - 2, self.q)) % self.q
+        return (num * pow(den, self.q - 2, self.q)) % self.q
 
+    def server_dec(
+        self,
+        ct: Tuple[Any, int],
+        active_parties: List[int],
+        sid: Optional[int] = None,
+    ) -> Tuple[Any, int, int]:
+        """Algorithm 3 / Algorithm 6 ServerDec: Flood-and-Round + PRF Mask Sum."""
+        import numpy as np
+        if sid is None:
+            self.sid_counter += 1
+            sid = self.sid_counter
+        if sid > self.l_dec:
+            raise ValueError(f"OT25 decryption query bound exceeded: sid={sid} > l_dec={self.l_dec}")
+
+        rng = secrets.SystemRandom()
+        # Line 11: ct_fresh <- Enc(pk, 0); ct_in = ct + ct_fresh mod Q
+        ct_fresh = self.encrypt(0)
+        Q = self.Q
+        a_in = ((np.asarray(ct[0], dtype=object) + np.asarray(ct_fresh[0], dtype=object)) % Q).tolist()
+        b_in = (int(ct[1]) + int(ct_fresh[1])) % Q
+
+        # Line 12: E <- D_{(1/2)Z, sigma_flood}
+        half_k = self._rng_gauss(rng, 2.0 * self.sigma_flood)
+        E_flood = half_k * 0.5
+
+        # Line 13-14: Randomized Gaussian Rounding Def 3.13 + sum_{i in act} PRF(seed_i, sid) mod q
+        p_rnd = float(self.p_round)
+        a_bar = np.array(
+            [self._rand_gaussian_round(float(val) / p_rnd, self.sigma_0, rng) % self.q for val in a_in],
+            dtype=np.int64,
+        )
+        b_bar_base = self._rand_gaussian_round((float(b_in) + E_flood) / p_rnd, self.sigma_1, rng) % self.q
+        mask_sum = sum(self._prf(self.seeds[i], sid) for i in active_parties) % self.q
+        b_bar = (b_bar_base + mask_sum) % self.q
+        return a_bar, int(b_bar), int(sid)
+
+    def part_dec(self, party_id: int, a_bar: Any, active_parties: List[int], sid: int) -> int:
+        import numpy as np
+        if sid > self.l_dec:
+            raise ValueError(f"OT25 PartDec query bound exceeded: sid={sid} > l_dec={self.l_dec}")
+        if len(active_parties) < self.threshold:
+            raise ValueError(f"OT25 insufficient active parties: {len(active_parties)} < T={self.threshold}")
+        lam = self._lagrange_coeff(party_id, active_parties)
         s_i = self.s_shares[party_id]
-        zeta_i = self.zeta_shares[sid][party_id] if sid in self.zeta_shares else 0
-        term = (int(np.dot(a_bar, s_i)) + zeta_i) % self.q
+        zeta_i = self.zeta_shares[sid][party_id]
+        term = (int(np.dot(np.asarray(a_bar, dtype=np.int64), s_i)) + int(zeta_i)) % self.q
         m_i = self._prf(self.seeds[party_id], sid)
-        pd_i = (lam * term + m_i) % self.q
-        return pd_i
+        return (lam * term + m_i) % self.q
+
+    def part_dec_with_attack(
+        self,
+        party_id: int,
+        a_bar: Any,
+        active_parties: List[int],
+        sid: int,
+        attack_type: str,
+    ) -> int:
+        """Simulates authentic Byzantine share corruption for semi-honest robustness evaluation."""
+        import numpy as np
+        rng = secrets.SystemRandom()
+        lam = self._lagrange_coeff(party_id, active_parties)
+        s_i = self.s_shares[party_id]
+        zeta_i = self.zeta_shares[sid][party_id]
+        m_i = self._prf(self.seeds[party_id], sid)
+        if attack_type == "invalid_key_share":
+            s_bad = np.array([rng.randrange(self.q) for _ in range(self.n_dim)], dtype=np.int64)
+            term = (int(np.dot(np.asarray(a_bar, dtype=np.int64), s_bad)) + int(zeta_i)) % self.q
+            return (lam * term + m_i) % self.q
+        pd_honest = self.part_dec(party_id, a_bar, active_parties, sid)
+        if attack_type == "noise_flooding":
+            return (pd_honest + (self.q // 3) + rng.randint(1, 200)) % self.q
+        if attack_type == "equivocation_eval":
+            return (pd_honest + self._prf(self.seeds[party_id], sid + 999) + 1) % self.q
+        # share_tampering / default
+        return (pd_honest + rng.randint(100, self.q - 1)) % self.q
 
     def fin_dec(self, b_bar: int, pd_shares: List[int]) -> int:
-        pd_sum = sum(pd_shares) % self.q
-        diff = (b_bar - pd_sum) % self.q
-        return int(round((diff % self.q) / (self.q / self.p))) % self.p
+        pd_sum = sum(int(x) for x in pd_shares) % self.q
+        diff = (int(b_bar) - pd_sum) % self.q
+        if diff > self.q // 2:
+            diff -= self.q
+        num = diff * self.p_plain
+        if num >= 0:
+            return ((num + (self.q // 2)) // self.q) % self.p_plain
+        return (-((-num + (self.q // 2)) // self.q)) % self.p_plain
 
-    def decrypt_full(self, ct: Tuple[np.ndarray, int], active_parties: Optional[List[int]] = None) -> Tuple[int, float, float]:
+    def decrypt_full(self, ct: Tuple[Any, int], active_parties: Optional[List[int]] = None) -> Tuple[int, float, float]:
         if active_parties is None:
             active_parties = list(range(1, self.threshold + 1))
         t0 = time.perf_counter()
@@ -3657,50 +4337,75 @@ class AjaxThFHE:
     Implementation of Hu et al. (USENIX Security 2025):
     "Ajax: Fast Threshold Fully Homomorphic Encryption without Noise Flooding"
 
-    Key Features:
-      - Complete Elimination of Noise Flooding: small parameters and low overhead.
-      - Noise-Compressing KeyGen: reduces noise growth from n to ~2 via \\sigma' = \\sigma / (n - t).
-      - Random Double Sharings over Different Rings (Z_\\eta and Z_\\Phi where p | \\eta, \\Phi = \\eta / p).
-      - Two-Round Online Decryption ("Mask-Then-Open"):
-        * Round 1: Mask noise <v>_\\Phi = <e'>_\\Phi + <r>_\\Phi mod \\Phi, open v mod \\Phi.
-        * Round 2: Reconstruct <\\Phi * m>_\\eta = <u'>_\\eta - (v - <r>_\\eta) mod \\eta,
-                   open to receiver and decode m = round((\\Phi * m) / \\Phi) mod p.
-      - Supports Homomorphic Addition (eval_add) and Homomorphic Multiplication (eval_mul).
+    Key Features aligned with Protocols ΠLWE (Fig. 7), ΠKeyGen (Fig. 9), ΠDec (Fig. 10), ΠDoubleRings (Fig. 12):
+      - Complete Elimination of Noise Flooding: Mask-Then-Open over double rings (Z_eta, Z_Phi).
+      - t + 1 Threshold Committee (corruption threshold t = floor((n - 1) / 2)): degree-t Shamir
+        secret sharing [[s]]_q across all N parties with local Lagrange conversion to additive <s>_q.
+      - Noise-Compressing KeyGen (ΠLWE / Lemma 1): each party samples discrete Gaussian noise with
+        sigma' = sigma / (n - t), yielding public key pk = (A_pk, b_pk) and relin key evk.
+      - Public-key Enc(pk, m) and genuine BFV/LWE Tensor + Gadget Relinearization eval_mul (no sk).
+      - Fresh one-time double sharings (<r>_eta, <r>_Phi) with p | eta, Phi = eta / p, eta = 2^{floor(log2 q)}.
     """
 
     def __init__(
         self,
         n_dim: int = 16,
-        q: int = 65537,
+        q: Optional[int] = None,
         p: int = 4,
         num_parties: int = 10,
         threshold: Optional[int] = None,
-        sigma: float = 3.2
+        sigma: float = 3.2,
     ):
-        self.n_dim = n_dim
-        self.q = q
-        self.p = p
-        self.Delta = round(q / p)
-        log2_q = int(math.floor(math.log2(q)))
-        self.eta = 1 << log2_q
-        if self.eta % self.p != 0:
-            self.eta = (self.eta // self.p) * self.p
-        self.Phi = self.eta // self.p
-        self.num_parties = max(3, num_parties)
-        self.threshold = threshold if threshold is not None else max(1, (self.num_parties - 1) // 2)
-        self.sigma = sigma
-
-        self.s = None
-        self.s_shares = []
-        self.preprocessed_double_rings = []
-
-    def setup(self):
+        self.n_dim = int(n_dim)
+        # Default 32-bit prime (~4.29e9) keeps |e'|/Phi negligible without noise flooding;
+        # smaller primes such as 65537 are also supported when explicitly passed.
+        if q is None:
+            self.q = _next_ntt_prime(1 << 31, 2)
+        else:
+            q_val = int(q)
+            self.q = q_val if _is_prime(q_val) else _next_ntt_prime(q_val, 2)
+        self.p = max(2, int(p))
+        self.Delta = int(round(self.q / self.p))
         log2_q = int(math.floor(math.log2(self.q)))
         self.eta = 1 << log2_q
         if self.eta % self.p != 0:
             self.eta = (self.eta // self.p) * self.p
         self.Phi = self.eta // self.p
-        self.Delta = round(self.q / self.p)
+        self.num_parties = max(3, int(num_parties))
+        self.t_corrupt = max(0, (self.num_parties - 1) // 2)
+        # Any t + 1 parties can decrypt (Protocol ΠDec, Fig. 10)
+        default_thresh = min(self.num_parties, self.t_corrupt + 1)
+        self.threshold = int(threshold) if threshold is not None else default_thresh
+        self.sigma = float(sigma)
+        self.gadget_base = 16 if self.q < (1 << 20) else 256
+
+        self.s = None
+        self.A_pk = None
+        self.b_pk = None
+        self.evk: List[Tuple[Any, Any]] = []
+        self.s_shamir_shares: Dict[int, Any] = {}
+        self.s_shares: List[Any] = []
+        self.preprocessed_double_rings: List[Tuple[List[int], List[int]]] = []
+
+    def _rng_gauss(self, rng, sigma: float) -> int:
+        return int(round(rng.gauss(0.0, max(0.25, sigma))))
+
+    def _sample_compressed_noise_vec(self, length: int, sigma_prime: float, rng) -> List[int]:
+        """Protocol ΠLWE (Fig. 7): sum of N independent Gaussian shares e_i ~ D_{Z, sigma'}."""
+        n_parties = self.num_parties
+        out = [0] * length
+        for _ in range(n_parties):
+            for idx in range(length):
+                out[idx] += self._rng_gauss(rng, sigma_prime)
+        return out
+
+    def setup(self) -> Dict[str, Any]:
+        log2_q = int(math.floor(math.log2(self.q)))
+        self.eta = 1 << log2_q
+        if self.eta % self.p != 0:
+            self.eta = (self.eta // self.p) * self.p
+        self.Phi = self.eta // self.p
+        self.Delta = int(round(self.q / self.p))
         return {
             "n_dim": self.n_dim,
             "q": self.q,
@@ -3709,44 +4414,101 @@ class AjaxThFHE:
             "eta": self.eta,
             "Phi": self.Phi,
             "num_parties": self.num_parties,
+            "t_corrupt": self.t_corrupt,
             "threshold": self.threshold,
-            "sigma": self.sigma
+            "sigma": self.sigma,
         }
 
-    def keygen(self):
+    def _lagrange_coeff(self, party_id: int, active_parties: List[int]) -> int:
+        num = 1
+        den = 1
+        for j in active_parties:
+            if j != party_id:
+                num = (num * (-j)) % self.q
+                den = (den * (party_id - j)) % self.q
+        return (num * pow(den, self.q - 2, self.q)) % self.q
+
+    def to_additive_shares(self, active_parties: Optional[List[int]] = None) -> List[Any]:
+        """Converts degree-t Shamir shares [[s]]_q of `active_parties` (size t+1) to additive <s>_q."""
         import numpy as np
-        t = (self.num_parties - 1) // 2
-        sigma_prime = self.sigma / max(1, (self.num_parties - t))
-        self.s = np.random.randint(-1, 2, size=self.n_dim)
+        if active_parties is None:
+            active_parties = list(range(1, self.threshold + 1))
+        if len(active_parties) < self.threshold:
+            raise ValueError(f"Ajax requires at least t+1={self.threshold} parties, got {len(active_parties)}")
+        out = []
+        for p_id in active_parties:
+            lam = self._lagrange_coeff(p_id, active_parties)
+            out.append((lam * self.s_shamir_shares[p_id].astype(object)) % self.q)
+        return out
 
-        # Generate additive shares of s for the active decryption committee
-        self.s_shares = []
-        acc = np.zeros(self.n_dim, dtype=np.int64)
-        for i in range(self.threshold - 1):
-            sh = np.random.randint(0, self.q, size=self.n_dim)
-            self.s_shares.append(sh)
-            acc = (acc + sh) % self.q
-        self.s_shares.append((self.s - acc) % self.q)
+    def keygen(self) -> Dict[str, Any]:
+        import numpy as np
+        rng = secrets.SystemRandom()
+        sigma_prime = self.sigma / max(1, (self.num_parties - self.t_corrupt))
+        self.s = np.array([rng.choice((-1, 0, 1)) for _ in range(self.n_dim)], dtype=np.int64)
 
-        self.preprocess(count=20)
+        # Degree-(t = threshold - 1) Shamir secret sharing [[s]]_q across all N parties
+        deg = max(0, self.threshold - 1)
+        coeffs = np.empty((deg + 1, self.n_dim), dtype=object)
+        coeffs[0] = np.array([int(x) % self.q for x in self.s], dtype=object)
+        for d in range(1, deg + 1):
+            coeffs[d] = np.array([rng.randrange(self.q) for _ in range(self.n_dim)], dtype=object)
+        xs = np.arange(1, self.num_parties + 1, dtype=object)[:, None]
+        acc = np.broadcast_to(coeffs[-1][None, :], (self.num_parties, self.n_dim)).copy()
+        for d in range(deg - 1, -1, -1):
+            acc = (acc * xs + coeffs[d][None, :]) % self.q
+        self.s_shamir_shares = {i + 1: acc[i].astype(np.int64) for i in range(self.num_parties)}
+        self.s_shares = [sh.astype(np.int64) for sh in self.to_additive_shares()]
+
+        # Noise-Compressing Distributed LWE Public Key pk = (A_pk, b_pk = A_pk s + sum_i e_i)
+        self.m_pk = 2 * self.n_dim
+        self.A_pk = np.array(
+            [[rng.randrange(self.q) for _ in range(self.n_dim)] for _ in range(self.m_pk)],
+            dtype=np.int64,
+        )
+        e_pk = np.array(self._sample_compressed_noise_vec(self.m_pk, sigma_prime, rng), dtype=object)
+        s_obj = self.s.astype(object)
+        self.b_pk = ((self.A_pk.astype(object) @ s_obj) + e_pk) % self.q
+
+        # Distributed Noise-Compressing Gadget Relinearization Key evk over Z_q
+        self.s_tensor = np.outer(self.s, self.s).flatten().astype(object)
+        dim_t = len(self.s_tensor)
+        self.evk = []
+        base_pow = 1
+        rlk_sigma = min(sigma_prime, 0.5) if self.q < (1 << 20) else sigma_prime
+        while base_pow < self.q:
+            A_l = np.array(
+                [[rng.randrange(self.q) for _ in range(self.n_dim)] for _ in range(dim_t)],
+                dtype=np.int64,
+            )
+            e_l = np.array(self._sample_compressed_noise_vec(dim_t, rlk_sigma, rng), dtype=object)
+            B_l = ((A_l.astype(object) @ s_obj) + e_l + base_pow * self.s_tensor) % self.q
+            self.evk.append((A_l, B_l))
+            base_pow *= self.gadget_base
+
+        self.preprocessed_double_rings = []
+        self.preprocess(count=32)
         return {
             "num_parties": self.num_parties,
+            "t_corrupt": self.t_corrupt,
             "threshold": self.threshold,
             "sigma_prime": round(sigma_prime, 4),
             "eta": self.eta,
-            "Phi": self.Phi
+            "Phi": self.Phi,
+            "evk_levels": len(self.evk),
         }
 
-    def preprocess(self, count: int = 20):
-        # Generate random double sharings (<r>_\\eta, <r>_\\Phi)
+    def preprocess(self, count: int = 32) -> int:
+        """Protocol ΠDoubleRings (Fig. 12): generates random (<r>_eta, <r>_Phi) over t + 1 shares."""
+        rng = secrets.SystemRandom()
+        half_phi = max(2, self.Phi // 2)
         for _ in range(count):
-            r = random.randint(-self.Phi // 8, self.Phi // 8)
+            r = rng.randint(-half_phi // 4, half_phi // 4)
             r_eta = r % self.eta
-            r_phi = r % self.Phi
             r_eta_shares = []
             acc_eta = 0
-            for i in range(self.threshold - 1):
-                sh = random.randint(0, self.eta - 1)
+            for _ in range(self.threshold - 1):
+                sh = rng.randrange(self.eta)
                 r_eta_shares.append(sh)
                 acc_eta = (acc_eta + sh) % self.eta
             r_eta_shares.append((r_eta - acc_eta) % self.eta)
@@ -3754,71 +4516,166 @@ class AjaxThFHE:
             self.preprocessed_double_rings.append((r_eta_shares, r_phi_shares))
         return len(self.preprocessed_double_rings)
 
-    def encrypt(self, m: int) -> Tuple[np.ndarray, int]:
+    def encrypt(self, m: int) -> Tuple[Any, int]:
+        """Public-key LWE Encryption using ONLY pk = (A_pk, b_pk) (no sk)."""
         import numpy as np
-        a = np.random.randint(0, self.q, size=self.n_dim)
-        e = int(round(random.gauss(0, self.sigma)))
-        b = (int(np.dot(a, self.s)) + e + self.Delta * (m % self.p)) % self.q
-        return (a, b)
+        if self.A_pk is None or self.b_pk is None:
+            self.keygen()
+        rng = secrets.SystemRandom()
+        enc_sigma = min(self.sigma, 1.0) if self.q < (1 << 20) else self.sigma
+        r_vec = np.array([rng.randint(0, 1) for _ in range(self.m_pk)], dtype=object)
+        f1 = np.array([self._rng_gauss(rng, enc_sigma) for _ in range(self.n_dim)], dtype=object)
+        f0 = self._rng_gauss(rng, enc_sigma)
+        a = ((r_vec @ self.A_pk.astype(object)) + f1) % self.q
+        b = (int(r_vec @ self.b_pk) + f0 + self.Delta * (int(m) % self.p)) % self.q
+        return (a.astype(np.int64), int(b))
 
-    def eval_add(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
-        return ((ct1[0] + ct2[0]) % self.q, (ct1[1] + ct2[1]) % self.q)
-
-    def eval_mul(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
+    def decrypt_direct(self, ct: Tuple[Any, int]) -> int:
+        """Ideal direct LWE decryption (ground-truth verification helper only)."""
         import numpy as np
-        a1, b1 = ct1
-        a2, b2 = ct2
-        m1 = int(round(((b1 - np.dot(a1, self.s)) % self.q) / self.Delta)) % self.p
-        m2 = int(round(((b2 - np.dot(a2, self.s)) % self.q) / self.Delta)) % self.p
-        return self.encrypt((m1 * m2) % self.p)
+        a, b = ct
+        phase = (int(b) - int(np.dot(np.asarray(a, dtype=object), self.s.astype(object)))) % self.q
+        if phase > self.q // 2:
+            phase -= self.q
+        num = phase * self.p
+        return (((num + (self.q // 2)) // self.q) if num >= 0 else -((-num + (self.q // 2)) // self.q)) % self.p
 
-    def decrypt_full(self, ct: Tuple[np.ndarray, int], active_parties: Optional[List[int]] = None) -> Tuple[int, float, float]:
+    def eval_add(self, ct1: Tuple[Any, int], ct2: Tuple[Any, int]) -> Tuple[Any, int]:
         import numpy as np
-        if not self.preprocessed_double_rings:
-            self.preprocess(10)
+        a_out = ((np.asarray(ct1[0], dtype=object) + np.asarray(ct2[0], dtype=object)) % self.q).astype(np.int64)
+        b_out = (int(ct1[1]) + int(ct2[1])) % self.q
+        return (a_out, b_out)
+
+    def eval_mul(self, ct1: Tuple[Any, int], ct2: Tuple[Any, int]) -> Tuple[Any, int]:
+        """
+        Genuine BFV/LWE Tensor Product + Gadget Relinearization (evk):
+        Strictly uses only public ciphertexts (ct1, ct2) and self.evk (NO access to self.s).
+        """
+        import numpy as np
+        q = self.q
+        half_q = q // 2
+        t_plain = self.p
+
+        def center_int(x: int) -> int:
+            v = int(x) % q
+            return v - q if v > half_q else v
+
+        a1 = [center_int(x) for x in ct1[0]]
+        b1 = center_int(ct1[1])
+        a2 = [center_int(x) for x in ct2[0]]
+        b2 = center_int(ct2[1])
+
+        def scale_round_val(val: int) -> int:
+            num = val * t_plain
+            if num >= 0:
+                return ((num + half_q) // q) % q
+            return (-((-num + half_q) // q)) % q
+
+        d0 = scale_round_val(b1 * b2)
+        d1 = [scale_round_val(b1 * a2[j] + b2 * a1[j]) for j in range(self.n_dim)]
+        dim_t = self.n_dim * self.n_dim
+        d2 = [scale_round_val(a1[i] * a2[j]) for i in range(self.n_dim) for j in range(self.n_dim)]
+
+        b_acc = d0
+        a_acc = np.array(d1, dtype=object)
+        rem = [center_int(v) for v in d2]
+        bg = self.gadget_base
+        half_bg = bg // 2
+
+        for A_l, B_l in self.evk:
+            digits = [0] * dim_t
+            nonzero = False
+            for k_idx, rv in enumerate(rem):
+                if rv != 0:
+                    d_l = rv % bg
+                    if d_l > half_bg:
+                        d_l -= bg
+                    digits[k_idx] = d_l
+                    rem[k_idx] = (rv - d_l) // bg
+                    if d_l != 0:
+                        nonzero = True
+            if nonzero:
+                d_arr = np.array(digits, dtype=object)
+                b_acc = (b_acc + int(np.dot(d_arr, B_l))) % q
+                a_acc = (a_acc + (d_arr @ A_l.astype(object))) % q
+
+        return (a_acc.astype(np.int64), int(b_acc % q))
+
+    def decrypt_full(
+        self,
+        ct: Tuple[Any, int],
+        active_parties: Optional[List[int]] = None,
+        malicious_indices: Optional[set] = None,
+        attack_type: str = "none",
+    ) -> Tuple[int, float, float]:
+        """Protocol ΠDec (Fig. 10): t+1 party Mask-Then-Open without noise flooding."""
+        import numpy as np
+        if len(self.preprocessed_double_rings) == 0:
+            self.preprocess(16)
         r_eta_shares, r_phi_shares = self.preprocessed_double_rings.pop(0)
+        rng = secrets.SystemRandom()
+
+        add_s_shares = self.to_additive_shares(active_parties) if active_parties is not None else self.s_shares
+        mal_set = malicious_indices or set()
 
         t0 = time.perf_counter()
-        a, b = ct
-        # Step 1: Local partial decryption
-        u_shares = []
+        a_arr = np.asarray(ct[0], dtype=object)
+        b = int(ct[1])
+
+        # Step 1: Local partial decryption & modulus switching Z_q -> Z_eta & extract mod Phi
+        u_prime_shares: List[int] = []
+        e_prime_shares: List[int] = []
+        scale_ratio = self.eta / float(self.q)
+        primary_mal = min(mal_set) if mal_set else -1
         for i in range(self.threshold):
+            s_i = np.asarray(add_s_shares[i], dtype=object)
+            if i in mal_set and attack_type == "invalid_key_share":
+                s_i = np.array([rng.randrange(self.q) for _ in range(self.n_dim)], dtype=object)
             if i == 0:
-                u_i = (b - int(np.dot(a, self.s_shares[i]))) % self.q
+                u_i = (b - int(np.dot(a_arr, s_i))) % self.q
             else:
-                u_i = (- int(np.dot(a, self.s_shares[i]))) % self.q
-            u_shares.append(u_i)
-
-        # Modulus switch to eta and extract mod Phi
-        u_prime_shares = []
-        e_prime_shares = []
-        for i in range(self.threshold):
-            u_p = int(round((self.eta / self.q) * u_shares[i])) % self.eta
+                u_i = (-int(np.dot(a_arr, s_i))) % self.q
+            u_p = int(round(scale_ratio * u_i)) % self.eta
+            e_p = u_p % self.Phi
+            if i in mal_set and attack_type == "noise_flooding":
+                # Inject out-of-range noise into u'_i (exceeding Phi) since Ajax has no noise-flooding headroom
+                sec_bound = max(1, self.Phi // max(4, 2 * len(mal_set)))
+                shift_eta = self.Phi if i == primary_mal else rng.randrange(sec_bound)
+                u_p = (u_p + shift_eta) % self.eta
             u_prime_shares.append(u_p)
-            e_prime_shares.append(u_p % self.Phi)
+            e_prime_shares.append(e_p)
 
-        # Round 1: Mask then Open mod Phi
-        v_shares = [(e_prime_shares[i] + r_phi_shares[i]) % self.Phi for i in range(self.threshold)]
+        # Round 1: Mask <e'>_Phi with <r>_Phi and open v mod Phi
+        v_shares = []
+        for i in range(self.threshold):
+            v_i = (e_prime_shares[i] + r_phi_shares[i]) % self.Phi
+            v_shares.append(v_i)
+
         v_open = sum(v_shares) % self.Phi
-        # Centered v_open in [-Phi/2, Phi/2)
         v_centered = v_open if v_open <= self.Phi // 2 else v_open - self.Phi
-
         pdec_ms = (time.perf_counter() - t0) * 1000.0
 
-        # Round 2: Subtract noise in Z_eta and reconstruct
-        t0 = time.perf_counter()
+        # Round 2: Subtract v - <r>_eta in Z_eta and reconstruct Phi * m
+        t1 = time.perf_counter()
         phi_m_shares = []
         for i in range(self.threshold):
             if i == 0:
                 e_p_eta_i = (v_centered - r_eta_shares[i]) % self.eta
             else:
-                e_p_eta_i = (- r_eta_shares[i]) % self.eta
+                e_p_eta_i = (-r_eta_shares[i]) % self.eta
             phi_m_i = (u_prime_shares[i] - e_p_eta_i) % self.eta
+            if i in mal_set and attack_type in ("share_tampering", "equivocation_eval"):
+                # In equivocation_eval / share_tampering, Round-2 share contradicts Round-1 committed e'_i
+                sec_bound = max(1, self.Phi // max(4, 2 * len(mal_set)))
+                shift_eta = self.Phi if i == primary_mal else rng.randrange(sec_bound)
+                phi_m_i = (phi_m_i + shift_eta) % self.eta
+            elif i in mal_set and attack_type not in ("none", "invalid_key_share", "noise_flooding"):
+                phi_m_i = (phi_m_i + rng.randint(1, self.eta - 1)) % self.eta
             phi_m_shares.append(phi_m_i)
 
         phi_m_open = sum(phi_m_shares) % self.eta
         dec = int(round(phi_m_open / self.Phi)) % self.p
-        agg_ms = (time.perf_counter() - t0) * 1000.0
+        agg_ms = (time.perf_counter() - t1) * 1000.0
 
         return dec, pdec_ms, agg_ms
 

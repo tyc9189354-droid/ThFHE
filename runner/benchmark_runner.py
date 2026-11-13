@@ -95,6 +95,8 @@ class BenchmarkRunner:
         online_times_ms = []
         correctness_verified = True
         p_mod = 1 << m
+        mr = int(kwargs.get("malicious_ratio", 0))
+        at = str(kwargs.get("attack_type", "none") or "none")
 
         for _ in range(self.iterations):
             # Measure Homomorphic Addition: Enc(1) (+) Enc(0) -> Enc(1)
@@ -109,13 +111,17 @@ class BenchmarkRunner:
 
             # Decrypt Homomorphic Addition result
             fresh_gate_add = scheme.preprocess()
-            dec_add, pdec_ms_1, agg_ms_1 = scheme.decrypt_with_stages(ct_add, fresh_gate_add)
+            dec_add, pdec_ms_1, agg_ms_1 = scheme.decrypt_with_stages(
+                ct_add, fresh_gate_add, malicious_ratio=mr, attack_type=at
+            )
             if dec_add != (1 + 0) % p_mod:
                 correctness_verified = False
 
             # Decrypt Homomorphic Multiplication result
             fresh_gate_mul = scheme.preprocess()
-            dec_mul, pdec_ms_2, agg_ms_2 = scheme.decrypt_with_stages(ct_mul, fresh_gate_mul)
+            dec_mul, pdec_ms_2, agg_ms_2 = scheme.decrypt_with_stages(
+                ct_mul, fresh_gate_mul, malicious_ratio=mr, attack_type=at
+            )
             if dec_mul != (1 * 1) % p_mod:
                 correctness_verified = False
 

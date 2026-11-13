@@ -68,7 +68,7 @@ def run_multi_port_server(host="0.0.0.0", base_port=10001, total_ports=10, thres
     # 3. 初始化 RNS 環與參數
     n_glwe = 2
     m_glwe = 3
-    start_bit = 30 if d >= 128 else 20
+    start_bit = 48 if total_ports > 50 else 30
     all_primes = get_ntt_primes(19, start_bit, d)
     q_primes = all_primes[:6]
     p_primes = all_primes[6:]
@@ -94,7 +94,7 @@ def run_multi_port_server(host="0.0.0.0", base_port=10001, total_ports=10, thres
             "T": T
         })
 
-    # 4. DKG 階段：接收 Client 的公鑰與承諾
+    # 4. DKG 階段：接收 Client 的公鑰與多項式承諾，同態聚合 C_coeffs_global
     logging.info("Receiving DKG public keys and commitments from clients...")
     pk_global = [R.zero() for _ in range(m_glwe)]
     C_coeffs_global = [[R.zero() for _ in range(m_glwe)] for _ in range(threshold_t)]
@@ -108,6 +108,11 @@ def run_multi_port_server(host="0.0.0.0", base_port=10001, total_ports=10, thres
         pub_key = msg["pub_key"]
         for k in range(m_glwe):
             pk_global[k] = R.add(pk_global[k], pub_key[k])
+        c_coeffs = msg.get("C_coeffs")
+        if c_coeffs is not None:
+            for deg in range(threshold_t):
+                for k in range(m_glwe):
+                    C_coeffs_global[deg][k] = R.add(C_coeffs_global[deg][k], c_coeffs[deg][k])
 
     # 廣播聚合承諾
     logging.info("Broadcasting DKG_ROUTED_COMMITMENTS to all clients...")
@@ -127,45 +132,64 @@ def run_multi_port_server(host="0.0.0.0", base_port=10001, total_ports=10, thres
         assert msg["type"] == "DKG_FINAL_COMMITMENT"
         public_commitments[node_id] = msg["commitment"]
 
-    # 5. 協同分散式 RLK 生成
-    logging.info(f"Initiating Collective Distributed RLK Generation with {total_ports} clients...")
+    # 5. 2-Round 協同分散式 RLK 生成 (Mouchet Collective RLK)
+    logging.info(f"Initiating 2-Round Collective Distributed RLK Generation with {total_ports} clients...")
     A_rlk_global = {}
+    A_rlk_crs = {}
     for a in range(n_glwe):
         for b_idx in range(n_glwe):
             A_rlk_global[(a, b_idx)] = [[uniform_poly(R) for _ in range(n_glwe)] for _ in range(R.s_q)]
+            A_rlk_crs[(a, b_idx)] = [uniform_poly(R) for _ in range(R.s_q)]
 
-    payload_rlk = pickle.dumps({"type": "RLK_GEN_REQ", "A_rlk": A_rlk_global})
-    packet_rlk = struct.pack(">I", len(payload_rlk)) + payload_rlk
+    payload_r1 = pickle.dumps({"type": "RLK_R1_REQ", "A_rlk_crs": A_rlk_crs})
+    packet_r1 = struct.pack(">I", len(payload_r1)) + payload_r1
     for conn in client_conns.values():
-        conn.sendall(packet_rlk)
-    del payload_rlk, packet_rlk
+        conn.sendall(packet_r1)
+    del payload_r1, packet_r1
 
-    # 收集 RLK 份額同態拼裝
-    logging.info(f"Gathering collective RLK shares from all {total_ports} clients...")
-    rlk = {}
+    H_agg = {}
     for a in range(n_glwe):
         for b_idx in range(n_glwe):
-            rlk[(a, b_idx)] = []
-            for i in range(R.s_q):
-                av = A_rlk_global[(a, b_idx)][i]
-                bv = R.zero()
-                rlk[(a, b_idx)].append((av, bv))
+            H_agg[(a, b_idx)] = [(R.zero(), R.zero()) for _ in range(R.s_q)]
 
     for node_id, conn in client_conns.items():
         msg = recv_msg(conn)
         if msg is None:
-            raise ConnectionError(f"Node {node_id} disconnected during RLK share submission!")
-        assert msg["type"] == "RLK_SHARE_SUBMIT"
-        node_shares = msg["rlk_shares"]
+            raise ConnectionError(f"Node {node_id} disconnected during RLK Round 1!")
+        assert msg["type"] == "RLK_R1_SUBMIT"
+        r1 = msg["r1_shares"]
+        for a in range(n_glwe):
+            for b_idx in range(n_glwe):
+                for i in range(R.s_q):
+                    h0_c, h1_c = H_agg[(a, b_idx)][i]
+                    h0_j, h1_j = r1[(a, b_idx)][i]
+                    H_agg[(a, b_idx)][i] = (R.add(h0_c, h0_j), R.add(h1_c, h1_j))
 
+    payload_r2 = pickle.dumps({"type": "RLK_R2_REQ", "A_rlk": A_rlk_global, "H_agg": H_agg})
+    packet_r2 = struct.pack(">I", len(payload_r2)) + payload_r2
+    for conn in client_conns.values():
+        conn.sendall(packet_r2)
+    del payload_r2, packet_r2
+
+    logging.info(f"Gathering collective RLK Round 2 shares from all {total_ports} clients...")
+    rlk = {}
+    for a in range(n_glwe):
+        for b_idx in range(n_glwe):
+            rlk[(a, b_idx)] = [(A_rlk_global[(a, b_idx)][i], R.zero()) for i in range(R.s_q)]
+
+    for node_id, conn in client_conns.items():
+        msg = recv_msg(conn)
+        if msg is None:
+            raise ConnectionError(f"Node {node_id} disconnected during RLK Round 2 submission!")
+        assert msg["type"] == "RLK_R2_SUBMIT"
+        node_shares = msg["rlk_shares"]
         for a in range(n_glwe):
             for b_idx in range(n_glwe):
                 for i in range(R.s_q):
                     av, bv = rlk[(a, b_idx)][i]
-                    node_bv = node_shares[(a, b_idx)][i]
-                    rlk[(a, b_idx)][i] = (av, R.add(bv, node_bv))
+                    rlk[(a, b_idx)][i] = (av, R.add(bv, node_shares[(a, b_idx)][i]))
 
-    del A_rlk_global
+    del A_rlk_global, A_rlk_crs, H_agg
     logging.info("🎉 Collective Distributed Relinearization Key (RLK) successfully synthesized!")
 
     # 6. 雲端複合同態計算：(m1 * m2 + m3) mod T

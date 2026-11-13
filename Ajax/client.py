@@ -38,10 +38,11 @@ class AjaxClient:
         self.s_i: Optional[np.ndarray] = None
         self.r_eta_i: int = 0
         self.r_phi_i: int = 0
-        self.q = 65537
-        self.p = 4
-        self.eta = 65536
-        self.Phi = 16384
+        _default = AjaxThFHE()
+        self.q = _default.q
+        self.p = _default.p
+        self.eta = _default.eta
+        self.Phi = _default.Phi
         self.u_prime_i: int = 0
 
     def _post(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:

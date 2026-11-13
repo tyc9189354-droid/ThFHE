@@ -16,7 +16,7 @@ Unified Benchmark Adapter for Ajax Scheme:
 
 import math
 import time
-import random
+import secrets
 from typing import Any, Dict, List, Tuple, Optional
 from core.base_scheme import BaseThFHEScheme
 from tool import AjaxThFHE
@@ -36,6 +36,8 @@ class AjaxThFHEScheme(BaseThFHEScheme):
         self.p = 4
         self.num_parties = 10
         self.threshold = 5
+        self.malicious_ratio = 0
+        self.attack_type = "none"
         self.ajax: Optional[AjaxThFHE] = None
         self.last_audit: Dict[str, Any] = {}
 
@@ -48,22 +50,25 @@ class AjaxThFHEScheme(BaseThFHEScheme):
         threshold: Optional[int] = None,
         **kwargs
     ) -> Dict[str, Any]:
-        r"""[Stage 1: Setup] 初始化小模數 q, p, \Delta, \eta, \Phi 與參與方環境"""
+        r"""[Stage 1: Setup] 初始化模數 q, p, \Delta, \eta, \Phi 與 t+1 參與門檻"""
         self.k = k
         self.m = m
         self.n_dim = n_dim
         self.num_parties = max(3, min(1000, int(num_parties)))
-        self.threshold = threshold if threshold is not None else max(1, (self.num_parties - 1) // 2)
-        self.p = 1 << m if m <= 4 else 4
-        self.q = 65537
+        t_corrupt = max(0, (self.num_parties - 1) // 2)
+        self.threshold = threshold if threshold is not None else min(self.num_parties, t_corrupt + 1)
+        self.malicious_ratio = int(kwargs.get("malicious_ratio", 0))
+        self.attack_type = str(kwargs.get("attack_type", "none") or "none")
+        self.p = int(kwargs.get("p_plain", min(1 << max(1, int(m)), 4)))
         self.ajax = AjaxThFHE(
             n_dim=self.n_dim,
-            q=self.q,
+            q=None,
             p=self.p,
             num_parties=self.num_parties,
             threshold=self.threshold,
-            sigma=3.2
+            sigma=3.2,
         )
+        self.q = self.ajax.q
         self.params = self.ajax.setup()
         return self.params
 
@@ -107,20 +112,53 @@ class AjaxThFHEScheme(BaseThFHEScheme):
         res, _, _ = self.decrypt_with_stages(ciphertext, preprocessed_data)
         return res
 
-    def decrypt_with_stages(self, ciphertext: Any, preprocessed_data: Optional[Any] = None) -> Tuple[int, float, float]:
+    def decrypt_with_stages(
+        self,
+        ciphertext: Any,
+        preprocessed_data: Optional[Any] = None,
+        malicious_ratio: Optional[int] = None,
+        attack_type: Optional[str] = None,
+    ) -> Tuple[int, float, float]:
         r"""
-        執行 Mask-Then-Open 兩輪在線門檻解密：
-          - partial_dec_ms: 模數轉換至 \eta, 抽取 mod \Phi, 第一輪遮罩並廣播 v
-          - agg_ms: 第二輪扣除雜訊項並重構明文 m
+        執行 Ajax 兩輪 Mask-Then-Open 門檻解密 (Protocol ΠDec, t + 1 threshold):
+          - Round 1: 模數轉換至 \eta, 抽取 mod \Phi, Mask-Then-Open v mod \Phi
+          - Round 2: 在 Z_\eta 扣除雜訊項並重構明文 m (無 Noise Flooding, 屬半誠實模型)
         """
         if self.ajax is None or self.ajax.s is None:
             self.keygen()
-        return self.ajax.decrypt_full(ciphertext)
+
+        mr = self.malicious_ratio if malicious_ratio is None else max(0, min(49, int(malicious_ratio or 0)))
+        at = self.attack_type if attack_type is None else (attack_type or "none")
+        mal_count = (self.num_parties * mr) // 100 if (mr > 0 and at != "none") else 0
+        malicious_indices = set()
+        if mal_count > 0:
+            rng = secrets.SystemRandom()
+            k_in_act = min(mal_count, self.threshold)
+            malicious_indices = set(rng.sample(range(self.threshold), k_in_act))
+
+        dec, pdec_ms, agg_ms = self.ajax.decrypt_full(
+            ciphertext,
+            malicious_indices=malicious_indices,
+            attack_type=at,
+        )
+        self.last_audit = {
+            "security_model": "Semi-Honest Mask-Then-Open (t+1 Threshold, No Noise Flooding)",
+            "t_corrupt": self.ajax.t_corrupt,
+            "threshold_t_plus_1": self.threshold,
+            "malicious_parties": [i + 1 for i in sorted(malicious_indices)],
+            "malicious_count": len(malicious_indices),
+            "attack_type": at if malicious_indices else "none",
+            "q": self.ajax.q,
+            "eta": self.ajax.eta,
+            "Phi": self.ajax.Phi,
+            "aborted": False,
+        }
+        return dec, pdec_ms, agg_ms
 
     def get_offline_metrics(self, preprocessed_data: Any) -> Dict[str, Any]:
         return {
-            "gate_storage_bits": 16 * self.num_parties,
-            "double_ring_pairs": 20
+            "gate_storage_bits": self.q.bit_length() * self.num_parties,
+            "double_ring_pairs": 32,
         }
 
     def get_online_metrics(self) -> Dict[str, Any]:

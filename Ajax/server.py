@@ -42,13 +42,14 @@ SERVER_STATE = {
     "status": "idle"
 }
 
-def init_server(n_dim: int = 16, q: int = 65537, p: int = 4, num_parties: int = 10, threshold: int = 5):
-    ajax = AjaxThFHE(n_dim=n_dim, q=q, p=p, num_parties=num_parties, threshold=threshold)
+def init_server(n_dim: int = 16, q: Optional[int] = None, p: int = 4, num_parties: int = 10, threshold: Optional[int] = None):
+    t_plus_1 = threshold if threshold is not None else min(num_parties, ((num_parties - 1) // 2) + 1)
+    ajax = AjaxThFHE(n_dim=n_dim, q=q, p=p, num_parties=num_parties, threshold=t_plus_1)
     ajax.setup()
     ajax.keygen()
     SERVER_STATE["ajax"] = ajax
-    SERVER_STATE["active_parties"] = list(range(threshold))
-    print(f"[*] [Ajax Server] Initialized: n={n_dim}, q={q}, p={p}, Delta={ajax.Delta}, eta={ajax.eta}, Phi={ajax.Phi}, Parties={num_parties}, T={threshold}")
+    SERVER_STATE["active_parties"] = list(range(t_plus_1))
+    print(f"[*] [Ajax Server] Initialized: n={n_dim}, q={ajax.q}, p={p}, Delta={ajax.Delta}, eta={ajax.eta}, Phi={ajax.Phi}, Parties={num_parties}, T={t_plus_1}")
     return ajax
 
 class AjaxHTTPHandler(BaseHTTPRequestHandler):
@@ -79,10 +80,12 @@ class AjaxHTTPHandler(BaseHTTPRequestHandler):
 
         if path == "/api/setup":
             n_dim = int(req.get("n_dim", 16))
-            q = int(req.get("q", 65537))
+            q_val = req.get("q")
+            q = int(q_val) if q_val is not None else None
             p = int(req.get("p", 4))
             num_parties = int(req.get("num_parties", 10))
-            threshold = int(req.get("threshold", 5))
+            thresh_val = req.get("threshold")
+            threshold = int(thresh_val) if thresh_val is not None else None
             aj = init_server(n_dim=n_dim, q=q, p=p, num_parties=num_parties, threshold=threshold)
             self._send_json(200, {
                 "status": "ok",
@@ -105,6 +108,8 @@ class AjaxHTTPHandler(BaseHTTPRequestHandler):
                 "ct_b": int(ct[1]),
                 "expected_msg": msg,
                 "threshold": ajax.threshold,
+                "q": ajax.q,
+                "p": ajax.p,
                 "Phi": ajax.Phi,
                 "eta": ajax.eta
             })

@@ -586,6 +586,10 @@
     .bar-noah { background: #ef4444; }
     .bar-pelta { background: #10b981; }
     .bar-hqfs { background: #f59e0b; }
+    .bar-ot25 { background: #06b6d4; }
+    .bar-ajax { background: #ec4899; }
+    .legend-ot25 .legend-color { background: #06b6d4; }
+    .legend-ajax .legend-color { background: #ec4899; }
 
     table {
       width: 100%;
@@ -1631,10 +1635,12 @@
               <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: normal;">(勾選方案動態切換直方圖柱狀與數據表欄位)</span>
             </div>
             <div class="filter-quick-btns">
-              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (All 4)</button>
+              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (All 6)</button>
               <button type="button" class="btn-filter-tag" id="btn-preset-ccs" onclick="selectPapersPreset('ours_vs_ccs')">本論文 vs CCS 2025</button>
-              <button type="button" class="btn-filter-tag" id="btn-preset-pelta" onclick="selectPapersPreset('ours_vs_pelta')">本論文 vs PELTA</button>
               <button type="button" class="btn-filter-tag" id="btn-preset-noah" onclick="selectPapersPreset('ours_vs_noah')">本論文 vs Noah's Ark</button>
+              <button type="button" class="btn-filter-tag" id="btn-preset-pelta" onclick="selectPapersPreset('ours_vs_pelta')">本論文 vs PELTA</button>
+              <button type="button" class="btn-filter-tag" id="btn-preset-ot25" onclick="selectPapersPreset('ours_vs_ot25')">本論文 vs OT25</button>
+              <button type="button" class="btn-filter-tag" id="btn-preset-ajax" onclick="selectPapersPreset('ours_vs_ajax')">本論文 vs Ajax</button>
             </div>
           </div>
 
@@ -1669,6 +1675,22 @@
               <span class="chip-color-dot" style="background: #f59e0b;"></span>
               <span class="chip-title">HQ-FS (Our Work)</span>
               <span class="chip-sub">[RNS-GLWE + HQ-FS ZKP]</span>
+            </label>
+
+            <!-- Chip 5: OT25 (Okada & Takagi 2025) -->
+            <label class="paper-chip-label active" id="chip-label-ot25">
+              <input type="checkbox" id="paper-check-ot25" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #06b6d4;"></span>
+              <span class="chip-title">OT25</span>
+              <span class="chip-sub">[Okada-Takagi 25 - Noise Padding]</span>
+            </label>
+
+            <!-- Chip 6: Ajax (Hu et al. 2025) -->
+            <label class="paper-chip-label active" id="chip-label-ajax">
+              <input type="checkbox" id="paper-check-ajax" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #ec4899;"></span>
+              <span class="chip-title">Ajax</span>
+              <span class="chip-sub">[Hu et al. 25 - Mask-Then-Open]</span>
             </label>
           </div>
         </div>
@@ -1720,6 +1742,8 @@
                 <div class="bar bar-noah" id="bar-s1-noah"><span class="bar-tooltip" id="tip-s1-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s1-pelta"><span class="bar-tooltip" id="tip-s1-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s1-hqfs"><span class="bar-tooltip" id="tip-s1-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s1-ot25"><span class="bar-tooltip" id="tip-s1-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s1-ajax"><span class="bar-tooltip" id="tip-s1-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">1. Setup<br>(系統設定)</div>
             </div>
@@ -1731,6 +1755,8 @@
                 <div class="bar bar-noah" id="bar-s2-noah"><span class="bar-tooltip" id="tip-s2-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s2-pelta"><span class="bar-tooltip" id="tip-s2-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s2-hqfs"><span class="bar-tooltip" id="tip-s2-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s2-ot25"><span class="bar-tooltip" id="tip-s2-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s2-ajax"><span class="bar-tooltip" id="tip-s2-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">2. KeyGen<br>(金鑰與承諾生成)</div>
             </div>
@@ -1742,6 +1768,8 @@
                 <div class="bar bar-noah" id="bar-s3-noah"><span class="bar-tooltip" id="tip-s3-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s3-pelta"><span class="bar-tooltip" id="tip-s3-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s3-hqfs"><span class="bar-tooltip" id="tip-s3-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s3-ot25"><span class="bar-tooltip" id="tip-s3-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s3-ajax"><span class="bar-tooltip" id="tip-s3-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">3. Offline Prep<br>(離線預處理/RLK)</div>
             </div>
@@ -1753,6 +1781,8 @@
                 <div class="bar bar-noah" id="bar-s4-noah"><span class="bar-tooltip" id="tip-s4-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s4-pelta"><span class="bar-tooltip" id="tip-s4-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s4-hqfs"><span class="bar-tooltip" id="tip-s4-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s4-ot25"><span class="bar-tooltip" id="tip-s4-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s4-ajax"><span class="bar-tooltip" id="tip-s4-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">4. Homo Add<br>(同態加法)</div>
             </div>
@@ -1764,6 +1794,8 @@
                 <div class="bar bar-noah" id="bar-s5-noah"><span class="bar-tooltip" id="tip-s5-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s5-pelta"><span class="bar-tooltip" id="tip-s5-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s5-hqfs"><span class="bar-tooltip" id="tip-s5-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s5-ot25"><span class="bar-tooltip" id="tip-s5-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s5-ajax"><span class="bar-tooltip" id="tip-s5-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">5. Homo Mul<br>(同態乘法)</div>
             </div>
@@ -1775,6 +1807,8 @@
                 <div class="bar bar-noah" id="bar-s6-noah"><span class="bar-tooltip" id="tip-s6-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s6-pelta"><span class="bar-tooltip" id="tip-s6-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s6-hqfs"><span class="bar-tooltip" id="tip-s6-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s6-ot25"><span class="bar-tooltip" id="tip-s6-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s6-ajax"><span class="bar-tooltip" id="tip-s6-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">6. Partial Dec<br>(部分解密/ZKP證明)</div>
             </div>
@@ -1786,6 +1820,8 @@
                 <div class="bar bar-noah" id="bar-s7-noah"><span class="bar-tooltip" id="tip-s7-noah">尚未測試</span></div>
                 <div class="bar bar-pelta" id="bar-s7-pelta"><span class="bar-tooltip" id="tip-s7-pelta">尚未測試</span></div>
                 <div class="bar bar-hqfs" id="bar-s7-hqfs"><span class="bar-tooltip" id="tip-s7-hqfs">尚未測試</span></div>
+                <div class="bar bar-ot25" id="bar-s7-ot25"><span class="bar-tooltip" id="tip-s7-ot25">尚未測試</span></div>
+                <div class="bar bar-ajax" id="bar-s7-ajax"><span class="bar-tooltip" id="tip-s7-ajax">尚未測試</span></div>
               </div>
               <div class="stage-name">7. Aggregation<br>(聚合/BFS與CRT)</div>
             </div>
@@ -1800,7 +1836,9 @@
               <th class="col-ccs">CCS 2025 [Zyskind et al.]</th>
               <th class="col-noah">Noah's Ark [Noise Flooding]</th>
               <th class="col-pelta">PELTA [Chatel et al. EPFL]</th>
-              <th class="col-hqfs" style="color: #fbbf24;">HQ-FS [Our Work: RNS-GLWE + HQ-FS]</th>
+              <th class="col-hqfs" style="color: #fbbf24; min-width: 140px;">HQ-FS [Our Work]</th>
+              <th class="col-ot25" style="color: #06b6d4; min-width: 140px;">OT25 [Okada-Takagi 25]</th>
+              <th class="col-ajax" style="color: #ec4899; min-width: 140px;">Ajax [Hu et al. 25]</th>
             </tr>
           </thead>
           <tbody>
@@ -1810,6 +1848,8 @@
               <td class="col-noah" id="tbl-noah-setup">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-setup">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-setup" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-setup">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-setup">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>2. KeyGen 分散式金鑰與承諾生成</strong></td>
@@ -1817,6 +1857,8 @@
               <td class="col-noah" id="tbl-noah-keygen">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-keygen">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-keygen" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-keygen">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-keygen">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>3. Offline Prep / RLKGen 離線預處理耗時</strong></td>
@@ -1824,6 +1866,8 @@
               <td class="col-noah" id="tbl-noah-prep">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-prep">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-prep" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-prep">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-prep">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>4. Homo Add 同態加法耗時</strong></td>
@@ -1831,6 +1875,8 @@
               <td class="col-noah" id="tbl-noah-add">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-add">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-add" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-add">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-add">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>5. Homo Mul 同態乘法 (含重線性化) 耗時</strong></td>
@@ -1838,6 +1884,8 @@
               <td class="col-noah" id="tbl-noah-mul">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-mul">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-mul" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-mul">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-mul">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>6. Partial Dec 部分解密 / MPC 捨入 / ZK 證明</strong></td>
@@ -1845,6 +1893,8 @@
               <td class="col-noah" id="tbl-noah-pdec">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-pdec">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-pdec" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-pdec">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-pdec">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>7. Aggregation 份額聚合 / BFS 過濾與 CRT 重構</strong></td>
@@ -1852,6 +1902,8 @@
               <td class="col-noah" id="tbl-noah-agg">-- (尚未測試)</td>
               <td class="col-pelta" id="tbl-pelta-agg">-- (尚未測試)</td>
               <td class="col-hqfs" id="tbl-hqfs-agg" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ot25" id="tbl-ot25-agg">-- (尚未測試)</td>
+              <td class="col-ajax" id="tbl-ajax-agg">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>總線上解密延遲 (Total Online Latency)</strong></td>
@@ -1859,6 +1911,8 @@
               <td class="col-noah" style="color: #f87171; font-weight: 600;" id="tbl-noah-lat">-- (尚未測試)</td>
               <td class="col-pelta" style="color: #a78bfa; font-weight: 600;" id="tbl-pelta-lat">-- (尚未測試)</td>
               <td class="col-hqfs" style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-lat">-- (尚未測試)</td>
+              <td class="col-ot25" style="color: #06b6d4; font-weight: 600;" id="tbl-ot25-lat">-- (尚未測試)</td>
+              <td class="col-ajax" style="color: #ec4899; font-weight: 600;" id="tbl-ajax-lat">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>實測解密吞吐量 (Measured Throughput)</strong></td>
@@ -1866,13 +1920,17 @@
               <td class="col-noah" style="color: #f87171;" id="tbl-noah-thru">-- (尚未測試)</td>
               <td class="col-pelta" style="color: #a78bfa;" id="tbl-pelta-thru">-- (尚未測試)</td>
               <td class="col-hqfs" style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-thru">-- (尚未測試)</td>
+              <td class="col-ot25" style="color: #06b6d4; font-weight: 600;" id="tbl-ot25-thru">-- (尚未測試)</td>
+              <td class="col-ajax" style="color: #ec4899; font-weight: 600;" id="tbl-ajax-thru">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>同態加/乘法解密正確性驗證 (Correctness)</strong></td>
               <td class="col-ccs" id="tbl-ccs-ok">--</td>
               <td class="col-noah" id="tbl-noah-ok">--</td>
               <td class="col-pelta" id="tbl-pelta-ok">--</td>
-              <td class="col-hqfs" id="tbl-hqfs-ok">--</td>
+              <td class="col-hqfs" id="tbl-hqfs-ok" style="color: #fde68a;">--</td>
+              <td class="col-ot25" id="tbl-ot25-ok">--</td>
+              <td class="col-ajax" id="tbl-ajax-ok">--</td>
             </tr>
             <tr>
               <td><strong>8. 實體網路通訊量 (Sockets & TX/RX Bytes)</strong></td>
@@ -1880,20 +1938,26 @@
               <td class="col-noah" id="tbl-noah-comm">--</td>
               <td class="col-pelta" id="tbl-pelta-comm">--</td>
               <td class="col-hqfs" id="tbl-hqfs-comm" style="color: #fde68a;">--</td>
+              <td class="col-ot25" id="tbl-ot25-comm">--</td>
+              <td class="col-ajax" id="tbl-ajax-comm">--</td>
             </tr>
             <tr>
               <td><strong>9. RNS 模數質數個數 (RNS Primes Count)</strong></td>
               <td class="col-ccs" id="tbl-ccs-rns">N/A (Toy LWE)</td>
               <td class="col-noah" id="tbl-noah-rns">N/A (Toy LWE)</td>
               <td class="col-pelta" id="tbl-pelta-rns">1 (RLWE)</td>
-              <td class="col-hqfs" id="tbl-hqfs-rns" style="color: #fde68a; font-weight: 600;">19 個 NTT 質數 (6Q+13P)</td>
+              <td class="col-hqfs" id="tbl-hqfs-rns" style="color: #fde68a;">19 個 NTT 質數 (6Q+13P)</td>
+              <td class="col-ot25" id="tbl-ot25-rns">2 Primes (LWE)</td>
+              <td class="col-ajax" id="tbl-ajax-rns">2 Primes (LWE)</td>
             </tr>
             <tr>
               <td><strong>10. 記憶體峰值佔用 (Peak RAM Footprint)</strong></td>
               <td class="col-ccs" id="tbl-ccs-mem">--</td>
               <td class="col-noah" id="tbl-noah-mem">--</td>
               <td class="col-pelta" id="tbl-pelta-mem">--</td>
-              <td class="col-hqfs" id="tbl-hqfs-mem" style="color: #34d399; font-weight: 600;">--</td>
+              <td class="col-hqfs" id="tbl-hqfs-mem" style="color: #fde68a;">--</td>
+              <td class="col-ot25" id="tbl-ot25-mem">--</td>
+              <td class="col-ajax" id="tbl-ajax-mem">--</td>
             </tr>
           </tbody>
         </table>
@@ -1911,7 +1975,9 @@
                 <th class="col-ccs" style="min-width: 140px;">CCS 2025 [Zyskind et al.]</th>
                 <th class="col-noah" style="min-width: 140px;">Noah's Ark [4] (Smudging)</th>
                 <th class="col-pelta" style="min-width: 140px;">PELTA [19] (Chatel et al.)</th>
-                <th class="col-hqfs" style="color: #fbbf24; min-width: 160px;">HQ-FS [Our Work]</th>
+                <th class="col-hqfs" style="color: #fbbf24; min-width: 150px;">HQ-FS [Our Work]</th>
+                <th class="col-ot25" style="color: #06b6d4; min-width: 150px;">OT25 [Okada-Takagi 25]</th>
+                <th class="col-ajax" style="color: #ec4899; min-width: 150px;">Ajax [Hu et al. 25]</th>
               </tr>
             </thead>
             <tbody>
@@ -1921,6 +1987,8 @@
                 <td class="col-noah">LWE / RLWE (超多項式模數)</td>
                 <td class="col-pelta">RLWE + MSIS + MLWE</td>
                 <td class="col-hqfs" style="color: #fde68a; font-weight: 600;">RNS-GLWE + MLWE + MSIS</td>
+                <td class="col-ot25">Standard LWE / MLWE</td>
+                <td class="col-ajax">Standard LWE / RLWE (FHEW-like)</td>
               </tr>
               <tr>
                 <td><strong>威脅模型 (Adversary Model)</strong></td>
@@ -1928,6 +1996,8 @@
                 <td class="col-noah">Passive / Semi-Honest</td>
                 <td class="col-pelta">Active Malicious (t &lt; N)</td>
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ Active Malicious (t &lt; N)</td>
+                <td class="col-ot25">Semi-Honest (t &lt; N, Shamir + Server)</td>
+                <td class="col-ajax">Honest-Maj KeyGen, Dishonest-Maj Dec (Semi-Honest)</td>
               </tr>
               <tr>
                 <td><strong>防止部分解密洩漏私鑰 (Key Leakage Prevention)</strong></td>
@@ -1935,6 +2005,8 @@
                 <td class="col-noah">超大多項式雜訊淹沒 (Smudging)</td>
                 <td class="col-pelta">線性雜訊淹沒 (Noise Flooding)</td>
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 緊緻雜訊淹沒 e_sm + 商數隱藏 k_dec·Q</td>
+                <td class="col-ot25">✓ 雜訊補齊 (Noise Padding ζ) + PRF 遮罩 (m_i)</td>
+                <td class="col-ajax" style="color: #ec4899; font-weight: 600;">✓ 雙環秘密分享遮蔽 (Mask-Then-Open over Z_η, Z_Φ) [無雜訊淹沒]</td>
               </tr>
               <tr>
                 <td><strong>主動攻擊零知識驗證機制 (Active Attack Verification)</strong></td>
@@ -1942,6 +2014,8 @@
                 <td class="col-noah">✗ 無 (僅被動安全)</td>
                 <td class="col-pelta">Commit-then-Prove + Schwartz-Zippel</td>
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 同態商數證明 (HQ-FS mod K_Q) + BFS 佇列</td>
+                <td class="col-ot25">✗ 無 (Semi-Honest 假設)</td>
+                <td class="col-ajax">✗ 無 (Semi-Honest 假設)</td>
               </tr>
               <tr>
                 <td><strong>電路隱私與抗代數追蹤 (Circuit Privacy &amp; Anti-Tracing)</strong></td>
@@ -1949,6 +2023,8 @@
                 <td class="col-noah">僅靠解密端大雜訊遮蔽</td>
                 <td class="col-pelta">依賴標準重隨機化</td>
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 明文空間擴展零密文疊加 (C_zero Rerandomization)</td>
+                <td class="col-ot25">Flood-and-round with ServerDec + Noise Padding</td>
+                <td class="col-ajax" style="color: #ec4899; font-weight: 600;">✓ 雙環 MPC 模數轉換與雜訊消除 (Exact Noise Elimination)</td>
               </tr>
               <tr>
                 <td><strong>抗解密預言機選擇明文攻擊 (Resistance against CPA^D)</strong></td>
@@ -2387,13 +2463,15 @@
 
     function selectPapersPreset(preset) {
       const checks = {
-        all: ['ccs25', 'noah', 'pelta', 'hqfs'],
+        all: ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'],
         ours_vs_ccs: ['ccs25', 'hqfs'],
+        ours_vs_noah: ['noah', 'hqfs'],
         ours_vs_pelta: ['pelta', 'hqfs'],
-        ours_vs_noah: ['noah', 'hqfs']
+        ours_vs_ot25: ['ot25', 'hqfs'],
+        ours_vs_ajax: ['ajax', 'hqfs']
       };
       const selected = checks[preset] || checks['all'];
-      ['ccs25', 'noah', 'pelta', 'hqfs'].forEach(p => {
+      ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'].forEach(p => {
         const chk = document.getElementById('paper-check-' + p);
         if (chk) chk.checked = selected.includes(p);
       });
@@ -2410,7 +2488,9 @@
         { key: 'ccs25', colClass: 'col-ccs', barSuffix: 'ccs', legendClass: 'legend-ccs' },
         { key: 'noah', colClass: 'col-noah', barSuffix: 'noah', legendClass: 'legend-noah' },
         { key: 'pelta', colClass: 'col-pelta', barSuffix: 'pelta', legendClass: 'legend-pelta' },
-        { key: 'hqfs', colClass: 'col-hqfs', barSuffix: 'hqfs', legendClass: 'legend-hqfs' }
+        { key: 'hqfs', colClass: 'col-hqfs', barSuffix: 'hqfs', legendClass: 'legend-hqfs' },
+        { key: 'ot25', colClass: 'col-ot25', barSuffix: 'ot25', legendClass: 'legend-ot25' },
+        { key: 'ajax', colClass: 'col-ajax', barSuffix: 'ajax', legendClass: 'legend-ajax' }
       ];
 
       paperDefs.forEach(p => {
@@ -3455,6 +3535,8 @@
         if (selected.includes('noah') && noah[k]) maxVal = Math.max(maxVal, noah[k]);
         if (selected.includes('pelta') && pelta[k]) maxVal = Math.max(maxVal, pelta[k]);
         if (selected.includes('hqfs') && hqfs[k]) maxVal = Math.max(maxVal, hqfs[k]);
+        if (selected.includes('ot25') && ot25[k]) maxVal = Math.max(maxVal, ot25[k]);
+        if (selected.includes('ajax') && ajax[k]) maxVal = Math.max(maxVal, ajax[k]);
       });
 
       function calcBarHeight(val) {
@@ -3501,6 +3583,24 @@
           const tHqfs = document.getElementById(`tip-s${sNum}-hqfs`);
           if (tHqfs) tHqfs.innerText = vHqfs + ' ms';
         }
+
+        const vOt25 = ot25[key] || 0;
+        const bOt25 = document.getElementById(`bar-s${sNum}-ot25`);
+        if (bOt25) {
+          bOt25.style.height = calcBarHeight(vOt25) + '%';
+          bOt25.style.display = selected.includes('ot25') ? 'block' : 'none';
+          const tOt25 = document.getElementById(`tip-s${sNum}-ot25`);
+          if (tOt25) tOt25.innerText = vOt25 + ' ms';
+        }
+
+        const vAjax = ajax[key] || 0;
+        const bAjax = document.getElementById(`bar-s${sNum}-ajax`);
+        if (bAjax) {
+          bAjax.style.height = calcBarHeight(vAjax) + '%';
+          bAjax.style.display = selected.includes('ajax') ? 'block' : 'none';
+          const tAjax = document.getElementById(`tip-s${sNum}-ajax`);
+          if (tAjax) tAjax.innerText = vAjax + ' ms';
+        }
       });
 
       const mapRow = [
@@ -3523,6 +3623,10 @@
         if (elPelta) elPelta.innerText = pelta[prop] !== undefined ? `${pelta[prop]} ms` : '--';
         const elHqfs = document.getElementById(`tbl-hqfs-${shortKey}`);
         if (elHqfs) elHqfs.innerText = hqfs[prop] !== undefined ? `${hqfs[prop]} ms` : '--';
+        const elOt25 = document.getElementById(`tbl-ot25-${shortKey}`);
+        if (elOt25) elOt25.innerText = ot25[prop] !== undefined ? `${ot25[prop]} ms` : '--';
+        const elAjax = document.getElementById(`tbl-ajax-${shortKey}`);
+        if (elAjax) elAjax.innerText = ajax[prop] !== undefined ? `${ajax[prop]} ms` : '--';
       });
 
       const elCcsThru = document.getElementById('tbl-ccs-thru');
@@ -3533,6 +3637,10 @@
       if (elPeltaThru) elPeltaThru.innerText = pelta.throughput_dec_per_sec ? `${Number(pelta.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
       const elHqfsThru = document.getElementById('tbl-hqfs-thru');
       if (elHqfsThru) elHqfsThru.innerText = hqfs.throughput_dec_per_sec ? `${Number(hqfs.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elOt25Thru = document.getElementById('tbl-ot25-thru');
+      if (elOt25Thru) elOt25Thru.innerText = ot25.throughput_dec_per_sec ? `${Number(ot25.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elAjaxThru = document.getElementById('tbl-ajax-thru');
+      if (elAjaxThru) elAjaxThru.innerText = ajax.throughput_dec_per_sec ? `${Number(ajax.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
 
       const elCcsOk = document.getElementById('tbl-ccs-ok');
       if (elCcsOk) elCcsOk.innerHTML = ccs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ccs25') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
@@ -3542,6 +3650,10 @@
       if (elPeltaOk) elPeltaOk.innerHTML = pelta.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('pelta') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
       const elHqfsOk = document.getElementById('tbl-hqfs-ok');
       if (elHqfsOk) elHqfsOk.innerHTML = hqfs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul + CPA^D Safe)</span>' : (selected.includes('hqfs') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elOt25Ok = document.getElementById('tbl-ot25-ok');
+      if (elOt25Ok) elOt25Ok.innerHTML = ot25.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ot25') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elAjaxOk = document.getElementById('tbl-ajax-ok');
+      if (elAjaxOk) elAjaxOk.innerHTML = ajax.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ajax') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
 
       // New network & architecture metrics
       function formatComm(obj) {
@@ -3564,6 +3676,10 @@
       if (elPeltaComm) elPeltaComm.innerText = formatComm(pelta);
       const elHqfsComm = document.getElementById('tbl-hqfs-comm');
       if (elHqfsComm) elHqfsComm.innerText = formatComm(hqfs);
+      const elOt25Comm = document.getElementById('tbl-ot25-comm');
+      if (elOt25Comm) elOt25Comm.innerText = formatComm(ot25);
+      const elAjaxComm = document.getElementById('tbl-ajax-comm');
+      if (elAjaxComm) elAjaxComm.innerText = formatComm(ajax);
 
       const elCcsRns = document.getElementById('tbl-ccs-rns');
       if (elCcsRns) elCcsRns.innerText = 'N/A (Toy LWE)';
@@ -3573,6 +3689,10 @@
       if (elPeltaRns) elPeltaRns.innerText = '1 (RLWE)';
       const elHqfsRns = document.getElementById('tbl-hqfs-rns');
       if (elHqfsRns) elHqfsRns.innerText = (hqfs.rns_primes_count || (hqfs.mode === 'distributed' ? 19 : 2)) + ' 個 NTT 質數 (6Q+13P)';
+      const elOt25Rns = document.getElementById('tbl-ot25-rns');
+      if (elOt25Rns) elOt25Rns.innerText = '2 Primes (LWE)';
+      const elAjaxRns = document.getElementById('tbl-ajax-rns');
+      if (elAjaxRns) elAjaxRns.innerText = '2 Primes (LWE)';
 
       const elCcsMem = document.getElementById('tbl-ccs-mem');
       if (elCcsMem) elCcsMem.innerText = formatMem(ccs);
@@ -3582,6 +3702,10 @@
       if (elPeltaMem) elPeltaMem.innerText = formatMem(pelta);
       const elHqfsMem = document.getElementById('tbl-hqfs-mem');
       if (elHqfsMem) elHqfsMem.innerText = formatMem(hqfs);
+      const elOt25Mem = document.getElementById('tbl-ot25-mem');
+      if (elOt25Mem) elOt25Mem.innerText = formatMem(ot25);
+      const elAjaxMem = document.getElementById('tbl-ajax-mem');
+      if (elAjaxMem) elAjaxMem.innerText = formatMem(ajax);
     }
 
     window.addEventListener('DOMContentLoaded', () => {

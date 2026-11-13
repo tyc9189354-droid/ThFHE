@@ -233,7 +233,9 @@ class BenchmarkRunner:
             "noah": 14200,
             "baseline_noise_flooding": 14200,
             "pelta": 14300,
-            "hqfs": 14400
+            "hqfs": 14400,
+            "ot25": 14500,
+            "ajax": 14600
         }
         bp = base_port or port_offsets.get(scheme_name.lower(), 14500)
         return run_scheme_distributed(

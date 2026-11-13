@@ -44,7 +44,8 @@ from tool import (
     RNSRing, PlaintextNTTHelper, get_ntt_primes, modinv_jit,
     DecentralizedClientNode, HQFSVerifier, compute_committee_lagrange,
     HQFSSystem, uniform_poly, small_poly, encrypt, add, mul, decode_vec,
-    centralized_gen_relin_rns
+    centralized_gen_relin_rns,
+    OT25ThFHE, AjaxThFHE
 )
 
 # ----------------------------------------------------------------------
@@ -768,6 +769,336 @@ def run_hqfs_distributed(
 
 
 # ----------------------------------------------------------------------
+# 5. OT25 (Okada & Takagi, Asiacrypt 2025) Distributed Multi-Port Engine
+# ----------------------------------------------------------------------
+
+def run_ot25_distributed(
+    num_parties: int = 10,
+    k: int = 64,
+    m: int = 1,
+    base_port: int = 14500,
+    **kwargs
+) -> BenchmarkResult:
+    r"""
+    OT25 (Asiacrypt 2025: Okada & Takagi) Distributed Multi-Port Socket Benchmark.
+    Simulates real TCP network distribution of:
+      1. KeyGen: Shamir secret shares, padding noises \zeta^{(sid)}, PRF seeds
+      2. ServerDec: untrusted server performs flood-and-round and broadcasts ct_dec
+      3. PartDec: parties compute pd_i with Lagrange weights and PRF masks, transmitting via sockets
+      4. FinDec: Server reconstructs plaintext
+    """
+    tracemalloc.start()
+    total_tx = 0
+    total_rx = 0
+
+    server_socks, ports = _bind_multi_ports(num_parties, base_port)
+    client_socks, conns = _connect_client_sockets(ports, server_socks)
+
+    t_start_setup = time.perf_counter()
+    ot25 = OT25ThFHE(n_dim=16, q=65537, p=16, num_parties=num_parties, threshold=max(1, int(num_parties * 0.6)))
+    ot25.setup()
+    t_setup_ms = (time.perf_counter() - t_start_setup) * 1000.0
+
+    t_start_keygen = time.perf_counter()
+    ot25.keygen()
+    # Distribute Shamir shares and PRF seeds across sockets
+    for i in range(num_parties):
+        p_id = i + 1
+        pkg = {
+            "cmd": "INIT_OT25",
+            "s_share": ot25.s_shares[p_id],
+            "seed": ot25.seeds[p_id],
+            "threshold": ot25.threshold,
+            "q": ot25.q
+        }
+        total_tx += _send_packet(conns[i], pkg)
+        _, rx_b = _recv_packet(client_socks[i])
+        total_rx += rx_b
+    t_keygen_ms = (time.perf_counter() - t_start_keygen) * 1000.0
+
+    # Offline prep: sync padding noise shares
+    t_start_prep = time.perf_counter()
+    for i in range(num_parties):
+        p_id = i + 1
+        pkg = {
+            "cmd": "PREP_ZETA_SHARES",
+            "zeta_share_1": ot25.zeta_shares[1][p_id] if 1 in ot25.zeta_shares else 0
+        }
+        total_tx += _send_packet(conns[i], pkg)
+        _, rx_b = _recv_packet(client_socks[i])
+        total_rx += rx_b
+    t_prep_ms = (time.perf_counter() - t_start_prep) * 1000.0
+
+    # Encrypt & Homomorphic Eval
+    ct1 = ot25.encrypt(1)
+    ct0 = ot25.encrypt(0)
+    ct_bytes = len(pickle.dumps(ct1))
+
+    t0 = time.perf_counter()
+    ct_add = ot25.eval_add(ct1, ct0)
+    t_add_ms = (time.perf_counter() - t0) * 1000.0
+
+    t0 = time.perf_counter()
+    ct_mul = ot25.eval_mul(ct1, ct1)
+    t_mul_ms = (time.perf_counter() - t0) * 1000.0
+
+    # Online Decryption over sockets
+    pdec_times = []
+    agg_times = []
+    correctness = True
+    active_parties = list(range(1, ot25.threshold + 1))
+
+    for target_ct, expected in [(ct_add, 1), (ct_mul, 1)]:
+        t0 = time.perf_counter()
+        a_bar, b_bar, sid = ot25.server_dec(target_ct, active_parties)
+        shares = []
+        for idx, p_id in enumerate(active_parties):
+            total_tx += _send_packet(conns[idx], {"cmd": "PART_DEC_REQ", "a_bar": a_bar, "sid": sid, "active": active_parties})
+            req, rx_b = _recv_packet(client_socks[idx])
+            total_rx += rx_b
+
+            pd_i = ot25.part_dec(p_id, req["a_bar"], req["active"], req["sid"])
+            total_tx += _send_packet(client_socks[idx], {"cmd": "PART_DEC_RESP", "pd_i": pd_i})
+            resp, rx_b = _recv_packet(conns[idx])
+            total_rx += rx_b
+            shares.append(resp["pd_i"])
+            del req, resp
+        t_pdec_step = (time.perf_counter() - t0) * 1000.0
+        pdec_times.append(t_pdec_step)
+
+        t0 = time.perf_counter()
+        dec = ot25.fin_dec(b_bar, shares)
+        t_agg_step = (time.perf_counter() - t0) * 1000.0
+        agg_times.append(t_agg_step)
+        if dec != expected:
+            correctness = False
+
+    _cleanup_sockets(server_socks, client_socks, conns)
+    current_mem, peak_mem = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    mean_pdec = sum(pdec_times) / len(pdec_times)
+    mean_agg = sum(agg_times) / len(agg_times)
+    mean_lat = mean_pdec + mean_agg
+
+    return BenchmarkResult(
+        scheme_name="OT25 (Asiacrypt 2025: Noise Padding + PRF Masking)",
+        k=k,
+        m=m,
+        mode="distributed",
+        timestamp=datetime.datetime.now().isoformat(),
+        num_parties=num_parties,
+        offline=OfflineMetric(
+            setup_time_ms=round(t_setup_ms, 3),
+            keygen_time_ms=round(t_keygen_ms, 3),
+            prep_time_ms=round(t_prep_ms, 3),
+            gate_storage_bits=32 * num_parties
+        ),
+        online=OnlineMetric(
+            eval_add_time_ms=round(t_add_ms, 4),
+            eval_mul_time_ms=round(t_mul_ms, 4),
+            partial_dec_time_ms=round(mean_pdec, 3),
+            agg_time_ms=round(mean_agg, 3),
+            latency_ms=round(mean_lat, 3),
+            throughput_dec_per_sec=round(1000.0 / mean_lat if mean_lat > 0 else 0, 1),
+            num_rounds=2,
+            comm_sent_bytes=total_tx,
+            comm_recv_bytes=total_rx,
+            details={"peak_mem_mb": round(peak_mem / (1024 * 1024), 2)}
+        ),
+        ciphertext_size_bytes=ct_bytes,
+        correctness_verified=correctness,
+        metadata={
+            "ports_range": f"{base_port}..{base_port+num_parties-1}",
+            "sockets_count": num_parties,
+            "rns_primes_count": 2
+        }
+    )
+
+
+# ----------------------------------------------------------------------
+# 6. Ajax (Hu et al., USENIX Security 2025) Distributed Multi-Port Engine
+# ----------------------------------------------------------------------
+
+def run_ajax_distributed(
+    num_parties: int = 10,
+    k: int = 64,
+    m: int = 1,
+    base_port: int = 14600,
+    **kwargs
+) -> BenchmarkResult:
+    r"""
+    Ajax (USENIX Security 2025: Hu et al.) Distributed Multi-Port Socket Benchmark.
+    Simulates real TCP network distribution of:
+      1. Noise-Compressing KeyGen: additive shares of s
+      2. Offline Double Ring Sharing: distributes (<r>_\eta, <r>_\Phi)
+      3. Two-Round Online Decryption ("Mask-Then-Open"):
+         - Round 1: parties compute <v_i>_\Phi, transmit to coordinator, coordinator broadcasts v_open
+         - Round 2: parties compute <\Phi * m_i>_\eta in Z_\eta, transmit to receiver, receiver decodes
+    """
+    tracemalloc.start()
+    total_tx = 0
+    total_rx = 0
+
+    server_socks, ports = _bind_multi_ports(num_parties, base_port)
+    client_socks, conns = _connect_client_sockets(ports, server_socks)
+
+    t_start_setup = time.perf_counter()
+    t_thresh = max(1, (num_parties - 1) // 2)
+    ajax = AjaxThFHE(n_dim=16, q=65537, p=4, num_parties=num_parties, threshold=t_thresh, sigma=3.2)
+    ajax.setup()
+    t_setup_ms = (time.perf_counter() - t_start_setup) * 1000.0
+
+    t_start_keygen = time.perf_counter()
+    ajax.keygen()
+    for i in range(t_thresh):
+        pkg = {
+            "cmd": "INIT_AJAX",
+            "s_share": ajax.s_shares[i],
+            "threshold": ajax.threshold,
+            "q": ajax.q,
+            "eta": ajax.eta,
+            "Phi": ajax.Phi
+        }
+        total_tx += _send_packet(conns[i], pkg)
+        _, rx_b = _recv_packet(client_socks[i])
+        total_rx += rx_b
+    t_keygen_ms = (time.perf_counter() - t_start_keygen) * 1000.0
+
+    # Offline prep: distribute double ring pairs
+    t_start_prep = time.perf_counter()
+    r_eta_shares, r_phi_shares = ajax.preprocessed_double_rings[0]
+    for i in range(t_thresh):
+        pkg = {
+            "cmd": "PREP_DOUBLE_RING",
+            "r_eta": r_eta_shares[i],
+            "r_phi": r_phi_shares[i]
+        }
+        total_tx += _send_packet(conns[i], pkg)
+        _, rx_b = _recv_packet(client_socks[i])
+        total_rx += rx_b
+    t_prep_ms = (time.perf_counter() - t_start_prep) * 1000.0
+
+    # Encrypt & Homomorphic Eval
+    ct1 = ajax.encrypt(1)
+    ct2 = ajax.encrypt(2)
+    ct_bytes = len(pickle.dumps(ct1))
+
+    t0 = time.perf_counter()
+    ct_add = ajax.eval_add(ct1, ct2)
+    t_add_ms = (time.perf_counter() - t0) * 1000.0
+
+    t0 = time.perf_counter()
+    ct_mul = ajax.eval_mul(ct1, ct2)
+    t_mul_ms = (time.perf_counter() - t0) * 1000.0
+
+    pdec_times = []
+    agg_times = []
+    correctness = True
+
+    for target_ct, expected in [(ct_add, 3), (ct_mul, 2)]:
+        # Round 1: Mask then Open mod Phi
+        t0 = time.perf_counter()
+        a, b = target_ct
+        v_shares = []
+        u_prime_shares = []
+
+        for i in range(t_thresh):
+            total_tx += _send_packet(conns[i], {"cmd": "ROUND1_REQ", "a": a, "b": b, "idx": i})
+            req, rx_b = _recv_packet(client_socks[i])
+            total_rx += rx_b
+
+            if i == 0:
+                u_i = (b - int(np.dot(a, ajax.s_shares[i]))) % ajax.q
+            else:
+                u_i = (- int(np.dot(a, ajax.s_shares[i]))) % ajax.q
+            u_p = int(round((ajax.eta / ajax.q) * u_i)) % ajax.eta
+            e_p = u_p % ajax.Phi
+            v_i = (e_p + r_phi_shares[i]) % ajax.Phi
+
+            total_tx += _send_packet(client_socks[i], {"cmd": "ROUND1_RESP", "v_i": v_i, "u_p": u_p})
+            resp, rx_b = _recv_packet(conns[i])
+            total_rx += rx_b
+            v_shares.append(resp["v_i"])
+            u_prime_shares.append(resp["u_p"])
+            del req, resp
+
+        v_open = sum(v_shares) % ajax.Phi
+        v_centered = v_open if v_open <= ajax.Phi // 2 else v_open - ajax.Phi
+        t_round1 = (time.perf_counter() - t0) * 1000.0
+        pdec_times.append(t_round1)
+
+        # Round 2: Subtraction in Z_eta and Reconstruction
+        t0 = time.perf_counter()
+        phi_m_shares = []
+        for i in range(t_thresh):
+            total_tx += _send_packet(conns[i], {"cmd": "ROUND2_REQ", "v_open": v_centered})
+            req, rx_b = _recv_packet(client_socks[i])
+            total_rx += rx_b
+
+            if i == 0:
+                e_p_eta_i = (v_centered - r_eta_shares[i]) % ajax.eta
+            else:
+                e_p_eta_i = (- r_eta_shares[i]) % ajax.eta
+            phi_m_i = (u_prime_shares[i] - e_p_eta_i) % ajax.eta
+
+            total_tx += _send_packet(client_socks[i], {"cmd": "ROUND2_RESP", "phi_m_i": phi_m_i})
+            resp, rx_b = _recv_packet(conns[i])
+            total_rx += rx_b
+            phi_m_shares.append(resp["phi_m_i"])
+            del req, resp
+
+        tot = sum(phi_m_shares) % ajax.eta
+        dec = int(round(tot / ajax.Phi)) % ajax.p
+        t_round2 = (time.perf_counter() - t0) * 1000.0
+        agg_times.append(t_round2)
+        if dec != expected:
+            correctness = False
+
+    _cleanup_sockets(server_socks, client_socks, conns)
+    current_mem, peak_mem = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    mean_pdec = sum(pdec_times) / len(pdec_times)
+    mean_agg = sum(agg_times) / len(agg_times)
+    mean_lat = mean_pdec + mean_agg
+
+    return BenchmarkResult(
+        scheme_name="Ajax (USENIX Security 2025: Mask-Then-Open without Noise Flooding)",
+        k=k,
+        m=m,
+        mode="distributed",
+        timestamp=datetime.datetime.now().isoformat(),
+        num_parties=num_parties,
+        offline=OfflineMetric(
+            setup_time_ms=round(t_setup_ms, 3),
+            keygen_time_ms=round(t_keygen_ms, 3),
+            prep_time_ms=round(t_prep_ms, 3),
+            gate_storage_bits=16 * num_parties
+        ),
+        online=OnlineMetric(
+            eval_add_time_ms=round(t_add_ms, 4),
+            eval_mul_time_ms=round(t_mul_ms, 4),
+            partial_dec_time_ms=round(mean_pdec, 3),
+            agg_time_ms=round(mean_agg, 3),
+            latency_ms=round(mean_lat, 3),
+            throughput_dec_per_sec=round(1000.0 / mean_lat if mean_lat > 0 else 0, 1),
+            num_rounds=2,
+            comm_sent_bytes=total_tx,
+            comm_recv_bytes=total_rx,
+            details={"peak_mem_mb": round(peak_mem / (1024 * 1024), 2)}
+        ),
+        ciphertext_size_bytes=ct_bytes,
+        correctness_verified=correctness,
+        metadata={
+            "ports_range": f"{base_port}..{base_port+num_parties-1}",
+            "sockets_count": num_parties,
+            "rns_primes_count": 2
+        }
+    )
+
+
+# ----------------------------------------------------------------------
 # Dispatcher
 # ----------------------------------------------------------------------
 
@@ -776,7 +1107,9 @@ DISTRIBUTED_RUNNERS = {
     "baseline_noise_flooding": run_noah_distributed,
     "noah": run_noah_distributed,
     "pelta": run_pelta_distributed,
-    "hqfs": run_hqfs_distributed
+    "hqfs": run_hqfs_distributed,
+    "ot25": run_ot25_distributed,
+    "ajax": run_ajax_distributed
 }
 
 def run_scheme_distributed(scheme_name: str, num_parties: int = 10, **kwargs) -> BenchmarkResult:

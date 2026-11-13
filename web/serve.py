@@ -31,6 +31,8 @@ from schemes.ccs25_scheme import CCS25ThFHEScheme
 from schemes.baseline_noise_flooding import BaselineNoiseFloodingScheme
 from schemes.pelta_scheme import PeltaThFHEScheme
 from schemes.hqfs_scheme import HQFSThFHEScheme
+from schemes.ot25_scheme import OT25ThFHEScheme
+from schemes.ajax_scheme import AjaxThFHEScheme
 from runner.benchmark_runner import BenchmarkRunner
 
 PORT = 3000
@@ -1435,10 +1437,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             noah_scheme = BaselineNoiseFloodingScheme()
             pelta_scheme = PeltaThFHEScheme()
             hqfs_scheme = HQFSThFHEScheme()
+            ot25_scheme = OT25ThFHEScheme()
+            ajax_scheme = AjaxThFHEScheme()
 
-            schemes_requested = req.get("schemes", ["ccs25", "noah", "pelta", "hqfs"])
+            schemes_requested = req.get("schemes", ["ccs25", "noah", "pelta", "hqfs", "ot25", "ajax"])
             if not isinstance(schemes_requested, list) or not schemes_requested:
-                schemes_requested = ["ccs25", "noah", "pelta", "hqfs"]
+                schemes_requested = ["ccs25", "noah", "pelta", "hqfs", "ot25", "ajax"]
 
             def format_res(r):
                 return {
@@ -1478,6 +1482,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 if "hqfs" in schemes_requested:
                     res_hqfs = runner.run_distributed("hqfs", k=k, m=m, num_parties=num_parties, b=b)
                     results_map["hqfs"] = format_res(res_hqfs)
+                if "ot25" in schemes_requested:
+                    res_ot25 = runner.run_distributed("ot25", k=k, m=m, num_parties=num_parties, b=b)
+                    results_map["ot25"] = format_res(res_ot25)
+                if "ajax" in schemes_requested:
+                    res_ajax = runner.run_distributed("ajax", k=k, m=m, num_parties=num_parties, b=b)
+                    results_map["ajax"] = format_res(res_ajax)
             else:
                 # Fast In-Memory Local Algorithm Mode
                 if "ccs25" in schemes_requested:
@@ -1504,6 +1514,18 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         malicious_ratio=malicious_ratio, attack_type=attack_type
                     )
                     results_map["hqfs"] = format_res(res_hqfs)
+                if "ot25" in schemes_requested:
+                    res_ot25 = runner.run_local(
+                        ot25_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type
+                    )
+                    results_map["ot25"] = format_res(res_ot25)
+                if "ajax" in schemes_requested:
+                    res_ajax = runner.run_local(
+                        ajax_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                        malicious_ratio=malicious_ratio, attack_type=attack_type
+                    )
+                    results_map["ajax"] = format_res(res_ajax)
 
             self._send_json(200, {
                 "status": "ok",

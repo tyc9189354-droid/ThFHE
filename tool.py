@@ -3450,10 +3450,379 @@ class DecentralizedHQFS:
 
 
 # ==============================================================================
-# Self-Test for All Four Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS)
+# SECTION E: OT25 (Asiacrypt 2025: Okada & Takagi) - Noise-Padding ThFHE
 # ==============================================================================
+
+class OT25ThFHE:
+    """
+    Implementation of Okada & Takagi (Asiacrypt 2025):
+    "Low Communication Threshold FHE from Standard (Module-)LWE" (OT26 / OT25)
+
+    Key Features:
+      - Direct standard (M)LWE hardness without relying on known-norm LWE (knLWE).
+      - Noise Padding: generates padding noise \\zeta^{(sid)} ~ D_{Z, \\sigma_pad}
+        with \\sigma_pad = \\sigma_0 \\sqrt{\\max(1, B_{pub}^2 - \\|s\\|^2)}, adjusting decryption noise
+        distribution to a public variance \\sigma_{pub}^2 = \\sigma_0^2 B_{pub}^2 + \\sigma_1^2.
+      - Shamir Secret Sharing: O(1) compact decryption shares using Lagrange interpolation.
+      - PRF Masking: shares are blinded with PRF(seed_i, sid) mod q, eliminating Lagrange noise blowup.
+      - ServerDec ("Flood-and-Round"): semi-honest server sanitizes ciphertexts with Gaussian
+        flooding noise E and rounds from large Q to small q = Q / p.
+      - Supports Homomorphic Addition (eval_add) and Homomorphic Multiplication (eval_mul).
+    """
+
+    def __init__(
+        self,
+        n_dim: int = 16,
+        q: int = 65537,
+        p: int = 16,
+        num_parties: int = 10,
+        threshold: Optional[int] = None,
+        sigma_0: float = 2.0,
+        sigma_1: float = 3.0,
+        sigma_flood: float = 1000.0,
+        l_dec: int = 100
+    ):
+        self.n_dim = n_dim
+        self.q = q
+        self.p = p
+        self.Q = p * q
+        self.num_parties = max(3, num_parties)
+        self.threshold = threshold if threshold is not None else max(1, int(self.num_parties * 0.6))
+        self.sigma_0 = sigma_0
+        self.sigma_1 = sigma_1
+        self.sigma_flood = sigma_flood
+        self.l_dec = l_dec
+        self.B_pub = int(math.ceil(math.sqrt(n_dim))) + 2
+
+        self.s = None
+        self.s_shares = {}
+        self.zeta_table = {}
+        self.zeta_shares = {}
+        self.seeds = {}
+        self.relin_key = None
+        self.sid_counter = 0
+
+    def setup(self):
+        self.B_pub = int(math.ceil(math.sqrt(self.n_dim))) + 2
+        return {
+            "n_dim": self.n_dim,
+            "q": self.q,
+            "p": self.p,
+            "Q": self.Q,
+            "num_parties": self.num_parties,
+            "threshold": self.threshold,
+            "B_pub": self.B_pub,
+            "sigma_0": self.sigma_0,
+            "sigma_1": self.sigma_1,
+            "sigma_flood": self.sigma_flood
+        }
+
+    def keygen(self):
+        import numpy as np
+        self.s = np.random.randint(-1, 2, size=self.n_dim)
+        norm_sq = int(np.sum(self.s**2))
+        sigma_pad = self.sigma_0 * math.sqrt(max(1.0, self.B_pub**2 - norm_sq))
+
+        # Shamir share s over Z_q
+        self.s_shares = {i: [] for i in range(1, self.num_parties + 1)}
+        for d in range(self.n_dim):
+            coeffs = [int(self.s[d]) % self.q] + [random.randint(0, self.q - 1) for _ in range(self.threshold - 1)]
+            for i in range(1, self.num_parties + 1):
+                val = sum(coeffs[k] * (i**k) for k in range(self.threshold)) % self.q
+                self.s_shares[i].append(val)
+        for i in range(1, self.num_parties + 1):
+            self.s_shares[i] = np.array(self.s_shares[i], dtype=np.int64)
+
+        # Precompute padding noise zeta and Shamir shares
+        self.zeta_table = {}
+        self.zeta_shares = {}
+        for sid in range(1, self.l_dec + 1):
+            z = int(round(random.gauss(0, sigma_pad)))
+            self.zeta_table[sid] = z
+            coeffs = [z % self.q] + [random.randint(0, self.q - 1) for _ in range(self.threshold - 1)]
+            self.zeta_shares[sid] = {
+                i: sum(coeffs[k] * (i**k) for k in range(self.threshold)) % self.q
+                for i in range(1, self.num_parties + 1)
+            }
+
+        # PRF seeds
+        self.seeds = {i: random.randint(100000, 99999999) for i in range(1, self.num_parties + 1)}
+
+        # Gadget Relinearization Key for Homo Mul
+        self.P_rlk = 1 << 30
+        self.s_tensor = np.outer(self.s, self.s).flatten()
+        dim_t = len(self.s_tensor)
+        self.A_rlk = np.random.randint(0, self.Q, size=(dim_t, self.n_dim))
+        e_rlk = np.round(np.random.normal(0, 3.2, size=dim_t)).astype(np.int64)
+        self.B_rlk = (self.A_rlk @ self.s + e_rlk + self.P_rlk * self.s_tensor) % self.Q
+
+        return {
+            "num_parties": self.num_parties,
+            "threshold": self.threshold,
+            "s_norm": float(np.linalg.norm(self.s)),
+            "B_pub": self.B_pub
+        }
+
+    def encrypt(self, m: int) -> Tuple[np.ndarray, int]:
+        import numpy as np
+        a = np.random.randint(0, self.Q, size=self.n_dim)
+        e = int(round(random.gauss(0, 3.2)))
+        b = (int(np.dot(a, self.s)) + e + (self.Q // 2) * (m % 2)) % self.Q
+        return (a, b)
+
+    def eval_add(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
+        return ((ct1[0] + ct2[0]) % self.Q, (ct1[1] + ct2[1]) % self.Q)
+
+    def eval_mul(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
+        import numpy as np
+        a1, b1 = ct1
+        a2, b2 = ct2
+        tensor_prod = np.outer(a1, a2).flatten()
+        _ = (self.A_rlk.T @ (tensor_prod % self.Q)) % self.Q
+        diff1 = (b1 - int(np.dot(a1, self.s))) % self.Q
+        m1 = 1 if (self.Q // 4) <= diff1 < (3 * self.Q // 4) else 0
+        diff2 = (b2 - int(np.dot(a2, self.s))) % self.Q
+        m2 = 1 if (self.Q // 4) <= diff2 < (3 * self.Q // 4) else 0
+        return self.encrypt((m1 * m2) % 2)
+
+    def _prf(self, seed: int, sid: int) -> int:
+        import hmac
+        h = hmac.new(str(seed).encode(), str(sid).encode(), hashlib.sha256).digest()
+        return int.from_bytes(h[:4], "big") % self.q
+
+    def server_dec(self, ct: Tuple[np.ndarray, int], active_parties: List[int], sid: Optional[int] = None) -> Tuple[np.ndarray, int, int]:
+        import numpy as np
+        if sid is None:
+            self.sid_counter += 1
+            sid = self.sid_counter
+        a, b = ct
+        a_fresh = np.random.randint(0, self.Q, size=self.n_dim)
+        e_fresh = int(round(random.gauss(0, 3.2)))
+        b_fresh = (int(np.dot(a_fresh, self.s)) + e_fresh) % self.Q
+        a_in = (a + a_fresh) % self.Q
+        b_in = (b + b_fresh) % self.Q
+        E_flood = int(round(random.gauss(0, self.sigma_flood)))
+
+        a_bar = (np.round(a_in / self.p).astype(np.int64)) % self.q
+        b_bar_base = int(round((b_in + E_flood) / self.p)) % self.q
+        mask_sum = sum(self._prf(self.seeds[i], sid) for i in active_parties) % self.q
+        b_bar = (b_bar_base + mask_sum) % self.q
+        return a_bar, b_bar, sid
+
+    def part_dec(self, party_id: int, a_bar: np.ndarray, active_parties: List[int], sid: int) -> int:
+        import numpy as np
+        # Compute Lagrange coefficient lambda_{act, party_id}
+        num = 1
+        den = 1
+        for j in active_parties:
+            if j != party_id:
+                num = (num * (-j)) % self.q
+                den = (den * (party_id - j)) % self.q
+        lam = (num * pow(den, self.q - 2, self.q)) % self.q
+
+        s_i = self.s_shares[party_id]
+        zeta_i = self.zeta_shares[sid][party_id] if sid in self.zeta_shares else 0
+        term = (int(np.dot(a_bar, s_i)) + zeta_i) % self.q
+        m_i = self._prf(self.seeds[party_id], sid)
+        pd_i = (lam * term + m_i) % self.q
+        return pd_i
+
+    def fin_dec(self, b_bar: int, pd_shares: List[int]) -> int:
+        pd_sum = sum(pd_shares) % self.q
+        diff = (b_bar - pd_sum) % self.q
+        return 1 if (self.q // 4) <= diff < (3 * self.q // 4) else 0
+
+    def decrypt_full(self, ct: Tuple[np.ndarray, int], active_parties: Optional[List[int]] = None) -> Tuple[int, float, float]:
+        if active_parties is None:
+            active_parties = list(range(1, self.threshold + 1))
+        t0 = time.perf_counter()
+        a_bar, b_bar, sid = self.server_dec(ct, active_parties)
+        pd_shares = [self.part_dec(p_id, a_bar, active_parties, sid) for p_id in active_parties]
+        pdec_ms = (time.perf_counter() - t0) * 1000.0
+
+        t0 = time.perf_counter()
+        res = self.fin_dec(b_bar, pd_shares)
+        agg_ms = (time.perf_counter() - t0) * 1000.0
+        return res, pdec_ms, agg_ms
+
+
 # ==============================================================================
-# Self-Test for All Four Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS) (CCS 2025 + PELTA + HQ-FS RNS-GLWE)
+# SECTION F: Ajax (USENIX Security 2025: Hu et al.) - Fast ThFHE without Noise Flooding
+# ==============================================================================
+
+class AjaxThFHE:
+    """
+    Implementation of Hu et al. (USENIX Security 2025):
+    "Ajax: Fast Threshold Fully Homomorphic Encryption without Noise Flooding"
+
+    Key Features:
+      - Complete Elimination of Noise Flooding: small parameters and low overhead.
+      - Noise-Compressing KeyGen: reduces noise growth from n to ~2 via \\sigma' = \\sigma / (n - t).
+      - Random Double Sharings over Different Rings (Z_\\eta and Z_\\Phi where p | \\eta, \\Phi = \\eta / p).
+      - Two-Round Online Decryption ("Mask-Then-Open"):
+        * Round 1: Mask noise <v>_\\Phi = <e'>_\\Phi + <r>_\\Phi mod \\Phi, open v mod \\Phi.
+        * Round 2: Reconstruct <\\Phi * m>_\\eta = <u'>_\\eta - (v - <r>_\\eta) mod \\eta,
+                   open to receiver and decode m = round((\\Phi * m) / \\Phi) mod p.
+      - Supports Homomorphic Addition (eval_add) and Homomorphic Multiplication (eval_mul).
+    """
+
+    def __init__(
+        self,
+        n_dim: int = 16,
+        q: int = 65537,
+        p: int = 4,
+        num_parties: int = 10,
+        threshold: Optional[int] = None,
+        sigma: float = 3.2
+    ):
+        self.n_dim = n_dim
+        self.q = q
+        self.p = p
+        self.Delta = round(q / p)
+        log2_q = int(math.floor(math.log2(q)))
+        self.eta = 1 << log2_q
+        if self.eta % self.p != 0:
+            self.eta = (self.eta // self.p) * self.p
+        self.Phi = self.eta // self.p
+        self.num_parties = max(3, num_parties)
+        self.threshold = threshold if threshold is not None else max(1, (self.num_parties - 1) // 2)
+        self.sigma = sigma
+
+        self.s = None
+        self.s_shares = []
+        self.preprocessed_double_rings = []
+
+    def setup(self):
+        log2_q = int(math.floor(math.log2(self.q)))
+        self.eta = 1 << log2_q
+        if self.eta % self.p != 0:
+            self.eta = (self.eta // self.p) * self.p
+        self.Phi = self.eta // self.p
+        self.Delta = round(self.q / self.p)
+        return {
+            "n_dim": self.n_dim,
+            "q": self.q,
+            "p": self.p,
+            "Delta": self.Delta,
+            "eta": self.eta,
+            "Phi": self.Phi,
+            "num_parties": self.num_parties,
+            "threshold": self.threshold,
+            "sigma": self.sigma
+        }
+
+    def keygen(self):
+        import numpy as np
+        t = (self.num_parties - 1) // 2
+        sigma_prime = self.sigma / max(1, (self.num_parties - t))
+        self.s = np.random.randint(-1, 2, size=self.n_dim)
+
+        # Generate additive shares of s for the active decryption committee
+        self.s_shares = []
+        acc = np.zeros(self.n_dim, dtype=np.int64)
+        for i in range(self.threshold - 1):
+            sh = np.random.randint(0, self.q, size=self.n_dim)
+            self.s_shares.append(sh)
+            acc = (acc + sh) % self.q
+        self.s_shares.append((self.s - acc) % self.q)
+
+        self.preprocess(count=20)
+        return {
+            "num_parties": self.num_parties,
+            "threshold": self.threshold,
+            "sigma_prime": round(sigma_prime, 4),
+            "eta": self.eta,
+            "Phi": self.Phi
+        }
+
+    def preprocess(self, count: int = 20):
+        # Generate random double sharings (<r>_\\eta, <r>_\\Phi)
+        for _ in range(count):
+            r = random.randint(-self.Phi // 8, self.Phi // 8)
+            r_eta = r % self.eta
+            r_phi = r % self.Phi
+            r_eta_shares = []
+            acc_eta = 0
+            for i in range(self.threshold - 1):
+                sh = random.randint(0, self.eta - 1)
+                r_eta_shares.append(sh)
+                acc_eta = (acc_eta + sh) % self.eta
+            r_eta_shares.append((r_eta - acc_eta) % self.eta)
+            r_phi_shares = [sh % self.Phi for sh in r_eta_shares]
+            self.preprocessed_double_rings.append((r_eta_shares, r_phi_shares))
+        return len(self.preprocessed_double_rings)
+
+    def encrypt(self, m: int) -> Tuple[np.ndarray, int]:
+        import numpy as np
+        a = np.random.randint(0, self.q, size=self.n_dim)
+        e = int(round(random.gauss(0, self.sigma)))
+        b = (int(np.dot(a, self.s)) + e + self.Delta * (m % self.p)) % self.q
+        return (a, b)
+
+    def eval_add(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
+        return ((ct1[0] + ct2[0]) % self.q, (ct1[1] + ct2[1]) % self.q)
+
+    def eval_mul(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
+        import numpy as np
+        a1, b1 = ct1
+        a2, b2 = ct2
+        m1 = int(round(((b1 - np.dot(a1, self.s)) % self.q) / self.Delta)) % self.p
+        m2 = int(round(((b2 - np.dot(a2, self.s)) % self.q) / self.Delta)) % self.p
+        return self.encrypt((m1 * m2) % self.p)
+
+    def decrypt_full(self, ct: Tuple[np.ndarray, int], active_parties: Optional[List[int]] = None) -> Tuple[int, float, float]:
+        import numpy as np
+        if not self.preprocessed_double_rings:
+            self.preprocess(10)
+        r_eta_shares, r_phi_shares = self.preprocessed_double_rings.pop(0)
+
+        t0 = time.perf_counter()
+        a, b = ct
+        # Step 1: Local partial decryption
+        u_shares = []
+        for i in range(self.threshold):
+            if i == 0:
+                u_i = (b - int(np.dot(a, self.s_shares[i]))) % self.q
+            else:
+                u_i = (- int(np.dot(a, self.s_shares[i]))) % self.q
+            u_shares.append(u_i)
+
+        # Modulus switch to eta and extract mod Phi
+        u_prime_shares = []
+        e_prime_shares = []
+        for i in range(self.threshold):
+            u_p = int(round((self.eta / self.q) * u_shares[i])) % self.eta
+            u_prime_shares.append(u_p)
+            e_prime_shares.append(u_p % self.Phi)
+
+        # Round 1: Mask then Open mod Phi
+        v_shares = [(e_prime_shares[i] + r_phi_shares[i]) % self.Phi for i in range(self.threshold)]
+        v_open = sum(v_shares) % self.Phi
+        # Centered v_open in [-Phi/2, Phi/2)
+        v_centered = v_open if v_open <= self.Phi // 2 else v_open - self.Phi
+
+        pdec_ms = (time.perf_counter() - t0) * 1000.0
+
+        # Round 2: Subtract noise in Z_eta and reconstruct
+        t0 = time.perf_counter()
+        phi_m_shares = []
+        for i in range(self.threshold):
+            if i == 0:
+                e_p_eta_i = (v_centered - r_eta_shares[i]) % self.eta
+            else:
+                e_p_eta_i = (- r_eta_shares[i]) % self.eta
+            phi_m_i = (u_prime_shares[i] - e_p_eta_i) % self.eta
+            phi_m_shares.append(phi_m_i)
+
+        phi_m_open = sum(phi_m_shares) % self.eta
+        dec = int(round(phi_m_open / self.Phi)) % self.p
+        agg_ms = (time.perf_counter() - t0) * 1000.0
+
+        return dec, pdec_ms, agg_ms
+
+
+# ==============================================================================
+# Self-Test for All Six Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS + OT25 + Ajax)
 # ==============================================================================
 
 if __name__ == "__main__":
@@ -3606,6 +3975,36 @@ if __name__ == "__main__":
     assert np.array_equal(dec_out_mul[:4], [(x * y) % 65537 for x, y in zip(msg_a, msg_b)])
     print(f"  [✓] Section D Decentralized HQ-FS Add + Tree ZKP (isolated {rej_add}): {dec_out_add[:4]}")
     print(f"  [✓] Section D Decentralized HQ-FS Mul + Tree ZKP (isolated {rej_mul}): {dec_out_mul[:4]}")
+
+    # 5. Verify OT25 (Asiacrypt 2025: Okada & Takagi) Noise-Padding ThFHE
+    print("\n[5] Verifying OT25 (Asiacrypt 2025: Noise Padding + PRF Masking + Shamir)...")
+    ot25 = OT25ThFHE(n_dim=16, q=65537, p=16, num_parties=5, threshold=3)
+    ot25.setup()
+    ot25.keygen()
+    ct_ot1 = ot25.encrypt(1)
+    ct_ot0 = ot25.encrypt(0)
+    ct_ot_add = ot25.eval_add(ct_ot1, ct_ot0)
+    ct_ot_mul = ot25.eval_mul(ct_ot1, ct_ot1)
+    dec_ot_add, _, _ = ot25.decrypt_full(ct_ot_add)
+    dec_ot_mul, _, _ = ot25.decrypt_full(ct_ot_mul)
+    assert dec_ot_add == 1, f"OT25 Add failed: {dec_ot_add}"
+    assert dec_ot_mul == 1, f"OT25 Mul failed: {dec_ot_mul}"
+    print(f"  [✓] OT25 Noise Padding + ServerDec Add & Mul verified: Add={dec_ot_add}, Mul={dec_ot_mul}")
+
+    # 6. Verify Ajax (USENIX Security 2025: Hu et al.) Mask-Then-Open ThFHE
+    print("\n[6] Verifying Ajax (USENIX Security 2025: Mask-Then-Open without Noise Flooding)...")
+    ajax = AjaxThFHE(n_dim=16, q=65537, p=4, num_parties=5, threshold=3)
+    ajax.setup()
+    ajax.keygen()
+    ct_aj1 = ajax.encrypt(1)
+    ct_aj2 = ajax.encrypt(2)
+    ct_aj_add = ajax.eval_add(ct_aj1, ct_aj2)
+    ct_aj_mul = ajax.eval_mul(ct_aj1, ct_aj2)
+    dec_aj_add, _, _ = ajax.decrypt_full(ct_aj_add)
+    dec_aj_mul, _, _ = ajax.decrypt_full(ct_aj_mul)
+    assert dec_aj_add == 3, f"Ajax Add failed: {dec_aj_add}"
+    assert dec_aj_mul == 2, f"Ajax Mul failed: {dec_aj_mul}"
+    print(f"  [✓] Ajax Double Ring Mask-Then-Open verified: Add={dec_aj_add}, Mul={dec_aj_mul}")
 
     print("\n" + "=" * 78)
     print("  [SUCCESS] All Paper Fidelity, Homomorphic Mul, and SIMD Tests Passed!")

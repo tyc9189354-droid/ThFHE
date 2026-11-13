@@ -5462,35 +5462,88 @@
         title: 'CCS 2025 論文密碼學理論教學 (Zyskind et al.)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>在門檻同態加密（Threshold FHE）中，解密過程必須由 n 個分散節點共同計算：</p>
-            <div class="word-eq-block">b - a · s = Δ · m + e (mod q)</div>
-            <p>傳統方案為了防止發布的部分解密份額洩漏私鑰雜訊 e，必須加入巨量的統計雜訊淹沒：</p>
-            <div class="word-eq-block">E_flood ≥ 2^(stat) · B_dec</div>
-            <p>這導致密文模數 q 必須急遽膨脹至數百位元，連帶迫使多項式環維度 N 翻倍，使所有同態乘法與自舉運算變慢數十倍。CCS 2025 的核心目標就是：<strong>在完全不擴張密文模數的前提下，達成兼具主動安全性與 UC 模擬安全的門檻解密！</strong></p>
-          </div>
-
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：MPC 協同捨入 (MPC-Based Rounding)</div>
-            <p>Zyskind 等人提出徹底揚棄雜訊淹沒，利用<strong>多方安全計算（MPC）直接在秘密份額上完成整數除法與捨入</strong>：</p>
-            <div class="word-eq-block">m = ⌊ (b - a · s) · (p / q) ⌉ = ⌊ (Δ · m + e) / Δ ⌉</div>
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>傳統達到模擬安全（Simulation Security）或通用可組合安全（UC Security）的門檻同態加密（ThFHE），長期陷入兩難困境：</p>
             <ul>
-              <li><strong>離線預處理輔助</strong>：在離線階段預先生成隨機三元組（Beaver Triples）或隨機盲化整數 r。</li>
-              <li><strong>線上低輪數 MPC 協同</strong>：各節點持有私鑰的 Shamir 份額 s_i，在線上僅需 2~3 輪輕量 MPC 通訊，即可在不向任何單一節點公開敏感中間值的狀態下，完成定點數捨入計算。</li>
-              <li><strong>消除雜訊殘餘</strong>：整數捨入操作將小雜訊 e 直接濾除歸零，徹底瓦解了攻擊者透過雜訊反推私鑰的管道。</li>
+              <li><strong>雜訊淹沒導致的參數膨脹惡夢</strong>：為防止部分解密份額洩漏與私鑰及運算軌跡相關的雜訊 <span class="word-eq">e</span>，傳統方案必須加入遠超原有雜訊的統計淹沒雜訊 <span class="word-eq">E<sub>flood</sub> ≥ 2<sup>stat</sup> · B<sub>dec</sub></span>。這迫使密文模數 <span class="word-eq">q = 2<sup>k</sup></span> 從原生規模急遽膨脹數十至上百位元，連帶使 LWE 維度翻倍，拖慢所有前置的同態乘法與自舉計算。</li>
+              <li><strong>退而求其次的安全妥協</strong>：部分方案改用 Rényi 散度等遊戲導向安全定義（Game-based Security）以縮小參數，但代價是失去模擬安全性，無法在大型多方協定中安全組合。</li>
+              <li><strong>解密階段的自舉放大開銷</strong>：另一條路線（如 Dahl 等人之 Noah's Ark）改在解密前以 FHE 自舉切換至超大參數，但每一次解密都得付出數百毫秒的沈重本地同態計算代價，使系統受限於運算吞吐量瓶頸。</li>
             </ul>
           </div>
 
-          <div class="example-box">
-            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
-            <p><strong>情境設定</strong>：設密文模數 <span class="word-eq">q = 1024</span>，明文模數 <span class="word-eq">p = 16</span>，縮放因子 <span class="word-eq">Δ = ⌊1024 / 16⌉ = 64</span>。參與方共有 3 個節點，私鑰滿足 <span class="word-eq">s = s₁ + s₂ + s₃</span>。</p>
-            <p><strong>步驟 1 (加密)</strong>：加密明文 <span class="word-eq">m = 3</span>，產生密文：</p>
-            <div class="word-eq-block">b = a · s + e + Δ · m = a · s + 12 + 64 · 3 = a · s + 204 (mod 1024)</div>
-            <p>此時內部真實雜訊為 <span class="word-eq">e = 12</span>，有效資訊承載於高位 <span class="word-eq">192</span>。</p>
-            <p><strong>步驟 2 (部分評估)</strong>：各節點計算本地相減份額 <span class="word-eq">v_i = b_i - a · s_i</span>，求和還原出 <span class="word-eq">v = 204</span>。</p>
-            <p><strong>步驟 3 (MPC 捨入)</strong>：節點協同執行除以 64 並四捨五入：</p>
-            <div class="word-eq-block">v / Δ = 204 / 64 = 3.1875 ──四捨五入──→ 3</div>
-            <p><strong>結論</strong>：雜訊 12 在除法與捨入中被無損濾除，精準輸出原始明文 3！全程完全不需要將模數 q 擴增至 2¹²⁸，同態計算速度保持最佳！</p>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>仔細觀察 LWE/TFHE 密文解密的數學本質：它僅僅是在模 <span class="word-eq">q = 2<sup>k</sup></span> 上計算密文與私鑰的內積後，再乘上比例因子 <span class="word-eq">p / q = 2<sup>m − k</sup></span> 並四捨五入取整數：</p>
+            <div class="word-eq-block">μ = ⌊ ⟨c, s⟩ ⌉<sub>p</sub> = ⌊ (p / q) · ⟨c, s⟩ ⌉ mod p</div>
+            <p>Zyskind 等人（2025）問了一個關鍵問題：<strong>與其為了隱藏雜訊 <span class="word-eq">e</span> 而盲目放大整個 FHE 系統的密文模數，不如讓所有參與方直接在算術黑盒（<span class="word-eq">F<sub>ABB</sub></span>）的秘密分享狀態上「協同執行這個捨入除法」？</strong> 若能在不公開任何帶有雜訊之中間值的前提下直接算完無噪明文 <span class="word-eq">μ</span> 再公開，就能使用完全無膨脹的標準原生 FHE 參數（Standalone Parameters），同時達到嚴格的 UC 模擬安全。</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>零雜訊淹沒的原生參數門檻解密 <span class="word-eq">Π<sub>Decrypt</sub></span></strong>：徹底移除淹沒雜訊，FHE 端可使用最小的獨立安全參數（例如 <span class="word-eq">q = 2<sup>64</sup>, p = 2<sup>1</sup></span>），達成比 Noah's Ark 數萬倍的吞吐量提升與最高數十倍延遲改善。</li>
+              <li><strong>抽象通用的 UC 安全性（Theorem 1）</strong>：在具備隨機位元與截斷公開之算術黑盒 <span class="word-eq">F<sub>ABB</sub></span> 混合模型下證明<strong>完美可調適 UC 安全</strong>，協定直接繼承底層 MPC（如全門檻不誠實多數帶中止之 SPDZ2<sup>k</sup> 或誠實多數有保證輸出協定）的敵手模型。</li>
+              <li><strong>創新核心原語 <span class="word-eq">LTRand<sub>l,k</sub></span> 與無乘法兩層查表閘</strong>：利用基數分解與遞迴定理「加權符號和之符號（Lemma 4）」，將複雜的模餘數消噪 <span class="word-eq">Mod<sub>l,k</sub></span> 與比大小 <span class="word-eq">ModLTZ<sub>t</sub></span> 化簡為預處理查表（Sign 閘 + ModLTZ 閘）；線上階段<strong>零次 <span class="word-eq">Mult</span> 乘法</strong>，只需 <strong>3 次循序 <span class="word-eq">Open</span></strong>（搭配 SPDZ2<sup>k</sup> 管線化只需 5 輪廣播）。</li>
+              <li><strong>高速離線閘製備演算法</strong>：推導出如何用類似 FFT 的快速線性變換，將遮罩隨機數之位元子集乘積（Subset Products）一舉轉換成離線 Sign 與 ModLTZ 查表。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. 二進位視角下的 LWE 解密與雜訊平移</strong>：設密文模數 <span class="word-eq">q = 2<sup>k</sup></span>，明文模數 <span class="word-eq">p = 2<sup>m</sup></span>（<span class="word-eq">k &gt; m</span>），令 <span class="word-eq">l = k − m</span> 且縮放因子 <span class="word-eq">L = 2<sup>l</sup> = q / p</span>。將秘密內積加上半格平移 <span class="word-eq">2<sup>l−1</sup></span>：</p>
+            <div class="word-eq-block">z = ⟨c, s⟩ + 2<sup>l−1</sup> ≡ μ · L + e (mod 2<sup>k</sup>),   其中 0 ≤ e &lt; L</div>
+            <p>透過這個 <span class="word-eq">+2<sup>l−1</sup></span> 的平移技巧（相當於把原本帶正負號的四捨五入轉換成無條件捨去），<span class="word-eq">z</span> 的高 <span class="word-eq">m</span> 個位元正好就是純淨明文 <span class="word-eq">μ</span>，而低 <span class="word-eq">l</span> 個位元正好就是非負雜訊 <span class="word-eq">e = z mod 2<sup>l</sup></span>！只要安全算出 <span class="word-eq">[e]<sub>k</sub></span> 並相減，高 <span class="word-eq">m</span> 位元立刻乾乾淨淨剩下 <span class="word-eq">μ · L</span>。</p>
+            <p><strong>2. 算術黑盒 <span class="word-eq">F<sub>ABB</sub></span> 與預處理查表閘 (Preprocessed Gates)</strong>：記號 <span class="word-eq">[x]<sub>k</sub></span> 代表數值 <span class="word-eq">x ∈ ℤ<sub>2<sup>k</sup></sub></span> 正以秘密分享方式託管在 <span class="word-eq">F<sub>ABB</sub></span> 內。線性組合 <span class="word-eq">LinComb</span> 在本地免費完成。針對任意有限函數 <span class="word-eq">F(x)</span>，離線階段先備好均勻隨機遮罩 <span class="word-eq">[r]</span> 與一張把輸入平移過的所有可能輸出查表 <span class="word-eq">([F(x' − r)])<sub>x'</sub></span>；線上要計算 <span class="word-eq">[F(x)]</span> 時，只需公開一次完全隨機的 <span class="word-eq">x' = Open([x] + [r])</span>，大家直接依編號 <span class="word-eq">x'</span> 拿走表中對應份額即可，不需任何乘法或位元拆解！</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：位元切分與預處理查表閘如何運作</div>
+              <p><strong>(A) 位元視角範例</strong>：設密文模數 <span class="word-eq">q = 2<sup>6</sup> = 64</span>（<span class="word-eq">k=6</span>），明文模數 <span class="word-eq">p = 2<sup>2</sup> = 4</span>（<span class="word-eq">m=2</span>），則 <span class="word-eq">l = 4, L = 16</span>。假設明文 <span class="word-eq">μ = 3</span>，原始 LWE 內積帶有負雜訊 <span class="word-eq">-5</span>，故真實內積為 <span class="word-eq">3·16 − 5 = 43</span>。加上偏移量 <span class="word-eq">2<sup>l−1</sup> = 8</span> 得：</p>
+              <div class="word-eq-block">z = 43 + 8 = 51 = (11 0011)<sub>2</sub> = 3 · 16 + 3</div>
+              <p>看它的二進位：<strong>最高 2 位元 <span class="word-eq">11<sub>2</sub> = 3</span> 正是明文 <span class="word-eq">μ</span>，最低 4 位元 <span class="word-eq">0011<sub>2</sub> = 3</span> 正是移正後的雜訊 <span class="word-eq">e = 51 mod 16</span></strong>！</p>
+              <p><strong>(B) 預處理查表範例</strong>：想秘密計算 <span class="word-eq">F(x) = Sign(x − 2)</span>（輸入域大小為 4），離線階段預先抽好遮罩 <span class="word-eq">[r]</span>（假設秘密為 <span class="word-eq">r = 3</span>），並把表 <span class="word-eq">[F(x' − 3)]</span> 存進 <span class="word-eq">F<sub>ABB</sub></span> 給 <span class="word-eq">x' ∈ {0,1,2,3}</span>（值為 <span class="word-eq">[-1, 0, +1, +1]</span> 對應偏移環或整數）。若線上真值為 <span class="word-eq">x = 1</span>，大家執行一次 <span class="word-eq">x' = Open([1] + [3]) = 0 mod 4</span>。看到公開值 <span class="word-eq">0</span> 誰也不知道真實 <span class="word-eq">x = 1</span> 是什麼，但所有人都能立刻直接索引查出表中第 0 格 <span class="word-eq">[F(1 − 2)] = [-1]</span>！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p>協定 <span class="word-eq">Π<sub>Decrypt</sub></span> 的核心挑戰在於：如何僅知道低位 <span class="word-eq">l</span> 位元的 <span class="word-eq">e</span>，卻精準求出「完整 <span class="word-eq">k</span> 位元分享、且高 <span class="word-eq">m</span> 位元必須全為 0」的 <span class="word-eq">[e]<sub>k</sub></span>（防止截斷縮環時產生錯誤的高位進位）。協定分為以下四步：</p>
+            <ol>
+              <li><strong>本地算帶噪內積</strong>：透過 <span class="word-eq">F<sub>ABB</sub>.LinComb</span> 計算 <span class="word-eq">[z]<sub>k</sub> = ⟨c, [s]<sub>k</sub>⟩ + 2<sup>l−1</sup></span>。</li>
+              <li><strong>呼叫 <span class="word-eq">Mod<sub>l,k</sub></span> 取出 <span class="word-eq">k</span> 位元雜訊 <span class="word-eq">[e]<sub>k</sub></span></strong>：呼叫核心副常式 <span class="word-eq">LTRand<sub>l,k</sub>([z]<sub>k</sub>)</span>（詳見第 3 步）回傳三個物件：(i) 公開值 <span class="word-eq">z' = (z + r) mod L</span>、(ii) 完整 <span class="word-eq">k</span> 位元秘密遮罩 <span class="word-eq">[r]<sub>k</sub></span>（其中 <span class="word-eq">r ∈ [0, L)</span> 高 <span class="word-eq">m</span> 位元本就為 0）、(iii) 進位修正位元 <span class="word-eq">[u]<sub>k</sub> = [z' &lt; r]</span>。接著不須通訊直接線性組合出精確餘數：
+                <div class="word-eq-block">[e]<sub>k</sub> = z' − [r]<sub>k</sub> + 2<sup>l</sup> · [u]<sub>k</sub>   (恆滿足 e ≡ z' − r ≡ z mod 2<sup>l</sup> 且 e ∈ [0, 2<sup>l</sup>) )</div>
+              </li>
+              <li><strong>兩層查表快速實現 <span class="word-eq">LTRand<sub>l,k</sub></span> 的比較位元 <span class="word-eq">[u] = [z' &lt; r]</span></strong>：直接為 50 多位元的 <span class="word-eq">r</span> 建表尺寸太大，作者利用 Base-<span class="word-eq">B = 2<sup>b</sup></span> 將 <span class="word-eq">l</span> 位元切成 <span class="word-eq">d = ⌈l/b⌉</span> 個區塊 <span class="word-eq">r = (r<sub>d−1</sub> … r<sub>1</sub> r<sub>0</sub>)<sub>B</sub></span>（對實務參數 <span class="word-eq">k=64, m=1</span>，取 <span class="word-eq">b=8, d=8, b'=7</span>）。根據 <strong>Lemma 4</strong>，多數位數字比大小的符號，等於各數位符號加權和後的符號：
+                <div class="word-eq-block">(z' &lt; r) = ModLTZ<sub>d+1</sub>( ∑<sub>i=0..d−1</sub> Sign(z'<sub>i</sub> − r<sub>i</sub>) · 2<sup>i</sup>  mod 2<sup>d+1</sup> )</div>
+                因為線上公開 <span class="word-eq">z'</span> 後，每個數位 <span class="word-eq">z'<sub>i</sub></span> 都是明碼！所有節點即可（無需網路）各自去預備好的第 1 層 <span class="word-eq">d</span> 個 <span class="word-eq">Sign</span> 查表閘讀取 <span class="word-eq">[y<sub>i</sub>] = [Sign(z'<sub>i</sub> − r<sub>i</sub>)]</span>，在本地算出加權和 <span class="word-eq">[y] = ∑ 2<sup>i</sup>·[y<sub>i</sub>]</span>，再通過第 2 層單一 <span class="word-eq">ModLTZ<sub>d+1</sub></span> 查表閘（此時進行全協議第 2 次 <span class="word-eq">Open</span> 揭示被掩碼的 <span class="word-eq">y'</span>）即可取得 <span class="word-eq">[u]</span>！</li>
+              <li><strong>無損去噪並輸出明文</strong>：本地相減 <span class="word-eq">[μ']<sub>k</sub> = [z]<sub>k</sub> − [e]<sub>k</sub></span>，進行第 3 次也是最後一次 <span class="word-eq">Open</span> 揭示 <span class="word-eq">μ' = μ · L</span>，輸出明文 <span class="word-eq">μ = μ' / L</span>。</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：從帶噪份額到精準明文</div>
+              <p>延續背景知識設定：<span class="word-eq">k=6, m=2, l=4, L=16</span>，真實內積與偏移值為 <span class="word-eq">[z]<sub>6</sub> = 51</span>（即明文 <span class="word-eq">μ=3</span>、平移雜訊 <span class="word-eq">e=3</span>）。選用數位寬度 <span class="word-eq">b = 2</span>（Base <span class="word-eq">B = 4</span>，分 <span class="word-eq">d = 2</span> 個區塊）。離線隨機生成低位遮罩 <span class="word-eq">r = 11 = 2·4 + 3 = (2, 3)<sub>4</sub></span>（秘密分享中）。</p>
+              <p><strong>步驟 1 (Open #1：遮罩低 4 位元)</strong>：節點執行截斷公開 <span class="word-eq">z' = (z + r) mod 16 = (51 + 11) mod 16 = 62 mod 16 = 14</span>。將明碼 <span class="word-eq">14</span> 寫成 4 進位 <span class="word-eq">14 = 3·4 + 2 = (3, 2)<sub>4</sub></span>。</p>
+              <p><strong>步驟 2 (第 1 層 Sign 閘查詢與本地加權)</strong>：</p>
+              <div class="word-eq-block">
+                高位 (i = 1): z'₁ = 3, 秘密 r₁ = 2 ⟹ 查第 1 個 Sign 表得 [Sign(3 − 2)] = [+1]<br>
+                低位 (i = 0): z'₀ = 2, 秘密 r₀ = 3 ⟹ 查第 0 個 Sign 表得 [Sign(2 − 3)] = [−1]<br>
+                本地加權和 (mod 2<sup>d+1</sup> = mod 8): [y] = (+1)·2<sup>1</sup> + (−1)·2<sup>0</sup> = +1 (mod 8)
+              </div>
+              <p><strong>步驟 3 (第 2 層 ModLTZ<sub>3</sub> 閘，Open #2)</strong>：用一個預備的 3-bit 隨機數對 <span class="word-eq">[y]</span> 盲化後公開，查表判斷 <span class="word-eq">y = 1 ∈ [0, 4)</span>（非負），因此回傳進位修正位元 <span class="word-eq">[u] = [0]</span>！（確實 <span class="word-eq">14 &lt; 11</span> 為假）</p>
+              <p><strong>步驟 4 (計算完整 6-bit 雜訊與最終輸出，Open #3)</strong>：</p>
+              <div class="word-eq-block">[e]<sub>6</sub> = 14 − [11]<sub>6</sub> + 16 · [0]<sub>6</sub> = [3]<sub>6</sub>   ⟹   [μ']<sub>6</sub> = [51]<sub>6</sub> − [3]<sub>6</sub> = [48]<sub>6</sub></div>
+              <p>最後一次 <span class="word-eq">Open</span> 揭示 <span class="word-eq">48</span>，計算 <span class="word-eq">48 / 16 = 3</span>，完全吻合！<br>
+              <em>（小驗算：若當初遮罩碰巧抽到 <span class="word-eq">r = 15 = (3, 3)<sub>4</sub></span>，則 <span class="word-eq">z' = (51+15) mod 16 = 2 = (0, 2)<sub>4</sub></span>。此時 <span class="word-eq">y = (−1)·2 + (−1)·1 = −3 ≡ 5 (mod 8) ∈ [4, 8)</span>，ModLTZ<sub>3</sub> 回傳 <span class="word-eq">[u] = [1]</span>，算得 <span class="word-eq">e = 2 − 15 + 16·1 = 3</span>，結果依舊分毫不差！）</em></p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <p><strong>1. 威脅模型與通用可組合定理 (Theorem 1)</strong>：在任意由 <span class="word-eq">F<sub>ABB</sub></span> 支援的腐敗模型（靜態或可調適腐敗、誠實多數有保證輸出，或如 SPDZ2<sup>k</sup> 支援最多 <span class="word-eq">n−1</span> 個主動惡意節點之「帶中止安全」）下，協定 <span class="word-eq">Π<sub>Decrypt</sub></span> 在 <span class="word-eq">F<sub>ABB</sub></span> 混合模型中<strong>完美且資訊論地實現理想功能 <span class="word-eq">F<sub>Decrypt</sub></span></strong>。</p>
+            <p><strong>2. 模擬器構造與可調適安全直覺 (Figure 4)</strong>：在整個線上解密過程中，各節點除了最後乾淨的 <span class="word-eq">μ' = μ · L</span> 之外，只公開過兩個被新鮮均勻亂數完美掩蓋的中間值：<span class="word-eq">z' = (z + r) mod L</span> 與 <span class="word-eq">y' = (y + r<sub>LTZ</sub>) mod 2D</span>。因此理想模擬器 <span class="word-eq">S<sub>Decrypt</sub></span> 在不知私鑰 <span class="word-eq">s</span> 時，只需均勻隨機挑選 <span class="word-eq">z' ← [L]</span>、<span class="word-eq">y' ← [2D]</span> 並將理想功能回傳的 <span class="word-eq">μ</span> 乘上 <span class="word-eq">L</span> 充當最後輸出即可。萬一敵手在執行途中<strong>可調適腐敗（Adaptively Corrupt）</strong>足夠多節點，理想功能會把私鑰 <span class="word-eq">s</span> 交給模擬器；此時模擬器只需本地回推真實 <span class="word-eq">z = ⟨c, s⟩ + 2<sup>l−1</sup></span>，再倒算出唯一的 <span class="word-eq">r = (z' − z) mod L</span> 與 <span class="word-eq">r<sub>LTZ</sub> = (y' − y) mod 2D</span> 填入偽造的離線狀態中，真實世界與理想世界的視圖分佈便<strong>達到數學上完全相同（Identically Distributed）</strong>。</p>
+            <p><strong>3. 主動安全保證與使用邊界</strong>：若實作層選用 SPDZ2<sup>k</sup>（如 <span class="word-eq">s = 64</span> 位元 MAC 安全參數），惡意節點篡改任何 <span class="word-eq">[r]</span>、查表項或線性份額時，在 <code>SingleCheck</code> 檢查 MAC 時會以至少 <span class="word-eq">1 − 2<sup>−64</sup></span> 機率被揪出並中止協定，且即使先管線化揭示了掩碼值 <span class="word-eq">z'</span>，由於尚未驗證過的值只含均勻盲化項，也不致洩密（同時協議假定誠實方只解密合法良構之密文以防範無限制解密預言機發動 CPA<sup>D</sup> 攻擊）。</p>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：雜訊零洩漏 vs. 提前公開之災難</div>
+              <p><strong>攻擊場景 A（為什麼不能省掉 <span class="word-eq">Mod<sub>l,k</sub></span> 直接公開 <span class="word-eq">z</span>？）</strong>：假設有人天真地直接對 <span class="word-eq">[z]<sub>6</sub> = 51</span> 執行 <span class="word-eq">Open</span> 再自己捨入成 3。攻擊者拿到 <span class="word-eq">z = 51</span> 與明文 <span class="word-eq">3</span> 後，瞬間反推出 <span class="word-eq">e = 51 − 8 − 3·16 = −5</span>。由於同態乘法後的雜訊 <span class="word-eq">e</span> 是私鑰 <span class="word-eq">s</span> 與公開密文係數的多項式線性函數，蒐集數十筆這類雜訊方程後即可用最小二乘法或高斯消去解出整個私鑰 <span class="word-eq">s</span>！</p>
+              <p><strong>防禦機制（在 <span class="word-eq">Π<sub>Decrypt</sub></span> 中的真實視圖）</strong>：在上述攻擊下，敵手全程僅看見三個數值：<span class="word-eq">z' = 14</span>（均勻隨機數 <span class="word-eq">51 + r mod 16</span>）、<span class="word-eq">y'</span>（均勻隨機數 <span class="word-eq">mod 8</span>）以及無任何雜訊殘餘的 <span class="word-eq">μ' = 48 = 3 · 16</span>。即使敵手惡意竄改手中份額想迫使最終餘數暴露，在 SPDZ2<sup>k</sup> 實作中其 MAC 驗證標籤差額會產生不可偽造的矛盾，系統立刻偵測並以 <span class="word-eq">1 − 2<sup>−64</sup></span> 機率安全中止（Abort），確保私鑰與雜訊滴水不漏！</p>
+            </div>
           </div>
         `
       },
@@ -5499,32 +5552,84 @@
         title: "Noah's Ark 論文密碼學理論教學 (Dahl et al., 2023)",
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>Torus-FHE (TFHE) 等方案因使用較小的密文模數（如 <span class="word-eq">q = 2⁶⁴</span>）與維度（如 <span class="word-eq">ℓ = 1024</span>）而擁有極快的自舉速度。但其雜訊容許間隙（Noise Gap）僅有約 30~50 位元：</p>
-            <div class="word-eq-block">Δ = q / p = 2⁶⁴ / 16 = 2⁶⁰,   |e| ≈ 2³⁰</div>
-            <p>若要滿足統計安全性 <span class="word-eq">stat = 40</span> 的雜訊淹沒需求，淹沒雜訊必須達到：</p>
-            <div class="word-eq-block">E_flood ≥ 2⁴⁰ · |e| ≈ 2⁷⁰ > 2⁶⁴ = q</div>
-            <p>淹沒雜訊直接大於密文模數 q，導致明文高位元被徹底摧毀！這就是長期困擾 TFHE 門檻化的「小參數雜訊淹沒瓶頸」。</p>
-          </div>
-
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：Switch-n-Squash 與 Galois 環 Reed-Solomon 糾錯</div>
-            <p>Dahl 等人提出了巧妙的「方舟（Noah's Ark）」保護結構：</p>
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>Torus-FHE（TFHE）雖享有極速自舉與極小密文，但將其「門檻化（Thresholdize）」時會立刻撞上三重高牆：</p>
             <ul>
-              <li><strong>Switch-n-Squash（切換並擠壓）</strong>：在自舉（Bootstrapping）的同時，將密文由小參數 <span class="word-eq">(ℓ=1024, q=2⁶⁴)</span> 轉換至大參數 <span class="word-eq">(L=4096, Q=2¹²⁸)</span>，同時將相對雜訊方差壓縮至 <span class="word-eq">σ'_BR ≈ 2⁷²</span>。這使得新模數下具備了整整 50 位元的全新雜訊間隙！</li>
-              <li><strong>Galois 環 Z_Q[θ] 秘密分享</strong>：針對 <span class="word-eq">Q = 2¹²⁸</span> 是 2 的冪次（非質數無法形成有限體）之困難，在度數為 d 的不可約多項式 Galois 環上構造 Shamir 門檻分享。</li>
-              <li><strong>非同步魯棒開啟（RobustOpen）</strong>：在 Galois 環上執行 Reed-Solomon 解碼，在滿足 <span class="word-eq">t < n / 3</span> 惡意節點的前提下，單輪非同步通訊即可完成解碼並自動校正惡意篡改。</li>
+              <li><strong>小參數的雜訊空間崩潰問題</strong>：典型 TFHE 運作在 <span class="word-eq">q = 2<sup>64</sup></span> 與 <span class="word-eq">ℓ = 777~1024</span>，自舉後明文縮放空間 <span class="word-eq">Δ = 2<sup>64</sup> / 16 = 2<sup>60</sup></span>，雜訊界線 <span class="word-eq">|e| ≈ 2<sup>30</sup></span>，兩者之間僅有約 30~50 位元間隙（Noise Gap）。若要執行標準統計安全參數 <span class="word-eq">stat = 40</span> 的雜訊淹沒，淹沒雜訊必須高達 <span class="word-eq">E<sub>flood</sub> ≥ 2<sup>40</sup> · 2<sup>30</sup> = 2<sup>70</sup> &gt; 2<sup>64</sup> = q</span>，淹沒雜訊本身就徹底衝爆模數摧毀明文！</li>
+              <li><strong>Rényi 散度的可組合性缺陷</strong>：既有用於縮小淹沒雜訊的 Rényi 散度分析僅能保護遊戲定義下的安全性，無法達成通用多方協定組合所需的模擬安全（Simulation Security）。</li>
+              <li><strong>2 的冪次模數的門檻秘密分享難題</strong>：即使強行把模數升級到 <span class="word-eq">Q = 2<sup>128</sup></span>，由於 <span class="word-eq">2<sup>128</sup></span> 不是質數、環中有大量零因子，標準有限體 Shamir 分享與 Lagrange 插值完全失效；改用複製分享（Replicated Sharing）則份額會隨 <span class="word-eq">C(n, t)</span> 呈指數暴漲。</li>
             </ul>
           </div>
 
-          <div class="example-box">
-            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
-            <p><strong>情境設定</strong>：4 個節點 (n=4)，容許 1 個惡意節點 (t=1 < 4/3)。待解密密文明文為 <span class="word-eq">m = 5</span>。</p>
-            <p><strong>步驟 1 (Switch-n-Squash)</strong>：原始密文模數為 2⁶⁴，雜訊為 2³⁰。執行自舉後，密文模數升級為 <span class="word-eq">Q = 2¹²⁸</span>，新縮放因子為 <span class="word-eq">Δ' = 2¹²⁸ / 16 = 2¹²⁴</span>，雜訊邊界為 <span class="word-eq">Bd ≈ 2⁷⁰</span>。</p>
-            <p><strong>步驟 2 (雜訊淹沒)</strong>：注入淹沒雜訊 <span class="word-eq">E ∈ [-2¹¹², 2¹¹²]</span>。由於 <span class="word-eq">2¹¹² < 2¹²⁴ / 2</span>，淹沒雜訊絕不會溢位破壞明文最高位元！</p>
-            <p><strong>步驟 3 (Reed-Solomon 糾錯解密)</strong>：各節點廣播部分解密份額：</p>
-            <div class="word-eq-block">節點 1: v₁ = f(γ₁),  節點 2: v₂ = f(γ₂),  節點 3: v₃ = f(γ₃),  惡意節點 4: v₄ = 999999 (偽造數值)</div>
-            <p>解碼器執行 RS-Decode，發現節點 1, 2, 3 落在同一個 1 次多項式上，而節點 4 偏離多項式。解碼器自動判定節點 4 為錯誤並予以糾正，計算多項式常數項 <span class="word-eq">f(0)</span>，精準除以 Δ' 還原明文 <span class="word-eq">m = 5</span>！</p>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>為什麼日常高頻率的 FHE 同態電路運算必須為了最後偶爾才做一次的「門檻解密」而永久背負 128 位元以上的高模數重擔？研究團隊的核心動機就是打造一艘<strong>只在大洪水（解密）來臨時才登上的「諾亞方舟（Noah's Ark）」</strong>：</p>
+            <p>平時所有 FHE 評估全數跑在極速的小參數 <span class="word-eq">(q=2<sup>64</sup>, ℓ≤1024)</span>；唯有在解密前夕，透過本地無交互運算一次性切換進擁有巨大雜訊空間的新參數 <span class="word-eq">(Q=2<sup>128</sup>, L=4096)</span>，並在 <span class="word-eq">ℤ<sub>2<sup>128</sup></sub></span> 的代數擴環上配齊 <span class="word-eq">O(1)</span> 大小的抗惡意容錯秘密分享與極緊緻的雙重淹沒技術，兼得「高運算速度」、「模擬安全」與「非同步單輪主動容錯」。</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>Switch-n-Squash（切換並擠壓）免通訊升維刷新</strong>：利用特製 Bootstrapping Key 將低階 TFHE 密文直接自舉切換成 <span class="word-eq">(Q=2<sup>128</sup>, L=4096)</span> 大密文，並將相對雜訊壓低至約 <span class="word-eq">2<sup>72</sup></span>（在 <span class="word-eq">Δ' = 2<sup>124</sup></span> 下騰出逾 50 位元餘裕），單機即可完成、零網路通訊。</li>
+              <li><strong>「雙均勻疊加」超級淹沒引理（Lemma 2.3 &amp; 2.4）</strong>：證明只要把<strong>至少 2 個獨立均勻分佈</strong> <span class="word-eq">U(−B, B)</span> 相加來淹沒雜訊，統計距離可由傳統一階界 <span class="word-eq">m·|e|/B</span> 戲劇性銳減至二階界，取 <span class="word-eq">pow ≥ stat + log₂ C(n,t)</span> 即可獲得 <span class="word-eq">2<sup>−2·stat</sup></span> 統計隱匿（<span class="word-eq">stat = 40</span> 即防範高達 <span class="word-eq">2<sup>80</sup></span> 次解密詢問）。</li>
+              <li><strong>Galois 環 Shamir 分享與 Reed-Solomon 主動容錯（RobustOpen）</strong>：針對 <span class="word-eq">Q = 2<sup>128</sup></span> 建構 Galois 環 <span class="word-eq">G = ℤ<sub>Q</sub>[θ]</span> 上之度數 <span class="word-eq">t</span> 多項式分享，確保每個份額尺寸獨立於人數呈 <span class="word-eq">O(1)</span>，並推導逐位進階演算法 <code>RS-Decoder<sub>G</sub></code> 在非同步網路與 <span class="word-eq">t &lt; n/3</span> 下自動踢除惡意錯誤份額。</li>
+              <li><strong>PRSS 與 Offline 雙模式單輪線上協定</strong>：人數組合 <span class="word-eq">C(n,t) ≤ 100</span> 時直接跑 <strong>Protocol 1 (PRSS)</strong> 達成「零離線、單輪線上 &lt; 2 ms」；大規模節點群則以 <strong>Protocol 2</strong> 離線備好位元、線上同樣只需 1 輪廣播。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. 標準淹沒（單均勻）vs. 雙重均勻疊加（Lemma 2.4）</strong>：若只拿一個均勻分佈 <span class="word-eq">U(−B, B)</span> 去加秘密雜訊 <span class="word-eq">e</span>，整個方形機率分佈平移 <span class="word-eq">e</span> 後在左右極值懸崖處會產生高度差 <span class="word-eq">|e|/(2B)</span>，統計距離為 <span class="word-eq">Δ<sub>SD</sub> ≤ m·|e|/B</span>。但若把兩個獨立均勻亂數相加 <span class="word-eq">P = U(−B, B) + U(−B, B)</span>，捲積後的分佈呈平滑三角形（中心高、邊緣漸降為 0），平移 <span class="word-eq">e</span> 後的統計距離暴降為：</p>
+            <div class="word-eq-block">Δ<sub>SD</sub>(P<sup>m</sup>, (e + P)<sup>m</sup>) ≤ m·|e|/B² + √( m · (|e|² log B + 2) / (2(B² + B)) )</div>
+            <p>實質上將分母效應翻倍，令只需一半位元寬度的淹沒雜訊就能換取雙倍（<span class="word-eq">2<sup>−2·stat</sup></span>）的統計隱匿效果！</p>
+            <p><strong>2. Galois 環 <span class="word-eq">GR(2<sup>K</sup>, d)</span> 秘密分享</strong>：為了在無法直接求逆元的環 <span class="word-eq">ℤ<sub>2<sup>K</sup></sub></span> 做 Shamir 插值，挑選一個在有限體 <span class="word-eq">𝔽<sub>2</sub>[X]</span> 上不可約的 <span class="word-eq">d</span> 次多項式並取模構成 Galois 環 <span class="word-eq">G = ℤ<sub>2<sup>K</sup></sub>[X]/(f(X))</span>，再把節點編號 <span class="word-eq">γ₁, …, γ<sub>n</sub></span> 挑選成在模 2 商體 <span class="word-eq">𝔽<sub>2<sup>d</sup></sub></span> 中互異的係數。因商體中非零必可逆，任何不同兩評價點的差 <span class="word-eq">γ<sub>i</sub> − γ<sub>j</sub></span> 在大環 <span class="word-eq">G</span> 中都保證擁有乘法反元素，完美修復 Lagrange 插值與 Reed-Solomon 解碼！</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：為什麼 2 個均勻分佈比 1 個更強？</div>
+              <p>考慮超微型整數均勻分佈 <span class="word-eq">U = U{−2, −1, 0, 1, 2}</span>（<span class="word-eq">B = 2</span>，共 5 點），假設真實雜訊偏移 <span class="word-eq">e = 1</span>：</p>
+              <ul>
+                <li><strong>單均勻 <span class="word-eq">U + 1</span> vs <span class="word-eq">U</span></strong>：<span class="word-eq">U</span> 落在 <span class="word-eq">[−2, 2]</span>；<span class="word-eq">U + 1</span> 落在 <span class="word-eq">[−1, 3]</span>。一旦敵手抽到 3（機率 <span class="word-eq">1/5 = 20%</span>），立即 100% 確定有加入雜訊 <span class="word-eq">e = 1</span>，統計距離 <span class="word-eq">Δ<sub>SD</sub> = 1/5 = 0.200</span>。</li>
+                <li><strong>雙均勻 <span class="word-eq">P = U₁ + U₂</span>（共 25 種等機組合，落在 <span class="word-eq">[−4, 4]</span>）</strong>：在端點 <span class="word-eq">−4</span> 機率只有 <span class="word-eq">1/25</span>、中心 0 機率最高 <span class="word-eq">5/25</span>。整體對所有點求絕對差和除以 2 後：<span class="word-eq">Δ<sub>SD</sub>(P, P+1) = (1+1+1+1+0+1+1+1+1)/50 = 4/25 = 0.160</span>；當 <span class="word-eq">B = 2<sup>stat</sup>·|e|</span> 放大時，這種平滑性使得在 1 倍位寬下就能直接取得過去需要 2 倍位寬才有的 <span class="word-eq">2<sup>−2·stat</sup></span> 統計安全！</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <ol>
+              <li><strong>階段 1 — 本地 Switch-n-Squash（Figure 9）</strong>：任一計算節點對密文 <span class="word-eq">ct = (a, b) ∈ ℤ<sub>q</sub><sup>ℓ+1</sup></span> 執行一次特製自舉。自舉內部先把維度模切為 <span class="word-eq">2N</span>，再以基於大參數 <span class="word-eq">(Q=2<sup>128</sup>, L=ωN'=4096)</span> 的盲旋轉鑰匙輸出「加密同一明文 <span class="word-eq">m</span>、但換成秘密 <span class="word-eq">s' ∈ {0,1}<sup>L</sup></span> 且帶有極小相對雜訊 <span class="word-eq">σ'<sub>BR</sub> ≈ 2<sup>72</sup></span>」的新密文 <span class="word-eq">ct' = (a', b') ∈ ℤ<sub>Q</sub><sup>L+1</sup></span>。</li>
+              <li><strong>階段 2 — 構造雙重均勻淹沒份額 <span class="word-eq">[E]<sup>⟨t, Q⟩</sup></span></strong>：
+                <ul>
+                  <li><strong>Protocol 1（當 <span class="word-eq">C(n,t) ≤ 100</span>，無離線）</strong>：預先對所有大小 <span class="word-eq">n−t</span> 的子集 <span class="word-eq">A</span> 透過 <code>AgreeRandom</code> 協商 PRF 種子 <span class="word-eq">r<sub>A</sub></span> 與指示多項式 <span class="word-eq">f<sub>A</sub>(X)</span>（滿足 <span class="word-eq">f<sub>A</sub>(0)=1</span> 且不在 <span class="word-eq">A</span> 者均為 0）。線上呼叫兩次獨立的 <span class="word-eq">PRSS.Next() + PRSS.Next()</span>，將產出相加，讓總雜訊包含至少兩個不落入敵手掌握的均勻項！</li>
+                  <li><strong>Protocol 2（當 <span class="word-eq">C(n,t) &gt; 100</span>）</strong>：呼叫離線 <span class="word-eq">F<sub>Offline</sub>.Bits(B+1)</span> 生成兩串秘密分享隨機位元組合成兩個均勻大數相加，免去隨人數組合爆炸之 PRSS 表。</li>
+                </ul>
+              </li>
+              <li><strong>階段 3 — 部分解密與 Galois 環 Reed-Solomon 容錯開啟（RobustOpen）</strong>：各節點算本地份額 <span class="word-eq">[v]<sub>i</sub> = b' − a' · [s']<sub>i</sub> + [E]<sub>i</sub></span> 傳給解密方 <span class="word-eq">U</span>。<span class="word-eq">U</span> 執行 <code>RS-Decoder<sub>G</sub></code>，由 <span class="word-eq">i = 0</span> 到 <span class="word-eq">K−1</span> 逐一對齊每一層模 <span class="word-eq">2<sup>i</sup></span> 的殘餘多項式進位，以有限體上經典的 Welch-Berlekamp / Gao 演算法容忍至多 <span class="word-eq">t &lt; n/3</span> 個惡意錯誤份額（或於非同步網路行「線上糾錯 Online Error Correction」），復原多項式 <span class="word-eq">F(X)</span> 並取 <span class="word-eq">F(0) = Δ'·m + e' + E</span> 除以 <span class="word-eq">Δ'</span> 四捨五入還原明文 <span class="word-eq">m</span>。</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：方舟升維、PRSS 雙淹沒與 RS 糾錯</div>
+              <p><strong>場景設定</strong>：<span class="word-eq">n = 4</span> 節點容許 <span class="word-eq">t = 1 (&lt; 4/3)</span> 惡意節點，密文明文 <span class="word-eq">m = 2</span>（<span class="word-eq">p = 4</span>）。初始 TFHE 密文在 <span class="word-eq">q = 64</span> 上僅餘極小間隙（<span class="word-eq">Δ = 16, e = 3</span>，無法容納大淹沒雜訊）。</p>
+              <p><strong>步驟 1 (本地 Switch-n-Squash)</strong>：自舉無通訊升級至模擬方舟模數 <span class="word-eq">Q = 4096</span>，新縮放因子 <span class="word-eq">Δ' = 4096 / 4 = 1024</span>，刷新後雜訊僅 <span class="word-eq">e' = 8</span>（遠小於合法區間半徑 <span class="word-eq">Δ'/2 = 512</span>）。</p>
+              <p><strong>步驟 2 (Protocol 1 PRSS 兩次加總)</strong>：共有 <span class="word-eq">C(4, 1) = 4</span> 個三人子集，設各子集兩次 PRF 分別輸出合值：誠實與敵手無交集組 <span class="word-eq">{1,2,3}</span> 輸出 <span class="word-eq">r<sub>{1,2,3}</sub> + r'<sub>{1,2,3}</sub> = 19 + 11 = 30</span>，其餘包含節點 4 的三組合計 <span class="word-eq">−5</span>，總淹沒雜訊 <span class="word-eq">E = 25</span>（仍遠小於 512 容許界限）。</p>
+              <p><strong>步驟 3 (局部計算與惡意竄改)</strong>：目標和應為 <span class="word-eq">v = Δ'·m + e' + E = 2048 + 8 + 25 = 2081</span>。假設 1 次方舟分享多項式為 <span class="word-eq">F(X) = 2081 + 100·X (mod 4096)</span>，於評價點 <span class="word-eq">γ<sub>i</sub> = 1,2,3,4</span> 廣播：P₁ 送出 <span class="word-eq">2181</span>、P₂ 送出 <span class="word-eq">2281</span>、P₃ 送出 <span class="word-eq">2381</span>，但惡意節點 P₄ 蓄意亂報 <span class="word-eq">3999</span>（正常應為 2481）。</p>
+              <p><strong>步驟 4 (RS-Decoder 糾錯輸出)</strong>：解碼器檢查發現 {P₁, P₂, P₃} 完美位於唯一的一次多項式 <span class="word-eq">2081 + 100X</span> 上而 P₄ 偏離，直接標記並修正 P₄ 錯誤，讀出常數項 <span class="word-eq">F(0) = 2081</span>，算得 <span class="word-eq">⌊2081 / 1024⌉ = 2</span>，精確解出原始明文 <span class="word-eq">m = 2</span>！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <p><strong>1. 模擬安全性證明（Theorem 4.1）</strong>：在 <span class="word-eq">F<sub>KeyGen</sub></span> 混合模型下，只要滿足參數條件：</p>
+            <div class="word-eq-block">pow ≥ stat + log<sub>2</sub> C(n, t)   且   2<sup>pow+1</sup> · B<sub>d</sub> ≤ Δ' / 2</div>
+            <p>協定（不論 Protocol 1 或 2）皆可安全對抗任何靜態主動腐敗至多 <span class="word-eq">t &lt; n/3</span> 個節點的敵手（在最多進行 <span class="word-eq">2<sup>2·stat</sup></span> 次解密詢問下仍統計不可區分），嚴格實現理想功能 <span class="word-eq">F<sub>KeyGenDec</sub></span>。</p>
+            <p><strong>2. 核心證明機制（Figure 14 模擬器 Sim-DistDecrypt）</strong>：為何 PRSS 能欺騙敵手？對任何腐敗集合 <span class="word-eq">I</span>（<span class="word-eq">|I| ≤ t</span>），誠實方構成的互補集合 <span class="word-eq">B = {1,…,n} \ I</span> 的大小至少是 <span class="word-eq">n − t</span>。也就是說，PRSS 裡<strong>至少存在一整個集合 <span class="word-eq">B</span>（且無任何敵手成員在其中）是敵手完全不知道其隨機種子 <span class="word-eq">r<sub>B</sub></span> 的</strong>！因為每解密一次呼叫兩次 PRSS，這個未知的誠實集 <span class="word-eq">B</span> 就提供了兩份彼此獨立且均勻的隨機雜訊 <span class="word-eq">(r<sub>B</sub> + r'<sub>B</sub>)</span>。模擬器只需從未知的真訊息 <span class="word-eq">m</span> 與已知腐敗集合的 PRSS 金鑰反算出誠實端應湊出的目標總值 <span class="word-eq">v = Δ'·m + r<sub>known</sub> + (r<sub>B</sub> + r'<sub>B</sub>)</span>（完全用假亂數取代真誤差 <span class="word-eq">e'</span>！），再以敵手自己的已知份額做 Lagrange 插值補全誠實方份額。憑藉 Lemma 2.4，這兩份 <span class="word-eq">r<sub>B</sub> + r'<sub>B</sub></span> 把 <span class="word-eq">e'</span> 的存在與否壓進了僅 <span class="word-eq">2<sup>−2·stat</sup></span> 的統計距離內！</p>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：串通敵手試圖破譯最後一個誠實隨機項與破壞正確性</div>
+              <p><strong>攻擊企圖</strong>：設上述 4 節點網路中 P₄ 被腐敗（<span class="word-eq">I = {4}</span>）。P₄ 掌握了包含 4 的 3 個 PRSS 種子（<span class="word-eq">{1,2,4}, {1,3,4}, {2,3,4}</span>）以及自己手中的秘密私鑰份額 <span class="word-eq">[s']₄</span>。它企圖做兩件事：(1) 從收到所有人的解密份額推算剩餘誠實私鑰 <span class="word-eq">s'</span> 帶來的誤差 <span class="word-eq">e'</span>；(2) 送出極端數值干擾所有人得出錯誤明文。</p>
+              <p><strong>防禦表現</strong>：</p>
+              <ul>
+                <li>(1) 當 <span class="word-eq">U</span> 或大家重構出最終值 <span class="word-eq">F(0)</span> 並減去 <span class="word-eq">Δ'·m</span> 以及 P₄ 已知的三組 PRSS 貢獻 <span class="word-eq">−5</span> 後，它看見的「誠實方殘差」其實等於 <span class="word-eq">e' + (r<sub>{1,2,3}</sub> + r'<sub>{1,2,3}</sub>)</span>。這兩個由 P₁, P₂, P₃ 在 <code>AgreeRandom</code> 暗中協商、且 P₄ 毫不知情的均勻項在真實參數下跨度達 <span class="word-eq">2<sup>pow</sup>·B<sub>d</sub></span>（如 <span class="word-eq">2<sup>42</sup></span> 倍於原誤差 <span class="word-eq">B<sub>d</sub></span>），其雙均勻捲積將 <span class="word-eq">e'</span> 的機率密度差平滑到 <span class="word-eq">2<sup>−80</sup></span>！P₄ 即使詢問百萬次也絲毫摸不清原誤差與私鑰。</li>
+                <li>(2) P₄ 改寫自己份額 <span class="word-eq">[v]₄ = 3999</span> 的攻擊，也在 <span class="word-eq">d + 2t = 1 + 2 = 3 &lt; 4 = n</span> 滿足 <code>RobustOpen</code> 容錯界下被 RS 解碼器當場修正還原，完全無法動搖最終明文輸出！</li>
+              </ul>
+            </div>
           </div>
         `
       },
@@ -5533,33 +5638,87 @@
         title: 'PELTA 論文密碼學理論教學 (Chatel et al., EPFL)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>在基於 RLWE 的多方同態加密（如 BFV / CKKS）中，如果惡意對手在門檻解密時蓄意提交錯誤的解密份額，不僅會讓所有人解密出亂碼，更致命的是：<strong>惡意節點可以透過精心設計的輸入與惡意份額發動 CPA^D 攻擊，在數十輪內完整還原出所有誠實節點的私鑰！</strong></p>
-          </div>
-
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：晶格承諾與非交互式零知識證明 (NIZK Shield)</div>
-            <p>EPFL 團隊提出以全套晶格 ZKP 構築堅固盾牌：</p>
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>當代基於 RLWE 的實務多方同態加密（包含 MkHE 多金鑰、ThHE 門檻、MgHE 多群組，實作如 BFV/BGV/CKKS）在進入惡意（Malicious）環境時會瞬間崩盤，但過往的零知識保護機制卻全數撞牆：</p>
             <ul>
-              <li><strong>金鑰綁定承諾</strong>：在初始化階段，節點私鑰 s_i 必須先使用公開晶格參考矩陣 A_zkp 綁定：
-                <div class="word-eq-block">C_i = A_zkp · s_i + e_zkp (mod Q)</div>
-              </li>
-              <li><strong>部分解密證明</strong>：解密時，節點提交解密份額 <span class="word-eq">μ_i = ⟨u, s_i⟩ + e_flood</span>，並附帶基於 Fiat-Shamir with Aborts 的 ZKP 證明 <span class="word-eq">π_i = (z_s, z_e, ch)</span>。</li>
-              <li><strong>雙重嚴格驗證</strong>：驗證者檢驗解密份額與金鑰承諾的一致性：
-                <div class="word-eq-block">A_zkp · z_s + z_e - ch · C_i ≡ T_A (mod Q)   且   ‖z_s‖_∞ ≤ B_zkp</div>
-                只要有任何竄改或注入超額雜訊，證明驗證必然失敗，惡意份額直接被剔除！
+              <li><strong>主動攻擊全面毀滅安全性</strong>：只要有一個惡意節點在金鑰生成或解密時提交超標雜訊、不相容的私鑰多項式或錯誤解密份額，就能直接破壞計算正確性或發動金鑰恢復攻擊。</li>
+              <li><strong>通用 ZKP 與現代 MFHE 格格不入的五大衝突</strong>：
+                <br>1) <em>極小與極大範數混雜且不能鬆弛</em>：私鑰必須嚴格為三元（<span class="word-eq">{−1,0,1}</span>），淹沒雜訊卻很大且<strong>不可有 Knowledge Gap</strong>（鬆弛證明無法防止超額雜訊攻擊）；
+                <br>2) <em>必須使用 NTT（數論變換）</em>：FHE 私鑰平常存放在 NTT 域以加速乘法，但有界證明卻必須在係數域驗三元性；
+                <br>3) <em>非質數多殘差子環（RNS）</em>：大模數 <span class="word-eq">q = ∏ q<sub>j</sub></span> 被拆成多條子環各自計算，若沒交叉鎖定，敵手可在不同 <span class="word-eq">q<sub>j</sub></span> 用不同假私鑰作弊；
+                <br>4) <em>聚合器作弊（Malicious Aggregator）</em>：即使個人份額全對，負責加總公開份額的聚合器若串謀篡改總和也能毀掉協定。
               </li>
             </ul>
           </div>
 
-          <div class="example-box">
-            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
-            <p><strong>情境設定</strong>：3 個節點參與多方解密，誠實私鑰承諾為 <span class="word-eq">C₁</span>, <span class="word-eq">C₂</span>, <span class="word-eq">C₃</span>。</p>
-            <p><strong>正常計算</strong>：誠實節點 1 依據其真實私鑰 s₁ 計算部分解密 <span class="word-eq">μ₁ = ⟨u, s₁⟩ + e₁</span>，並以隨機掩碼 y_s, y_e 生成證明：</p>
-            <div class="word-eq-block">z_s = y_s + ch · s₁,   z_e = y_e + ch · e_zkp₁</div>
-            <p>驗證者驗證等式完全吻合，且 <span class="word-eq">‖z_s‖_∞ ≤ B_zkp</span>，判定為誠實份額。</p>
-            <p><strong>惡意竄改情境</strong>：節點 2 是惡意節點，企圖提交被篡改的數值 <span class="word-eq">μ'_2 = μ₂ + 50000</span> 以破壞系統。為了讓驗證通過，節點 2 必須構造出對應的 ZKP 證明。然而，由於哈希挑戰值 <span class="word-eq">ch = H(...)</span> 是隨機且不可預測的，節點 2 無法在不使用真實 s₂ 的情況下湊出滿足矩陣關聯且不超出長度界限 B_zkp 的向量。</p>
-            <p><strong>驗證結果</strong>：驗證者計算矩陣乘積發現誤差巨大，直接報警並剔除節點 2，保證系統解密絕對安全！</p>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>EPFL 團隊注意到：三大 MFHE 家族（MkHE、ThHE、MgHE）儘管上層架構看似迥異，其所有涉及秘密輸入的互動協定（金鑰生成、重線性化金鑰、集體解密、公鑰切換、集體自舉）竟然都共用幾乎完全相同的兩階段抽象骨架——<strong>Step 1：本地依據私鑰抽出特定分佈並算 RLWE 型式份額；Step 2：交由聚合器公開加總（或串接）</strong>。</p>
+            <p>這啟發了研究者的核心問題：<strong>我們能否直接針對這套通用骨架打造一面不需改變底層 FHE、僅依賴同源晶格安全假設、高速且支援「只剩 1 人誠實（Anytrust）」之通用零知識盾牌（PELTA）？</strong></p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>首個安全性導向的 MFHE 系統化模型</strong>：將複雜的 MkHE/ThHE/MgHE 互動協定統一簡化為局部份額生成（RLWE 關係）與份額聚合，定義清晰可證明的陳述 <strong>Statements 1–7</strong>。</li>
+              <li><strong>無鬆弛（Exact-Bound）與跨 NTT / RNS 之實用晶格 ZKP</strong>：結合 Commit-then-Prove（採用 NTT 友善的 BDLOP/Esgin 晶格證明系統 [ENS20/ALS20]），巧妙融合：(1) <strong>Ling 三元雜訊分解 + 三次方程</strong>徹底消除 Knowledge Gap；(2) 將 <strong>NTT 變換矩陣 <span class="word-eq">T</span></strong> 直接寫入證明線性矩陣；(3) 用小模數 <strong>Ajtai 承諾</strong>配合商數邊界檢查將同一把 <span class="word-eq">s</span> 死鎖於所有 RNS 子環。</li>
+              <li><strong>幾近零成本的可驗證聚合協議（Statement 7）</strong>：基於 Schwartz-Zippel 多項式求值引理，各節點只需追加 1 條線性方程 <span class="word-eq">p<sub>i</sub> = p<sub>i</sub>(α)</span> 即可揪出惡意聚合器，幾乎不增加任何證明大小（僅多一個雜湊承諾摘要）。</li>
+              <li><strong>跨時代效能飛躍</strong>：證明者耗時較先前惡意保護基準（如基於 Aurora 的 [Bos+20]）快上 <strong>1 至 2 個數量級</strong>，初始化大小縮小 <strong>15 倍</strong>。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. 無鬆弛邊界證明：三元分解與三次多項式檢驗</strong>：傳統晶格 ZKP（近似範圍證明）只能證明 <span class="word-eq">‖e‖<sub>∞</sub> ≤ γ·B</span>（多出數十至上百倍 Knowledge Gap），這在 MFHE 中會被惡意敵手塞入假雜訊破壞解密。PELTA 採 Ling 等人的技巧：任意整數 <span class="word-eq">|e| ≤ B</span> 必能寫為基底權重 <span class="word-eq">b₁=⌈B/2⌉, b₂=⌈(B−b₁)/2⌉, …, b<sub>k</sub>=1</span> 的三元線性組合 <span class="word-eq">e = ∑ b<sub>j</sub>·e<sub>j</sub></span>（<span class="word-eq">e<sub>j</sub> ∈ {−1, 0, 1}</span>），再在證明系統裡直接對所有 <span class="word-eq">s</span> 與 <span class="word-eq">e<sub>j</sub></span> 檢查三次多項式 <span class="word-eq">x(x−1)(x+1) ≡ 0 (mod q)</span>（於質數環中只有 -1, 0, 1 三根！）。</p>
+            <p><strong>2. 跨 RNS 子環一致性：小模數 Ajtai 承諾與商向量 <span class="word-eq">k</span></strong>：令 <span class="word-eq">p ≤ q<sub>j</sub></span>（對所有 RNS 質數 <span class="word-eq">q<sub>j</sub></span>），節點在小空間對私鑰做承諾 <span class="word-eq">c<sub>ajtai</sub> = A₁·s + A₂·r mod p</span>，改寫成真整數關係 <span class="word-eq">A₁·s + A₂·r = c<sub>ajtai</sub> + k·p</span>。只要用近似範圍證明確保 <span class="word-eq">‖k‖<sub>∞</sub> ≪ q<sub>j</sub></span>（配合 <span class="word-eq">q<sub>j</sub> ≫ 2Np</span>），兩側整數值絕不會對任一 <span class="word-eq">q<sub>j</sub></span> 發生繞回（No Wrap-Around），逼迫所有子環裡用到的私鑰必須是同一組真整數！</p>
+            <p><strong>3. Schwartz-Zippel 引理</strong>：若總和高次數 <span class="word-eq">&lt; N</span> 之多項式 <span class="word-eq">p(X) ≠ ∑ p<sub>i</sub>(X)</span>（在 <span class="word-eq">ℤ<sub>q</sub></span> 上），隨機挑選挑戰點 <span class="word-eq">α ∈ ℤ<sub>q</sub></span> 時兩側恰巧相等的機率至多 <span class="word-eq">N/q</span>。</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：三元雜訊精準分解鎖定邊界 &amp; 無繞回承諾</div>
+              <p><strong>範例 (A) 無鬆弛雜訊分解</strong>：假設合法雜訊邊界為 <span class="word-eq">B = 6</span>。計算分解權重：<span class="word-eq">b₁ = ⌈6/2⌉ = 3</span>，剩餘 <span class="word-eq">6−3=3</span>；<span class="word-eq">b₂ = ⌈3/2⌉ = 2</span>，剩餘 <span class="word-eq">3−2=1</span>；<span class="word-eq">b₃ = 1</span>。權重為 <span class="word-eq">(3, 2, 1)</span>。誠實節點抽出 <span class="word-eq">e = −5</span>，拆解成 <span class="word-eq">e₁ = −1, e₂ = −1, e₃ = 0</span>（驗算 <span class="word-eq">3(−1) + 2(−1) + 1(0) = −5</span>），三個因子全滿足 <span class="word-eq">x(x−1)(x+1) = 0</span>！反之任何超過 ±6 的數（如 7）無論怎麼挑 <span class="word-eq">{−1,0,1}</span> 絕對湊不出（最大值 3+2+1=6），邊界精準度 100%！</p>
+              <p><strong>範例 (B) 跨環承諾鎖定</strong>：取小承諾模數 <span class="word-eq">p = 5</span>，兩個 RNS 質數 <span class="word-eq">q₁ = 97, q₂ = 101</span>。若私鑰承諾運算算出整數值 <span class="word-eq">A₁s + A₂r = 23</span>，改寫成 <span class="word-eq">23 = 3 + 4·5</span>（<span class="word-eq">c<sub>ajtai</sub> = 3</span>、商數 <span class="word-eq">k = 4</span>）。因為證明確實 <span class="word-eq">|k| = 4 ≪ 97, 101</span>，整數值 23 不會在 97 或 101 下產生截斷誤差，保證在兩個 RNS 子環內取到的必定是同一把私鑰 <span class="word-eq">s</span>！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p>PELTA 在 MFHE 協定的兩個核心階段全面裝上零知識與驗證護甲：</p>
+            <ol>
+              <li><strong>階段 1 — 本地份額生成驗證（Statements 1–6）</strong>：以一般 RLWE 範本 <strong>Statement 1</strong> 為基底，將 FHE 生成的多項式線性式（嵌入 NTT 變換矩陣 <span class="word-eq">T</span>）、跨環一致的 Ajtai 承諾關係及無鬆弛三元分解，全部裝進單一條大型稀疏非結構化線性系統 <span class="word-eq">(p₀, c<sub>ajtai</sub>)<sup>T</sup> = A·w</span> 內：
+                <div class="word-eq-block">
+                  Statement 2 (集體公鑰)：p₀ = −p₁ ∘ (T·s) + T·∑ b<sub>j</sub>e<sub>j</sub>,   c<sub>ajtai</sub> = A₁s + A₂r − k·p<br>
+                  Statement 3 (重線性化金鑰)：加入輔助私密向量 u 與基底分解 ω̃ 驗證雙倍公開多項式<br>
+                  Statement 4 (集體解密)：h = c₁ ∘ (T·s) + e,   其中 e = A₃ ∘ (T·s') + ∑ T·b<sub>j</sub>e<sub>j</sub> − k₂·q<sub>smdg</sub><br>
+                  Statements 5 &amp; 6：延伸至集體公鑰切換（驗證重加密）與集體自舉（驗證明文遮罩與大容量雜訊）
+                </div>
+                透過 Esgin 等人之結晶格證明系統配合 Fiat-Shamir with Aborts（見論文 Fig. 4 &amp; Fig. 5），一次非交互證明同時檢驗線性等式、三元係數與商數近似範圍，確保 <span class="word-eq">s, r, e<sub>j</sub></span> 的合法性！</li>
+              <li><strong>階段 2 — 可驗證份額聚合（Statement 7 &amp; Figure 3）</strong>：面對聚合器可能偷改加總結果的威脅：
+                <br>(i) 各節點算出本地份額多項式 <span class="word-eq">p<sub>i</sub></span> 後，先公佈雜湊承諾 <span class="word-eq">h<sub>i</sub> = HCom(p<sub>i</sub>)</span> 再寄出 <span class="word-eq">p<sub>i</sub></span>；
+                <br>(ii) 聚合器回傳宣稱的總和 <span class="word-eq">p</span>；
+                <br>(iii) 在隨機預言機模型下抽取隨機評估點 <span class="word-eq">α = H(h₁,…,h<sub>n</sub>, p) ∈ ℤ<sub>q</sub></span>（為達 <span class="word-eq">2<sup>−128</sup></span> 安全強度對 54-bit <span class="word-eq">q</span> 僅需同時取 4 個點）；
+                <br>(iv) 各節點順便把「<span class="word-eq">p<sub>i</sub>(α)</span> 的計算」直接當作多加 1 列的線性關係塞進前述 Statement 2/4 證明中，驗證者僅需核對所有點求值是否滿足 <span class="word-eq">p(α) == ∑ p<sub>i</sub>(α) (mod q)</span>！</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：整合 NTT 的集體公鑰證明與 Schwartz-Zippel 聚合檢驗</div>
+              <p><strong>場景</strong>：兩節點 P₁, P₂ 在子環 <span class="word-eq">R<sub>97</sub> = ℤ<sub>97</sub>[X]/(X⁴ + 1)</span> 上執行集體公鑰生成與聚合（<span class="word-eq">q = 97, N = 4</span>）。公用隨機多項式轉至 NTT 域之係數對角代表為 <span class="word-eq">p₁(X)</span>。</p>
+              <p><strong>步驟 1 (本地證明 Statement 2)</strong>：P₁ 抽取三元私鑰多項式 <span class="word-eq">s₁ = (1, 0, −1, 1)</span> 與有界雜訊（已拆解為三元乘積和 <span class="word-eq">e₁</span>）。由於 FHE 要求直接對 NTT 後的私鑰 <span class="word-eq">T·s₁</span> 做乘法，Statement 2 在矩陣 <span class="word-eq">A</span> 上列明 <span class="word-eq">p₀,₁ = −p₁ ∘ (T·s₁) + T·e₁</span>，下列表明 Ajtai 承諾 <span class="word-eq">c<sub>ajtai,1</sub> = A₁s₁ + A₂r₁ − k₁p</span>。ZKP 一次證實三元性、雜訊無鬆弛界限及 RNS 一致性。</p>
+              <p><strong>步驟 2 (承諾與聚合)</strong>：P₁ 產生公鑰多項式 <span class="word-eq">f₁(X) = 10 + 2X + X² + 3X³</span>、發佈摘要 <span class="word-eq">h₁ = HCom(f₁)</span>；P₂ 產生 <span class="word-eq">f₂(X) = 5 + X + 4X² + 2X³</span>、發佈 <span class="word-eq">h₂ = HCom(f₂)</span>。聚合器計算並公佈總和多項式 <span class="word-eq">f(X) = 15 + 3X + 5X² + 5X³</span>。</p>
+              <p><strong>步驟 3 (Statement 7 單點聚合驗證)</strong>：由 Fiat-Shamir 產生隨機驗證點 <span class="word-eq">α = 2 ∈ ℤ<sub>97</sub></span>（不須檢查全部 4 個係數，僅看一個點）。P₁ 附帶證明 <span class="word-eq">f₁(2) = 10 + 4 + 4 + 24 = 42</span>；P₂ 附帶證明 <span class="word-eq">f₂(2) = 5 + 2 + 16 + 16 = 39</span>。驗證者計算總和 <span class="word-eq">42 + 39 = 81</span>，再將公開的 <span class="word-eq">f(X)</span> 代入 <span class="word-eq">X=2</span> 得 <span class="word-eq">f(2) = 15 + 6 + 20 + 40 = 81 (mod 97)</span>——兩側精準吻合，代表聚合正確！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <p><strong>1. Anytrust 威脅模型與密碼學性質</strong>：PELTA 考慮最強的主動腐敗情境之一：<strong>最多可有 <span class="word-eq">|P| − 1</span> 個節點以及聚合器同時變節串通</strong>，只要還有至少 1 名誠實驗證者就能執行稽核並安全中止。其安全性建立在三大基石上：</p>
+            <ul>
+              <li><strong>本地 ZKP 完備性、可靠性與零知識性</strong>：直接繼承自 Esgin 等人 [ENS20, Thm 3.1] 與 Lyubashevsky 等人 [LNS21a]（分別基於 MLWE 與 MSIS 難題），不僅拒絕掉一切假私鑰/假雜訊，回應向量 <span class="word-eq">z<sub>i</sub></span> 亦不洩漏私鑰秘密。</li>
+              <li><strong>可驗證聚合強健性</strong>：在隨機預言機模型下，依 Schwartz-Zippel 引理，只要聚合結果與真實和有哪怕一個係數不符，在每點通過詐欺的機率至多 <span class="word-eq">N/q</span>（實務對 <span class="word-eq">log N ∈ [13,15], log q = 54</span> 抽樣 4 個挑戰點即可壓至 <span class="word-eq">2<sup>−128</sup></span> 以下）。</li>
+              <li><strong>端到端完整管線補齊（Section 7）</strong>：為確保非互動式步驟也安全，PELTA 指出各節點可用公開承諾（<span class="word-eq">HCom</span>）並各自重算同態評估 <code>Eval</code>（Replication Accountability）來徹底防範惡意評估者偷換密文，並建議對 <code>Enc</code> 明文搭配真實性檢查與防資料投毒機制。</li>
+            </ul>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：超標雜訊攻擊與惡意聚合偷換失敗實錄</div>
+              <p><strong>攻防 1（惡意節點企圖注入超標雜訊破譯別人私鑰）</strong>：節點 P₂ 在 Statement 4 集體解密計算 <span class="word-eq">h₂ = c₁ ∘ s₂ + e₂</span> 時，刻意將 <span class="word-eq">e₂</span> 偷偷塞成 <span class="word-eq">50</span>（遠超合法界線 <span class="word-eq">B = 6</span>），企圖擾亂或探索剩餘誤差。然而當它要計算證明的回應向量時，線性關係要求把 50 寫成權重 <span class="word-eq">(3, 2, 1)</span> 的三元組合，且三次檢查 <span class="word-eq">x(x−1)(x+1) = 0</span> 鎖定分解係數只能是 ±1 或 0，最大總和根本只到 6！無論 P₂ 怎麼猜挑戰值都無法同時滿足圖 5 中的第 3 條三次驗證式與第 2 條線性式，直接被驗證者攔截踢除。</p>
+              <p><strong>攻防 2（惡意聚合器與敵手串通偷改結果係數）</strong>：假設聚合器收到誠實和應為 <span class="word-eq">f(X) = 15 + 3X + 5X² + 5X³</span>，卻私下在 <span class="word-eq">X³</span> 加上 1 回傳偽造多項式 <span class="word-eq">f'(X) = 15 + 3X + 5X² + 6X³</span>。驗證者於隨機挑戰點 <span class="word-eq">α = 2</span> 代入得 <span class="word-eq">f'(2) = 15 + 6 + 20 + 48 = 89 ≠ 81 (mod 97)</span>（其差值多項式 <span class="word-eq">X³</span> 在環上能讓這一點誤過關的機率幾乎為 <span class="word-eq">3/97</span>，取 4 個點則僅剩不到億億分之幾），詐騙當場敗露並觸發安全中止！</p>
+            </div>
           </div>
         `
       },
@@ -5568,41 +5727,91 @@
         title: 'HQ-FS 論文密碼學理論教學 (Our Work)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>現有主動安全門檻 FHE 面臨兩大根本障礙：<br>
-            1. <strong>ZKP 運算開銷沉重</strong>：如 PELTA 等方案迫使 ZKP 在高達數百位元的完整密文模數 Q 上執行，多項式乘法速度緩慢。<br>
-            2. <strong>電路隱私與 CPA^D 攻擊</strong>：同態運算與分散式重線性化會殘留運算軌跡，使得攻擊者能透過解密問詢（CPA^D）逆向推導私鑰，違反 FuncCPA 安全。</p>
-          </div>
-
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：小基線商數證明、BFS 快篩與零密文疊加</div>
-            <p>本研究提出三項互為表裡的關鍵突破：</p>
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>建構可實務部署、抗主動惡意節點且防禦洩漏的多方門檻同態加密時，現有方案面臨三大棘手瓶頸：</p>
             <ul>
-              <li><strong>同態商數 Fiat-Shamir 證明 (HQ-FS ZKP)</strong>：利用 RNS 餘數系統代數性質——任何在全模數 Q 上成立的線性等式，在任一質數基底 <span class="word-eq">q₁</span> 上必然同餘：
-                <div class="word-eq-block">A · s + e ≡ pk (mod Q)  ⟹  A · s + e ≡ pk (mod K_Q),  其中 K_Q = q₁</div>
-                將 ZKP 生成與驗證嚴格限制在僅 60 位元的單一小基線模數 K_Q 上執行，證明產生時間大幅縮短至 <strong>1.176 ms</strong>！
-              </li>
-              <li><strong>廣度優先搜尋批次快篩 (BFS Queue Batch Verification)</strong>：DR 首先聚合全體節點證明進行單次批量驗證。若失敗，則將集合二分推入 BFS 佇列逐層篩選，在 <strong>O(log N)</strong> 對數複雜度內精確鎖定並剔除惡意節點。</li>
-              <li><strong>零密文疊加 (Zero-Ciphertext Superposition)</strong>：同態運算後強制疊加帶有新鮮淹沒雜訊的加密 0：
-                <div class="word-eq-block">c_final = c_eval + c_zero (mod Q)</div>
-                根據統計隱匿引理（Smudging Lemma），隨機淹沒雜訊徹底淹沒了運算中間軌跡，達成嚴格之 IND-FuncCPA 電路隱私，全面瓦解 CPA^D 攻擊。
-              </li>
+              <li><strong>缺乏主動安全與 CPA<sup>D</sup> 金鑰恢復風險</strong>：傳統 ThFHE 假設節點遵循協定（半誠實）；面對惡意節點刻意提交格式不符或摻雜錯誤的部分解密份額，不僅會偽造錯誤明文，更可透過選擇密文解密問詢發動 <strong>CPA<sup>D</sup> 金鑰恢復攻擊</strong>。</li>
+              <li><strong>大模數下 ZKP 證明與驗證過於沈重</strong>：若直接針對數百位元的完整 FHE 密文模數 <span class="word-eq">Q = q₁·q₂·…·q<sub>r</sub></span> 建構零知識證明（如要求每個多項式證明皆跨越所有 RNS 基底並跑複雜 CRT 展演），Prover 與 Verifier 的計算時間與網路頻寬開銷將急遽膨脹。</li>
+              <li><strong>同態評估與動態門檻的電路隱私破口（FuncCPA）</strong>：動態去中心化節點群切換或執行多方重線性化後，密文誤差項會殘留計算拓撲與秘密交叉項特徵，若沒有效消除痕跡，將違背 <strong>IND-FuncCPA 電路隱私</strong>。</li>
             </ul>
           </div>
 
-          <div class="example-box">
-            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
-            <p><strong>情境設定</strong>：10 個節點中存在 2 個惡意節點（節點 3 與節點 8）。</p>
-            <p><strong>步驟 1 (小模數證明)</strong>：各節點生成證明時，僅在 60 位元單一質數 <span class="word-eq">K_Q = q₁</span> 上計算承諾 <span class="word-eq">T_u = ⟨u, y_s⟩ mod K_Q</span> 與響應 <span class="word-eq">z_s = y_s + ch · s_i mod K_Q</span>，無需對整個 180 位元的 Q 做多項式 CRT 擴展。</p>
-            <p><strong>步驟 2 (BFS 佇列批次快篩)</strong>：</p>
-            <div class="word-eq-block">
-              第 0 層: 驗證全集 S = {1..10} ──因含節點 3 與 8 失敗！──→ 分割為 S₁={1..5}, S₂={6..10}<br>
-              第 1 層: 驗證 S₁ ──因含節點 3 失敗！──→ 分割為 {1,2}, {3}, {4,5}<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;驗證 S₂ ──因含節點 8 失敗！──→ 分割為 {6,7}, {8}, {9,10}<br>
-              第 2 層: {1,2} 通過！{4,5} 通過！{6,7} 通過！{9,10} 通過！<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;單節點 {3} 與 {8} 驗證失敗 ──精準標記惡意並剔除！
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>研究者洞察到 RNS（剩餘數系）與線性解密驗證之間的關鍵結構不對稱性：為何一定要用「全尺寸的巨大密文模數 <span class="word-eq">Q</span>」去檢驗線性一致性？</p>
+            <p>在代數上，<strong>只要整數等式 <span class="word-eq">A·s + e ≡ pk (mod Q)</span> 成立，它對大模數的任何一個因子質數 <span class="word-eq">K<sub>Q</sub> = q₁</span> 必然同步同餘！</strong> 如果把全部證明生成、Fiat-Shamir 挑戰與同態批次驗證都「降維濃縮」到僅 60 位元的單一小質數基準 <span class="word-eq">K<sub>Q</sub></span> 上運算，再結合對數時間隔離壞人的廣度優先（BFS）佇列，以及同態評估後的「零密文疊加」淹沒電路軌跡——就能在不依賴沈重自舉的條件下，一舉實現高速、可擴展、可動態組隊且具備完整主動安全的門檻同態系統！</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>RNS-GLWE 動態門檻完整協定架構（Algorithms 1–8）</strong>：涵蓋具備 ZKP 承諾綁定之 <code>KeyGen</code>、兩輪去中心化含 RNS 數位分解與雙階段淹沒之 <code>RLKGen</code>、動態委員會 <span class="word-eq">(N<sub>c</sub>, t<sub>c</sub>)</span> 之部分解密與全流程同態加減乘法。</li>
+              <li><strong>同態商數 Fiat-Shamir 零知識證明（HQ-FS ZKP）</strong>：將所有證明承諾 <span class="word-eq">(T<sub>u</sub>, T<sub>A</sub>)</span> 與回應 <span class="word-eq">(z<sub>s</sub>, z<sub>e</sub>)</span> 限縮於僅 60-bit 的基準質數 <span class="word-eq">K<sub>Q</sub> = q₁</span> 上執行（並對 <span class="word-eq">‖Z<sub>s</sub>‖<sub>∞</sub> ≤ K<sub>Q</sub>/4</span> 把關），大幅減輕 31.6% 證明時間至每節點僅 <strong>1.176 ms</strong>。</li>
+              <li><strong>BFS 佇列同態批次快篩機制（Algorithm 6）</strong>：驗證者先行在模 <span class="word-eq">K<sub>Q</sub></span> 上線性合併全體證明進行「單次總驗算」；若過關就一次全部放行，若失敗則二分切群推進 BFS 佇列，僅需 <strong><span class="word-eq">O(log N)</span></strong> 次檢查即精準定位並踢除惡意節點（主動防禦總延遲降低 72.1% 至 <strong>642.76 ms</strong>）。</li>
+              <li><strong>零密文疊加（Zero-Ciphertext Superposition）達成 IND-FuncCPA</strong>：於加法與乘法後加疊帶有巨量淹沒雜訊的「加密 0」，在至多 <span class="word-eq">N−1</span> 節點主動串通下同時證明了 <strong>IND-FuncCPA</strong> 與真實－理想模擬安全（Theorems 1–4）。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. RNS-GLWE 與基準模數同態投射（Homomorphic Quotient Reduction）</strong>：為加速多項式算術，系統將極大密文模數拆成 <span class="word-eq">r</span> 個互質的 60-bit NTT 友善質數之積 <span class="word-eq">Q = q₁ · q₂ · … · q<sub>r</sub></span>（<span class="word-eq">R<sub>Q</sub> = ℤ<sub>Q</sub>[X]/(X<sup>d</sup> + 1)</span>）。由於 <span class="word-eq">q₁ ∣ Q</span>，原本跨多條軌道的大模數線性關係只要降落到第一條軌道 <span class="word-eq">K<sub>Q</sub> = q₁</span>，不僅結構完整保留、還能進行線性加法聚合，唯獨必須驗證秘密向量與回應的無窮範數遠小於 <span class="word-eq">K<sub>Q</sub>/4</span>，防止攻擊者藉「加總進位繞回 <span class="word-eq">K<sub>Q</sub></span>」造假。</p>
+            <p><strong>2. Fiat-Shamir 非交互轉換與 Smudging Lemma</strong>：利用密碼學雜湊函數計算挑戰值 <span class="word-eq">ch = H(A<sub>zkp</sub>, C, u, T<sub>u</sub>, T<sub>A</sub>) ∈ {0, 1}<sup>d</sup></span> 將 Σ-協定非交互化；同時依據統計隱匿引理，只要淹沒雜訊邊界滿足 <span class="word-eq">B<sub>flood</sub> ≥ 2<sup>λ</sup> · max(|x|)</span>，被疊加的任意運算誤差或原始雜訊即在統計距離 <span class="word-eq">ϵ<sub>smudge</sub> ≤ 2<sup>−λ</sup></span> 內完全消失。</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：從多軌道 RNS 大模數降維至單一基準質數 K<sub>Q</sub></div>
+              <p>假設系統使用三個小質數基底 <span class="word-eq">q₁ = 101, q₂ = 103, q₃ = 107</span>，完整密文模數為 <span class="word-eq">Q = 101 × 103 × 107 = 1,113,121</span>，我們選定基準模數 <span class="word-eq">K<sub>Q</sub> = q₁ = 101</span>（實務上是 60-bit 大質數）。</p>
+              <p>若真實密鑰與誤差關係在整數與 <span class="word-eq">mod Q</span> 上滿足 <span class="word-eq">A<sub>zkp</sub>·s + e<sub>zkp</sub> = C = 5 · 4 + 3 = 23</span>：當驗證者把係數對 <span class="word-eq">101</span> 取餘數時，左邊 <span class="word-eq">(5·4 + 3) mod 101 = 23</span> 與右邊 <span class="word-eq">C mod 101 = 23</span> 依舊嚴絲合縫！只要規範響應範數 <span class="word-eq">‖z<sub>s</sub>‖<sub>∞</sub> ≤ ⌊101/4⌋ = 25</span>，證明者便無需碰觸另外兩條 103 與 107 的龐大數值，證據長度與運算量立省三分之二（實際 5~10 條 RNS 分支下則激省上數倍）！</p>
             </div>
-            <p><strong>步驟 3 (零密文疊加)</strong>：同態乘法後，密文注入 <span class="word-eq">c_zero</span>，殘留的敏感交叉項特徵被均勻隨機雜訊完全掩蓋，攻擊者無法發動 CPA^D 逆向分析！</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p>HQ-FS 完整貫徹論文中的 8 個核心演算法（Algorithms 1–8）：</p>
+            <ol>
+              <li><strong>系統建立與雙重公鑰承諾（Algorithms 1 &amp; 2：<code>Setup</code> &amp; <code>KeyGen</code>）</strong>：設定 <span class="word-eq">K<sub>Q</sub> = q₁</span>、隨機矩陣 <span class="word-eq">A</span> 與證明參考矩陣 <span class="word-eq">A<sub>zkp</sub></span>。各節點抽樣秘密 <span class="word-eq">s<sup>(i)</sup></span>，同時發佈雙物件：FHE 公鑰份額 <span class="word-eq">pk<sup>(i)</sup> = A·s<sup>(i)</sup> + e<sup>(i)</sup> (mod Q)</span> 以及專門用來檢驗後續所有計算一致性的 ZKP 承諾 <span class="word-eq">C<sup>(i)</sup> = A<sub>zkp</sub>·s<sup>(i)</sup> + e<sub>zkp</sub><sup>(i)</sup> (mod Q)</span>。最後合成 <span class="word-eq">pk<sub>global</sub> = ∑ pk<sup>(i)</sup> mod Q</span>。</li>
+              <li><strong>兩輪抗 FuncCPA 去中心化重線性化金鑰（Algorithm 3：<code>RLKGen</code>）</strong>：Round 1 節點各用 <span class="word-eq">pk<sub>global</sub></span> 加密自身金鑰片斷 <span class="word-eq">s<sub>a</sub></span>（塞入 <span class="word-eq">χ<sub>flood</sub></span> 雜訊）並廣播聚合成全域密文 <span class="word-eq">(CG<sub>u,a</sub>, CG<sub>v,a</sub>)</span>；Round 2 結合 RNS CRT 係數 <span class="word-eq">q̂<sub>k</sub> = Q/q<sub>k</sub></span> 本地乘上 <span class="word-eq">s<sub>b</sub></span> 並<strong>二次注入龐大淹沒雜訊 <span class="word-eq">(e<sub>u,flood</sub>, e<sub>v,flood</sub>)</span></strong> 以徹底掩蓋二次交叉項軌跡，聚合得出 <span class="word-eq">RLK<sub>global</sub></span>。</li>
+              <li><strong>加密與同態零密文疊加（Algorithms 4, 7, 8：<code>Enc</code> / <code>Add</code> / <code>Mult</code>）</strong>：加密端將向量經 <code>iNTT</code> 編碼為多項式乘上 <span class="word-eq">Δ</span> 並加上大變異數初始雜訊 <span class="word-eq">(y₀, y₁)</span>。雲端伺服器執行完 <code>Add</code> 或利用 <span class="word-eq">RLK<sub>global</sub></span> 做完 <code>Mult</code> 得到 <span class="word-eq">c<sub>tmp</sub></span> 後，強制疊加帶有濃厚淹沒雜訊的「加密 0」：
+                <div class="word-eq-block">c<sub>final</sub> = c<sub>tmp</sub> + c<sub>zero</sub> (mod Q)</div>
+                直接吞沒評估路線、乘法結構與 RLK 交叉運算所殘留的誤差痕跡。</li>
+              <li><strong>部分解密與小模數 HQ-FS 證明產生（Algorithm 5：<code>Partial Decryption</code>）</strong>：節點計算原始部分內積 <span class="word-eq">sh<sub>raw</sub><sup>(i)</sup> = ⟨u, s<sup>(i)</sup>⟩</span>，並疊加淹沒雜訊得出部分解密份額 <span class="word-eq">sh<sup>(i)</sup> = sh<sub>raw</sub><sup>(i)</sup> + e<sub>flood</sub><sup>(i)</sup></span>。接著立即於 60-bit 小模數 <span class="word-eq">K<sub>Q</sub></span> 上產生證明 <span class="word-eq">π<sup>(i)</sup> = (ch, z<sub>s</sub>, z<sub>e</sub>, T<sub>u</sub>, T<sub>A</sub>)</span>：
+                <div class="word-eq-block">
+                  y<sub>s</sub>, y<sub>e</sub> ← U<sub>η</sub>,   T<sub>u</sub> = ⟨u, y<sub>s</sub>⟩ (mod K<sub>Q</sub>),   T<sub>A</sub> = A<sub>zkp</sub>·y<sub>s</sub> + y<sub>e</sub> (mod K<sub>Q</sub>)<br>
+                  ch = H(A<sub>zkp</sub>, C, u, T<sub>u</sub>, T<sub>A</sub>) ∈ {0,1}<sup>d</sup>,   z<sub>s</sub> = y<sub>s</sub> + ch·s<sup>(i)</sup> (mod K<sub>Q</sub>),   z<sub>e</sub> = y<sub>e</sub> + ch·e<sub>zkp</sub><sup>(i)</sup> (mod K<sub>Q</sub>)
+                </div>
+              </li>
+              <li><strong>BFS 佇列同態聚合檢驗與還原明文（Algorithm 6：<code>Decryption</code>）</strong>：接收端（DR）將集合推入 BFS 佇列 <span class="word-eq">ℓ</span>，每次取出一批子集 <span class="word-eq">S</span> 累加回應與挑戰加權值：<span class="word-eq">Z<sub>s</sub> = ∑<sub>i∈S</sub> z<sub>s</sub><sup>(i)</sup>, Z<sub>e</sub> = ∑<sub>i∈S</sub> z<sub>e</sub><sup>(i)</sup>, T<sub>u</sub><sup>agg</sup> = ∑<sub>i∈S</sub> T<sub>u</sub><sup>(i)</sup>, T<sub>A</sub><sup>agg</sup> = ∑<sub>i∈S</sub> T<sub>A</sub><sup>(i)</sup>, S<sup>agg</sup> = ∑<sub>i∈S</sub> ch<sup>(i)</sup>·sh<sup>(i)</sup>, C<sup>agg</sup> = ∑<sub>i∈S</sub> ch<sup>(i)</sup>·C<sup>(i)</sup> (全數 mod K<sub>Q</sub>)</span>，同步核對三大布林閘門（於無公開混淆或校正對齊後檢驗解密一致與金鑰一致）：
+                <div class="word-eq-block">
+                  b<sub>dec</sub> : (⟨u, Z<sub>s</sub>⟩ − S<sup>agg</sup> == T<sub>u</sub><sup>agg</sup> mod K<sub>Q</sub>),   b<sub>key</sub> : (A<sub>zkp</sub>·Z<sub>s</sub> + Z<sub>e</sub> − C<sup>agg</sup> == T<sub>A</sub><sup>agg</sup> mod K<sub>Q</sub>),   b<sub>norm</sub> : (‖Z<sub>s</sub>‖<sub>∞</sub> ≤ K<sub>Q</sub>/4)
+                </div>
+                若全對，整批成員並入誠實集 <span class="word-eq">V</span>；若失敗且 <span class="word-eq">|S| &gt; 1</span> 便分拆子群推回佇列；單節點（<span class="word-eq">|S| = 1</span>）失敗便即刻剔除。最後總合 <span class="word-eq">sh<sup>agg</sup> = ∑<sub>i∈V</sub> sh<sup>(i)</sup> mod Q</span>、求相位 <span class="word-eq">ph<sub>rns</sub> = v − sh<sup>agg</sup> mod Q</span>，以 CRT 轉回大整數置中於 <span class="word-eq">[−Q/2, Q/2]</span>，算出 <span class="word-eq">⌊(coeffs<sub>big</sub> + Δ/2)/Δ⌉ mod T</span> 並跑 <code>NTT</code> 解出所有向量明文槽！</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：小模數 ZKP 生成與 BFS 佇列揪鬼過程</div>
+              <p><strong>情境設定</strong>：共 8 個節點（編號 1~8）執行門檻解密，其中節點 3 與節點 7 是惡意節點（故意亂報解密份額）。基準質數設為 <span class="word-eq">K<sub>Q</sub> = 101</span>（容許範數上限 25）。</p>
+              <p><strong>步驟 1 (小模數生成證明，Algorithm 5)</strong>：誠實節點 1 持有小秘密 <span class="word-eq">s<sup>(1)</sup> = 2</span>、承諾雜訊 <span class="word-eq">e<sub>zkp</sub> = 1</span>。隨機掩碼抽到 <span class="word-eq">y<sub>s</sub> = 3, y<sub>e</sub> = 4</span>，僅在 101 模數上算出承諾 <span class="word-eq">T<sub>A</sub> = A<sub>zkp</sub>·3 + 4 mod 101</span>，再由雜湊抽出挑戰 <span class="word-eq">ch = 1</span>，回應 <span class="word-eq">z<sub>s</sub> = 3 + 1·2 = 5 ≤ 25</span>，極速產生完畢！</p>
+              <p><strong>步驟 2 (BFS 佇列快篩流程，Algorithm 6)</strong>：</p>
+              <div class="word-eq-block">
+                第 0 輪：驗證全群 S = {1,2,3,4,5,6,7,8} ──(僅做 1 次驗證，因含 3 與 7 失敗！)──→ 拆半推入 {1,2,3,4}, {5,6,7,8}<br>
+                第 1 輪：驗 {1,2,3,4} 失敗 → 拆為 {1,2}, {3,4}；驗 {5,6,7,8} 失敗 → 拆為 {5,6}, {7,8}<br>
+                第 2 輪：{1,2} 全數吻合！納入 V = {1,2}；{3,4} 失敗 → 拆 {3},{4}<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{5,6} 全數吻合！納入 V = {1,2,5,6}；{7,8} 失敗 → 拆 {7},{8}<br>
+                第 3 輪：單點檢查 {4} 通過納入 V；{8} 通過納入 V；<strong>{3} 與 {7} 驗證失敗 → 精準剔除！</strong>
+              </div>
+              <p><strong>步驟 3 (聚合與 CRT 去噪還原)</strong>：最終對 <span class="word-eq">V = {1,2,4,5,6,8}</span> 的誠實份額求和算相位 <span class="word-eq">v − sh<sup>agg</sup></span>，即使剛才有經歷乘法運算，因先前執行過「零密文疊加 <span class="word-eq">+c<sub>zero</sub></span>」加上各份額的 <span class="word-eq">e<sub>flood</sub></span>，所有秘密雜訊皆遠小於 <span class="word-eq">Δ/2</span> 卻又徹底掩蓋運算軌跡，除法捨入後完好輸出明文向量！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <ul>
+              <li><strong>Theorem 1 — IND-FuncCPA 統一電路隱私（最高容忍 N−1 腐敗）</strong>：在 GLWE 難題下，敵手於包含評估與部分解密預言機之區分優勢至多為 <span class="word-eq">Adv<sup>IND-FuncCPA</sup>(λ) ≤ Adv<sup>GLWE</sup>(λ) + q · ϵ<sub>smudge</sub></span>。關鍵在於令 <span class="word-eq">B<sub>flood</sub> ≥ 2<sup>λ</sup>·max(|x|)</span>，使經混合遊戲 1 將真實計算雜訊與私鑰依賴內積替換成純粹均勻分佈 <span class="word-eq">R<sub>U[−B<sub>flood</sub>, B<sub>flood</sub>]</sub></span> 時統計誤差 <span class="word-eq">ϵ<sub>smudge</sub> ≤ 2<sup>−λ</sup></span> 可忽略；遊戲 2 再依 GLWE 把挑戰密文與誠實公鑰變得與均勻隨機完全不可區分。</li>
+              <li><strong>Theorem 2 &amp; 3 — HQ-FS ZKP 特殊可靠性與零知識性</strong>：具備完美完備性；若任何敵手能對同一組承諾 <span class="word-eq">(T<sub>u</sub>, T<sub>A</sub>)</span> 偽造兩個不同挑戰值 <span class="word-eq">ch ≠ ch'</span> 的通過證明，知識抽出器可在模 <span class="word-eq">K<sub>Q</sub></span> 內即時解出真實秘密 <span class="word-eq">s<sup>(i)</sup> = (z<sub>s</sub> − z'<sub>s</sub>)(ch − ch')<sup>−1</sup> mod K<sub>Q</sub></span>，且 <span class="word-eq">‖Z<sub>s</sub>‖<sub>∞</sub> ≤ K<sub>Q</sub>/4</span> 防止溢位造假。同時 HVZK 模擬器只要反著先隨機抽 <span class="word-eq">(ch, z<sub>s</sub>, z<sub>e</sub>)</span> 再倒算 <span class="word-eq">(T<sub>u</sub>, T<sub>A</sub>)</span>，即可無密鑰生成完全同分佈的假證明。</li>
+              <li><strong>Theorem 4 — 真實－理想模擬安全</strong>：在隨機預言機與 GLWE 下，模擬器面對多達 <span class="word-eq">N−1</span> 名主動惡意敵手時，能透過 HVZK、Lemma 1 均勻雜訊替換 <code>RLKGen</code> 分享以及由最終理想輸出 <span class="word-eq">m<sub>vec</sub></span> 反算所需誠實份額並偽造完全合規的 <span class="word-eq">π<sup>(i)</sup></span>，完整實現理想功能 <span class="word-eq">F<sub>FHE</sub></span>。</li>
+            </ul>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：跨模數溢位作弊與 CPA<sup>D</sup> 軌跡窺探雙重攔截</div>
+              <p><strong>攻擊 A（敵手試圖藉小基準質數 <span class="word-eq">K<sub>Q</sub> = 101</span> 溢位繞回來通過檢查並亂改份額）</strong>：惡意節點 3 本應交出正常範圍內的份額與 <span class="word-eq">z<sub>s</sub> = 5</span>，但它打算把 <span class="word-eq">sh<sup>(3)</sup></span> 偷加上 <span class="word-eq">101</span> 藉以破壞完整大模數 <span class="word-eq">Q = 1,113,121</span> 的相位運算——它心想「我在 <span class="word-eq">mod 101</span> 檢查裡還是 0 吧？」卻忘了為了騙過 <span class="word-eq">b<sub>key</sub></span>，它必須對不同數值的私鑰片斷與挑戰湊出一組大數字 <span class="word-eq">z<sub>s</sub></span> 來補足大模數下的差距（例如企圖塞入 <span class="word-eq">z<sub>s</sub> = 60</span>）；此時 <span class="word-eq">b<sub>norm</sub></span> 檢查 <span class="word-eq">60 ≤ 101/4 (= 25)</span> 立刻回報 <strong>False</strong>！在更廣的 60-bit <span class="word-eq">K<sub>Q</sub></span> 下，任意偏離整數域關係或超額噪音之竄改立刻在 BFS 中現形被逐。</p>
+              <p><strong>攻擊 B（串通 <span class="word-eq">N−1</span> 個節點發動 CPA<sup>D</sup> 探測唯一誠實者私鑰）</strong>：敵手拿著重線性化後的乘法結果密文要求不斷部分解密，並試圖由誠實者給的份額反推乘法深處殘留的 <span class="word-eq">e<sub>mult</sub></span>。因為乘法本身已疊加過 <span class="word-eq">c<sub>zero</sub></span>，且誠實者部分解密加上了 <span class="word-eq">B<sub>flood</sub> ≥ 2<sup>128</sup>·|e<sub>mult</sub>|</span> 的均勻淹沒項，敵手想靠雜訊辨識出誠實者私鑰依賴項的統計優勢被死壓於 <span class="word-eq">2<sup>−128</sup></span> 以下！</p>
+            </div>
           </div>
         `
       },
@@ -5611,45 +5820,114 @@
         title: 'OT25 論文密碼學理論教學 (Okada & Takagi, 2025)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>在門檻 LWE 解密中，各節點計算部分解密份額：</p>
-            <div class="word-eq-block">v_i = b_i - a · s_i = Δ · m_i + e_i (mod q)</div>
-            <p>如果私鑰雜訊 e_i 未被適當盲化，攻擊者收集多個部分解密份額後，即可利用格子基底約減（Lattice Reduction）或雜訊關聯性解出私鑰 s_i。岡田與高木提出：<strong>能否以成對偽隨機函數（PRF）構造自抵銷遮罩，在完全零額外模數開銷下達成雜訊盲化？</strong></p>
-          </div>
-
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：成對零和 PRF 遮罩與精確雜訊填充</div>
-            <p>OT25 設計了極為優雅的代數盲化結構：</p>
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>低通訊開銷門檻同態加密的先行突破工作 [PS25] 雖然靠著引入一台非串謀半誠實伺服器（Server）將解密份額縮小至與系統安全參數獨立的多項式大小，但卻留下了兩個難以忽視的致命瑕疵與未決問題（論文稱為 Q1.1 與 Q1.2）：</p>
             <ul>
-              <li><strong>成對零和 PRF 遮罩 (Pairwise Zero-Sum Masks)</strong>：各節點對 (i, j) 預先協商 PRF 種子金鑰。在解密時，節點 i 注入遮罩：
-                <div class="word-eq-block">M_i = ∑_{j > i} PRF(K_{i,j}, cnt) - ∑_{j < i} PRF(K_{j,i}, cnt)</div>
-                當所有節點的遮罩加總時：
-                <div class="word-eq-block">∑_{i=1}^n M_i = 0</div>
-                在全局求和時所有 PRF 遮罩剛好成對正負抵銷，完美歸零！
-              </li>
-              <li><strong>雜訊填充 (Noise Padding)</strong>：每個節點額外加入一個小範數的高斯填充雜訊 e_pad，切斷局部份額與私鑰雜訊的統計相關性。</li>
-              <li><strong>輕量級無自舉</strong>：直接運作於原生 LWE 參數，單機記憶體與計算開銷極小。</li>
+              <li><strong>問題 Q1.1 — 依賴非標準的「已知範數 LWE (knLWE)」且無法跨至 RLWE / MLWE</strong>：[PS25] 在模擬安全性證明中，被迫把私鑰歐幾里得範數 <span class="word-eq">‖s‖</span> 直接公開印在公鑰 <span class="word-eq">pk</span> 裡！原因在於解密最後揭露給接收者的殘餘雜訊變異數直接等於 <span class="word-eq">(σ₀·‖s‖)² + (σ<sub>flood</sub>/p)²</span>——模擬器若不知真私鑰的精準長度 <span class="word-eq">‖s‖</span> 就無法模擬出同分佈雜訊。這在多項式環結構（Module-LWE / RLWE）上必須轉為極端可疑的「已知協方差 MLWE」假設，至今沒有往標準 LWE / MLWE 的任何歸約證明！</li>
+              <li><strong>問題 Q1.2 — 無法使用 <span class="word-eq">O(1)</span> 高效的 Shamir 分享</strong>：[PS25] 必須依賴單調布林結構的 <span class="word-eq">{0,1}-LSSS</span>，單個解密份額竟高達 <span class="word-eq">O(N<sup>4.2</sup>)</span>！若硬改用 Shamir 分享，因傳統架構須乘上清洗 Lagrange 係數分母（最高 <span class="word-eq">N!</span>），會造成雜訊暴漲 <span class="word-eq">ω((N!)³)</span> 倍而徹底壓垮模數。</li>
+              <li><strong>連續高斯的浮點實作洩漏</strong>：[PS25] 使用連續高斯取樣，在真實定點／浮點有限精準度電腦上極容易產生側通道資訊洩漏，且偶數模數限制亦不友善。</li>
             </ul>
           </div>
 
-          <div class="example-box">
-            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
-            <p><strong>情境設定</strong>：3 個參與方 A, B, C，待解密密文還原值應為 42。</p>
-            <p><strong>步驟 1 (成對 PRF 計算)</strong>：</p>
-            <div class="word-eq-block">
-              A 與 B 的共享偽隨機數: ψ_{A,B} = 150<br>
-              B 與 C 的共享偽隨機數: ψ_{B,C} = 230<br>
-              A 與 C 的共享偽隨機數: ψ_{A,C} = 80
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>岡田與高木（Okada &amp; Takagi，Asiacrypt 2025 / [OT26]）致力於一次正面回答 Q1.1 與 Q1.2 兩大挑戰：</p>
+            <p><strong>第一，能否讓每位門檻參與方只送出常數大小（<span class="word-eq">O(1)</span>，僅 1 個模 <span class="word-eq">q</span> 元素、獨立於總人數 <span class="word-eq">N</span> 與安全參數）的標準 Shamir 份額，卻完全不用乘上 <span class="word-eq">(N!)³</span> 的 Lagrange 雜訊倍數？</strong><br>
+            <strong>第二，能否設計一種反向互補的「雜訊填充（Noise Padding）」魔法，把原本洩漏 <span class="word-eq">‖s‖²</span> 的殘餘雜訊變異數巧妙抵銷掉，使其變得完全只取決於一個純粹公開的常數邊界 <span class="word-eq">B<sub>pub</sub>²</span>——從而擺脫 knLWE，直接建立在銅牆鐵壁般的標準 LWE / Module-LWE 假設與全離散高斯取樣之上？</strong></p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong><span class="word-eq">O(1)</span> 份額的 Shamir 友善架構（Algorithm 3，回答 Q1.2）</strong>：利用 Server 在壓縮降模（<span class="word-eq">Q = p·q → q</span>）時，直接利用為每位活躍成員事先共享的對稱偽隨機遮罩 <span class="word-eq">m<sub>i</sub> = PRF(seed<sub>i</sub>, sid) mod q</span> 一次盲化密文，使參與方只需回傳各自經遮罩保護的 Lagrange 份額 <span class="word-eq">pd<sub>i</sub> = λ<sub>act,i</sub>·a<sup>T</sup>s<sub>i</sub> + m<sub>i</sub> mod q</span>（不再對每份另外乘上巨大清洗因子），大幅壓低通訊至隨人數恆定之 <span class="word-eq">O(1)</span>！</li>
+              <li><strong>創新「雜訊填充 (Noise Padding)」突破性設計（Algorithm 6 &amp; 7，回答 Q1.1）</strong>：在 KeyGen 時抽好預定上限 <span class="word-eq">L<sub>Dec</sub></span> 筆互補的填充雜訊 <span class="word-eq">ζ<sup>(sid)</sup> ← D<sub>ℤ, σ₀√(B<sub>pub</sub>² − ‖s‖²)</sub></span> 並同做 Shamir 分享。解密後總暴露誤差變成 <span class="word-eq">e + ζ<sup>(sid)</sup></span>，兩者獨立離散高斯捲積後變異數精準合流為 <strong><span class="word-eq">(σ₀ · B<sub>pub</sub>)² + (σ<sub>flood</sub>/p)²</span>——裡面完全消除了私鑰長度 <span class="word-eq">‖s‖</span>！</strong> 成功將門檻 FHE 嚴格歸約至標準 LWE 與標準 Module-LWE（每方僅額外儲存無關安全參數之 <span class="word-eq">O(L<sub>Dec</sub>)</span> 筆份額）。</li>
+              <li><strong>全離散高斯捨入與無奇偶限制嚴謹分析</strong>：全域採用離散高斯取樣與隨機離散高斯捨入 <span class="word-eq">⌊·⌉<sub>σ₀, σ₁</sub></span>，徹底消滅連續浮點實作漏洞，並於新版中擴充至完美相容奇質數模數 <span class="word-eq">q</span>。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. 隨機化離散高斯捨入（Randomized Discrete Gaussian Rounding）與雙模數 <span class="word-eq">Q = p · q</span></strong>：將大模數 FHE 密文模數設為 <span class="word-eq">Q = p·q</span>（其中 <span class="word-eq">q</span> 為最後份額運作之小質數，不隨安全參數膨脹）。定義對任實數 <span class="word-eq">x</span> 以參數 <span class="word-eq">σ</span> 做隨機整數捨入為 <span class="word-eq">⌊x⌉<sub>σ</sub> := x + e</span>，其中誤差 <span class="word-eq">e</span> 依離散高斯分佈 <span class="word-eq">D<sub>ℤ−x, σ</sub></span> 抽出以保證結果嚴格落在整數格子點 <span class="word-eq">ℤ</span>。當我們把在 <span class="word-eq">Q = p·q</span> 上的向量分開以 <span class="word-eq">1/p</span> 縮放後做隨機捨入，大密文上的雜訊會被平滑轉換成在 <span class="word-eq">ℤ<sub>q</sub></span> 上、變異數明確依賴 <span class="word-eq">σ₀²·‖s‖²</span> 的小離散高斯！</p>
+            <p><strong>2. 離散高斯平滑引理與變異數互補相消（Noise Padding 核心）</strong>：根據平滑參數（Smoothing Parameter <span class="word-eq">η<sub>ϵ</sub>(Λ)</span>，Lemma 3.4 &amp; 3.8），當兩個獨立離散高斯變數的標準差均充分大於其晶格平滑參數時，兩者相加後的結果與「變異數直接相加」之單一理想離散高斯分佈的統計距離為可忽略函數 <span class="word-eq">ϵ = negl(κ)</span>。因此只要人為補進變異數缺口 <span class="word-eq">B<sub>pub</sub>² − ‖s‖²</span>，就能把秘密變成公開常數！</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：如何靠「雜訊填充」把秘密私鑰長度徹底洗白？</div>
+              <p>假設安全設定要求單維誤差係數乘數 <span class="word-eq">σ₀ = 10</span>，且任何隨機抽出的低權重 LWE 私鑰 <span class="word-eq">s</span> 其長度平方 <span class="word-eq">‖s‖²</span> 必定小於公共安全常數 <span class="word-eq">B<sub>pub</sub>² = 100</span>（取大常數上限）。</p>
+              <p>假設本次 KeyGen 剛好抽到一把較短的私鑰，其長度為 <span class="word-eq">‖s‖ = 6</span>（平方 <span class="word-eq">36</span>）。</p>
+              <ul>
+                <li><strong>若沒有使用 Noise Padding</strong>：解密結束時，密文誤差在與 <span class="word-eq">s</span> 相乘與隨機捨入後產生的雜訊標準差是 <span class="word-eq">σ₀·‖s‖ = 10 × 6 = 60</span>（忽略其他常數）。攻擊者多測幾次就能由標準差 <span class="word-eq">60</span> 反推你的私鑰長度剛好是 6！</li>
+                <li><strong>啟用 Noise Padding 補強（Algorithm 6）</strong>：發鑰者計算剩餘缺口 <span class="word-eq">√(B<sub>pub</sub>² − ‖s‖²) = √(100 − 36) = √64 = 8</span>，抽取出標準差為 <span class="word-eq">σ<sub>padding</sub> = 10 × 8 = 80</span> 的填充雜訊 <span class="word-eq">ζ</span> 藏進門檻分享裡。解密完成時，真實誤差 <span class="word-eq">e</span> 與填充雜訊 <span class="word-eq">ζ</span> 相加之合成標準差立即變成：
+                  <div class="word-eq-block">√( (60)² + (80)² ) = √( 3600 + 6400 ) = 100 = σ₀ · B<sub>pub</sub> ！</div>
+                </li>
+              </ul>
+              <p>就算換另一把 <span class="word-eq">‖s‖ = 8</span>（原雜訊標準差 80，補進標準差 60），合出來依舊是 100——任何敵手都休想靠統計雜訊寬度看穿哪怕一點點秘密長度資訊！</p>
             </div>
-            <p><strong>步驟 2 (各節點本地合成遮罩)</strong>：</p>
-            <div class="word-eq-block">
-              節點 A 遮罩: M_A = +ψ_{A,B} + ψ_{A,C} = 150 + 80 = +230<br>
-              節點 B 遮罩: M_B = -ψ_{A,B} + ψ_{B,C} = -150 + 230 = +80<br>
-              節點 C 遮罩: M_C = -ψ_{A,C} - ψ_{B,C} = -80 - 230 = -310
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p>本論文（以標準 LWE 為主軸，Algorithm 6；Module-LWE 同理擴充於 Algorithm 7）於「1 台半誠實且絕不與任何節點串通的 <code>Server</code>」與「<span class="word-eq">N</span> 個持鑰參與方（<span class="word-eq">T</span> 門檻）」間架構出流暢的 <strong>2 輪門檻解密協定</strong>：</p>
+            <ol>
+              <li><strong>前置準備 — <code>KeyGen(T, N)</code>（金鑰、預備填充雜訊與 PRF 種子）</strong>：
+                <br>1) 執行基礎 FHE 生成 <span class="word-eq">(evk, pk, s)</span>；設定公開邊界 <span class="word-eq">B<sub>pub</sub> ≥ √(n·B<sub>lwe</sub>² + 1)</span>，一次預抽 <span class="word-eq">L<sub>Dec</sub></span> 筆填充雜訊 <span class="word-eq">ζ = (ζ<sup>(1)</sup>,…,ζ<sup>(L<sub>Dec</sub>)</sup>) ← D<sub>ℤ, σ₀√(B<sub>pub</sub>² − ‖s‖²)</sub></span>；
+                <br>2) 在質數域 <span class="word-eq">ℤ<sub>q</sub></span> 上執行 <span class="word-eq">T</span>-of-<span class="word-eq">N</span> Shamir 分享，把 <span class="word-eq">(s, ζ)</span> 拆為 <span class="word-eq">(s<sub>i</sub> ∈ ℤ<sub>q</sub><sup>n</sup>, ζ<sub>i</sub> ∈ ℤ<sub>q</sub><sup>L<sub>Dec</sub></sup>)</span> 分發給各節點；
+                <br>3) 為每位節點生成一顆對稱 PRF 種子 <span class="word-eq">seed<sub>i</sub> ← {0,1}<sup>κ</sup></span>（唯獨 <span class="word-eq">Server</span> 與第 <span class="word-eq">i</span> 個參與方同時擁有 <span class="word-eq">seed<sub>i</sub></span>，其餘參與方互不知曉！）。</li>
+              <li><strong>Round 1 — <code>ServerDec</code>（Server 再隨機化、大雜訊淹沒、縮模壓縮與全體遮罩植入）</strong>：對於會話編號 <span class="word-eq">sid ≤ L<sub>Dec</sub></span> 及線上出席集合 <span class="word-eq">act</span>（<span class="word-eq">|act| ≥ T</span>）：
+                <ul>
+                  <li>用加密 0 重隨機化消去前置運算軌跡：<span class="word-eq">ct<sub>in</sub> = ct + Enc(pk, 0) mod Q</span>；</li>
+                  <li>抽取離散高斯淹沒雜訊 <span class="word-eq">E ← D<sub>(1/2)ℤ, σ<sub>flood</sub></sub></span>，對每個出席成員算出當次專用遮罩 <span class="word-eq">m<sub>i</sub> = PRF(seed<sub>i</sub>, sid) ∈ ℤ<sub>q</sub></span>；</li>
+                  <li>經隨機離散高斯捨入把大模數 <span class="word-eq">Q = p·q</span> 壓縮至極短的小模數 <span class="word-eq">q</span>，並在 <span class="word-eq">b</span> 分量一口氣塞入所有出席者的遮罩總和：
+                    <div class="word-eq-block">
+                      ct<sub>dec,0</sub> = ⌊ (1/p) · ct<sub>in,0</sub> ⌉<sub>σ₀</sub> mod q<br>
+                      ct<sub>dec,1</sub> = ⌊ (1/p) · (ct<sub>in,1</sub> + E) ⌉<sub>σ₁</sub> + ∑<sub>i∈act</sub> m<sub>i</sub> mod q
+                    </div>
+                  </li>
+                  <li>Server 將極輕巧的 <span class="word-eq">(ct<sub>dec</sub> = (a, b), sid)</span> 廣播給 <span class="word-eq">act</span> 全體。</li>
+                </ul>
+              </li>
+              <li><strong>Round 2 — <code>PartDec</code> 與 <code>FinDec</code>（單一元素 Shamir 分享與遮罩精準對消）</strong>：
+                <ul>
+                  <li>每個參與方 <span class="word-eq">P<sub>i</sub></span> 用自己與 Server 共享之種子算出對應的 <span class="word-eq">m<sub>i</sub> = PRF(seed<sub>i</sub>, sid)</span>，配合公開 Lagrange 插值係數 <span class="word-eq">λ<sub>act,i</sub></span> 本地合成且僅向其餘 <span class="word-eq">act</span> 成員廣播 1 個小模數向量維度的份額（<strong>絕不回傳給 Server！</strong>）：
+                    <div class="word-eq-block">pd<sub>i</sub> = λ<sub>act,i</sub> · (a<sup>T</sup> s<sub>i</sub> + ζ<sub>i</sub><sup>(sid)</sup>) + m<sub>i</sub> (mod q)</div>
+                  </li>
+                  <li>各自於 <code>FinDec</code> 加總計算 <span class="word-eq">b − ∑<sub>i∈act</sub> pd<sub>i</sub> mod q</span>。奇蹟發生：所有 <span class="word-eq">m<sub>i</sub></span> 一加一減精確歸零，Shamir 份額透過 <span class="word-eq">λ<sub>act,i</sub></span> 還原成完整 <span class="word-eq">a<sup>T</sup>s + ζ<sup>(sid)</sup></span> 與 <span class="word-eq">b</span> 內的密鑰內積互消，只留下純淨的：
+                    <div class="word-eq-block">⌊q/2⌋ · μ + (e + ζ<sup>(sid)</sup>) (mod q)   ──除以 ⌊q/2⌋ 並四捨五入──→   μ ！</div>
+                  </li>
+                </ul>
+              </li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：從 Server 縮模遮罩到各節點 O(1) 無痛歸零</div>
+              <p><strong>參數設定</strong>：設最後運作的小質數 <span class="word-eq">q = 101</span>（因此明文 0/1 縮放尺度 <span class="word-eq">⌊101/2⌋ = 50</span>），大模數倍數 <span class="word-eq">p = 10</span>（故原 FHE 模數 <span class="word-eq">Q = 1010</span>）。2-of-3 門檻集合選出 <span class="word-eq">act = {1, 2}</span> 協作解密，對應 Lagrange 係數 <span class="word-eq">λ₁ = 2, λ₂ = −1</span>。欲解密明文 <span class="word-eq">μ = 1</span>，會話 <span class="word-eq">sid = 1</span>。</p>
+              <p><strong>內部秘密與預存狀態（各方不知全局）</strong>：假設此密文減去縮模方向 <span class="word-eq">a</span> 與真私鑰之內積為 <span class="word-eq">a<sup>T</sup> s = 30</span>（拆給 P₁ 份額內積 25、P₂ 份額內積 20，驗算 <span class="word-eq">2·25 − 1·20 = 30</span>）；本回合的填充雜訊 <span class="word-eq">ζ<sup>(1)</sup> = +2</span>（拆為 P₁ 持 3、P₂ 持 4，驗算 <span class="word-eq">2·3 − 1·4 = 2</span>）；Server 與兩人各自私享的遮罩分別是 <span class="word-eq">m₁ = 17, m₂ = 41</span>。</p>
+              <p><strong>Round 1（ServerDec 發出濃縮與帶總遮罩密文）</strong>：假設 Server 壓縮捨入帶進了總合為 <span class="word-eq">e = −5</span> 的離散高斯雜訊，於是不含遮罩之理想目標為 <span class="word-eq">ct<sub>dec,1,raw</sub> = 30 + 50·1 + (-5) = 75</span>。Server 加上所有參與者遮罩總和 <span class="word-eq">m₁ + m₂ = 17 + 41 = 58</span> 後廣播：<span class="word-eq">b = (75 + 58) mod 101 = 32</span>！</p>
+              <p><strong>Round 2（PartDec 與 FinDec 執行 O(1) 份額抵銷與復原）</strong>：</p>
+              <div class="word-eq-block">
+                P₁ 只算 1 個數並廣播：pd₁ = 2·(25 + 3) + 17 = 56 + 17 = 73 (mod 101)<br>
+                P₂ 只算 1 個數並廣播：pd₂ = (−1)·(20 + 4) + 41 = −24 + 41 = 17 (mod 101)<br>
+                FinDec 收齊相加後扣除：b − (pd₁ + pd₂) = 32 − (73 + 17) = 32 − 90 = −58 ≡ 43 (mod 101)
+              </div>
+              <p>核對數值：<span class="word-eq">43</span> 其實就是 <span class="word-eq">50·1 + (e − ζ<sup>(1)</sup>) = 50 + (-5 - 2) = 43</span>！執行捨入 <span class="word-eq">⌊43 / 50⌉ = 1</span> 瞬間拿回精準明文 <span class="word-eq">1</span>，而且 P₁ 與 P₂ 在網路上各自只發了 1 個 7 位元小整數！</p>
             </div>
-            <p><strong>步驟 3 (檢驗遮罩和)</strong>：</p>
-            <div class="word-eq-block">M_A + M_B + M_C = (+230) + (+80) + (-310) = 0</div>
-            <p><strong>步驟 4 (發布份額與重構)</strong>：各節點提交含有遮罩的盲化份額。監聽者看到的是完全被 230, 80, -310 盲化的雜亂數值，無法分析真實私鑰雜訊；但當三者求和時，遮罩瞬間抵銷歸零，精準輸出 42！</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <p><strong>1. 威脅模型與標準假設安全定理（Theorem 6.3 / 7.5）</strong>：在存在一台「半誠實且絕不與任何節點合謀（Non-colluding）」之 Server、且被腐敗的節點集合滿足門檻限制 <span class="word-eq">|corr| &lt; T</span> 的前提下，於最多 <span class="word-eq">L<sub>Dec</sub></span> 次解密詢問內，協議對抗靜態被動敵手達成完整<strong>模擬安全（Simulation Security）</strong>，且歸約優勢直接寫為：</p>
+            <div class="word-eq-block">Adv<sup>ThFHE</sup>(κ) &lt; Adv<sup>LWE / MLWE</sup>(κ) + Adv<sup>PRF</sup>(κ) + negl(κ)</div>
+            <p><strong>2. 6 步驟混合實驗證明核心（Hyb₁ → Hyb₆，附錄 B）</strong>：</p>
+            <ul>
+              <li><strong>Hyb₁（雜訊統計獨立性）</strong>：利用離散高斯混合引理（Lemma 6.1），把真實大密文依賴私鑰之壓縮雜訊與填充項替換為純公開分佈 <span class="word-eq">⌊(1/p)·e'₀ + {q/2}·μ⌉<sub>σ₁</sub></span>（這裡 <span class="word-eq">e'₀</span> 的標準差僅看公共常數 <span class="word-eq">B<sub>pub</sub></span> 與 <span class="word-eq">σ<sub>flood</sub></span>，徹底消滅 <span class="word-eq">‖s‖</span>！），統計不可區分；</li>
+              <li><strong>Hyb₂（替換縮模密文為真隨機）</strong>：結合 <span class="word-eq">Enc(pk, 0)</span> 重隨機化與標準 LWE/MLWE 假設，將隨機捨入後的 <span class="word-eq">ct<sub>dec,0</sub></span> 整個換成 <span class="word-eq">ℤ<sub>q</sub><sup>n</sup></span> 均勻亂數；</li>
+              <li><strong>Hyb₃–Hyb₆（PRF 雙向一次性密碼本模擬）</strong>：因為至少存在一個未腐敗誠實參與方 <span class="word-eq">P<sub>h</sub> ∈ hon ∩ act</span>，其私人遮罩 <span class="word-eq">m<sub>h</sub> = PRF(seed<sub>h</sub>, sid)</span> 對敵手來說在 PRF 安全下完全等同真均勻隨機！模擬器將其餘所有誠實份額 <span class="word-eq">pd<sub>i</sub></span> 直接隨機抽數，把公開密文 <span class="word-eq">b</span> 也直接隨機抽數，最後僅反算出代表者 <span class="word-eq">P<sub>h</sub></span> 的唯一湊齊份額 <span class="word-eq">pd<sub>h</sub> = b − ⌊q/2⌋·μ − ∑ pd<sub>i</sub> − e<sub>Sim</sub></span>——因為 <span class="word-eq">m<sub>h</sub></span> 恰為 <span class="word-eq">b</span> 提供了絕對完美的一對一遮蔽，真實與模擬視圖在密碼學上分佈完全一致！</li>
+            </ul>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：腐敗節點與統計偵察雙重失效檢驗</div>
+              <p>延續上述範例，設敵手徹底腐敗了參與方 <span class="word-eq">P₁</span>（掌握了 <span class="word-eq">s₁, ζ₁, seed₁, m₁ = 17</span>），並收到全部通訊內容 <span class="word-eq">(ct<sub>dec,1</sub>=32, pd₁=73, pd₂=17)</span>：</p>
+              <ul>
+                <li><strong>企圖 1（從誠實方份額 <span class="word-eq">pd₂ = 17</span> 反推出對方私鑰片斷 <span class="word-eq">s₂</span>）</strong>：<span class="word-eq">P₁</span> 沒有 <span class="word-eq">seed₂</span>（只有 <span class="word-eq">P₂</span> 和不串謀的 Server 知道）。在 <span class="word-eq">P₁</span> 看來，<span class="word-eq">m₂ = 41</span> 是一個每回合隨機跳動的均勻亂數，將關鍵秘密 <span class="word-eq">−(a<sup>T</sup>s₂ + ζ₂) = −24</span> 嚴嚴實實鎖成 <span class="word-eq">17</span>。就算重試百次、<span class="word-eq">a</span> 取同一組方向，只要 <span class="word-eq">sid</span> 遞增導致 <span class="word-eq">m₂</span> 變更，任何 <span class="word-eq">pd₂</span> 毫無規律可循！</li>
+                <li><strong>企圖 2（蒐集 <span class="word-eq">L<sub>Dec</sub></span> 次最終殘差 <span class="word-eq">−7, +11, …</span> 估計變異數以逼近真實私鑰強度）</strong>：如果這是前作 [PS25]，收集大量殘差算出的樣本標準差將無情暴露 <span class="word-eq">‖s‖</span> 進而逼出弱結構或破壞 MLWE 假設；但在 OT25 中，多虧了與 <span class="word-eq">±‖s‖²</span> 完美抵銷的預備填充雜訊 <span class="word-eq">ζ<sup>(sid)</sup></span>，哪怕測完上限 <span class="word-eq">L<sub>Dec</sub></span> 次詢問，所有誤差的統計分佈依舊恆常穩如泰山收斂於公開常數 <span class="word-eq">σ₀ · B<sub>pub</sub></span>，完全不向敵手透漏任何關於 <span class="word-eq">s</span> 的幾何或長度資訊！</li>
+              </ul>
+            </div>
           </div>
         `
       },
@@ -5658,36 +5936,89 @@
         title: 'Ajax 論文密碼學理論教學 (Hu et al., USENIX Security 2025)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
-            <p>現有門檻 FHE 面臨極端抉擇：要麼使用雜訊淹沒（模數膨脹至 128~256 位元），要麼使用 MPC 多輪協同捨入（線上通訊多輪延遲長）。Ajax 的宏大目標是：<strong>如何在完全不使用雜訊淹沒的前提下，達成單輪線上通訊（Single-Round Online）的主動安全門檻 FHE！</strong></p>
-          </div>
-
-          <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 核心數學創新：雙環秘密分享與先遮罩後公開 (Mask-Then-Open)</div>
-            <p>Hu 等人設計了創新的雙環結構與代數盲化協議：</p>
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>雖然 FHEW/TFHE 家族具備極為輕巧快速的邏輯閘自舉優勢，但在將其改造為實用門檻協定時，過去所有的研究皆受困於三大結構性困境：</p>
             <ul>
-              <li><strong>雙環架構 (Double Ring Sharing)</strong>：密文運作於大模數多項式環 R_q，而遮罩與明文運作於小模數環 R_t。私鑰與隨機遮罩在兩個環上進行雙重秘密分享。</li>
-              <li><strong>Mask-Then-Open (先遮罩後公開)</strong>：
-                <div class="word-eq-block">線上部分解密: μ_i = b_i - a · s_i + [r]_i (mod q)</div>
-                各節點只需在線上發送 1 輪盲化份額 μ_i。由於 [r]_i 是均勻隨機遮罩份額，μ_i 完全不洩漏私鑰雜訊。
-              </li>
-              <li><strong>本地去遮罩 (Local Unmasking)</strong>：聚合得到 μ = Δ · m + e + r 後，各節點在本地利用預先持有的遮罩 r 進行模數消除：
-                <div class="word-eq-block">m = ⌊ (μ - r mod q) / Δ ⌉ (mod t)</div>
-                全程僅需 1 輪網路通訊，線上解密延遲壓縮至 2 ms 以內！
-              </li>
+              <li><strong>KeyGen 的 <span class="word-eq">O(n)</span> 雜訊方差倍增困境</strong>：過往門檻金鑰生成讓 <span class="word-eq">n</span> 個參與方各自抽取符合安全水準之方差 <span class="word-eq">σ</span> 的 LWE 誤差並線性疊加，導致生成的公鑰與自舉金鑰總雜訊方差暴增為 <span class="word-eq">n · σ</span>，嚴重壓縮後續同態運算可用的雜訊安全餘裕！</li>
+              <li><strong>解密階段無法擺脫「大模數淹沒」或「沈重自舉」的二選一詛咒</strong>：標準雜訊淹沒強迫 TFHE 模數暴漲至 80~256 位元；前人 Noah's Ark 雖保住平常運算小參數，代價卻是在每次解密前耗時超過 240 ms 重跑 Switch-n-Squash 自舉；純通用 MPC 捨入電路則需要複雜多輪網路通訊。</li>
+              <li><strong>質數域與進位不整除所引發的除錯失真，以及極小方差採樣精度漏洞</strong>：實務中為了運行經典體上 Shamir 秘密分享（模 <span class="word-eq">q</span> 為質數），<span class="word-eq">q</span> 並不被 <span class="word-eq">p</span> 或 <span class="word-eq">Δ</span> 整除！直接本地取餘數抽取雜訊會混入無法清除的模數溢位倍數 <span class="word-eq">(k·q) mod Δ ≠ 0</span>，使解密失敗率激增；同時當每位節點想壓低採樣尺度 <span class="word-eq">σ' = σ/(n−t)</span> 時，有限精準度的表式採樣（CDT）可能產生過大相對誤差破壞安全邊界。</li>
             </ul>
           </div>
 
-          <div class="example-box">
-            <div class="example-title">🔢 直觀數值範例解說 (Concrete Example)</div>
-            <p><strong>情境設定</strong>：明文模數 <span class="word-eq">t = 16</span>，密文模數 <span class="word-eq">q = 1024</span>，縮放因子 <span class="word-eq">Δ = 64</span>。欲解密明文 <span class="word-eq">m = 7</span>。</p>
-            <p><strong>步驟 1 (離線遮罩預處理)</strong>：節點在離線階段預先生成隨機均勻遮罩份額，合成之全域遮罩多項式常數為 <span class="word-eq">r = 315</span>。</p>
-            <p><strong>步驟 2 (線上遮罩發布)</strong>：各節點線上計算部分解密並加上隨機遮罩份額，聚合出盲化值：</p>
-            <div class="word-eq-block">μ = Δ · m + e + r = 64 · 7 + 10 + 315 = 448 + 10 + 315 = 773 (mod 1024)</div>
-            <p>此時網路廣播的值是 773，對於任何沒有遮罩 r 的攻擊者而言，773 是完全隨機均勻的數值，完全無法推斷明文 7 或雜訊 10！</p>
-            <p><strong>步驟 3 (本地去除遮罩)</strong>：誠實節點在本地減去已知的遮罩 r = 315：</p>
-            <div class="word-eq-block">773 - 315 = 458 ──除以 64 並捨入──→ ⌊ 458 / 64 ⌉ = 7.156 ──→ 7</div>
-            <p><strong>結論</strong>：僅花費 1 輪網路傳輸便安全無損地拿回明文 7，完全免除雜訊淹沒帶來的巨大模數代價！</p>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>清華、上海交大與 Ant Group 團隊（USENIX Security 2025）的核心動機是：<strong>全面釋放輕量級 TFHE 的真正門檻速度潛力！</strong></p>
+            <p>研究團隊提出兩個巧思：(1) <strong>金鑰生成端（誠實多數 <span class="word-eq">n = 2t+1</span>）</strong>：既然至少有 <span class="word-eq">n−t</span> 個誠實參與方貢獻的高斯雜訊會彼此獨立相加（而獨立高斯變異數可直接線性相加！），何不把每人分配的雜訊尺度壓縮成 <span class="word-eq">σ/(n−t)</span> 並精算 256-bit CDT 精度下界 <span class="word-eq">α</span>，使 <span class="word-eq">(n−t)</span> 人的總和恰好命中所需 <span class="word-eq">σ</span>？（將總膨脹係數由 <span class="word-eq">n</span> 狠砍至僅約 <span class="word-eq">2</span>！）<br>
+            (2) <strong>門檻解密端（<span class="word-eq">t</span>-of-<span class="word-eq">t+1</span> 全門檻安全）</strong>：放棄大洪水式的「雜訊淹沒」也免除解密端 FHE 自舉！改將質數密文通過一次輕巧本地模數切換投射進 <strong>2 的冪次可整除新環 <span class="word-eq">ℤ<sub>η</sub></span>（其中 <span class="word-eq">η = p · Φ</span>）</strong>，再利用離線預備好的雙環隨機遮罩 <span class="word-eq">(⟨r⟩<sub>η</sub>, ⟨r⟩<sub>Φ</sub>)</span>，只花 <strong>2 輪超短線上通訊</strong>把雜訊直接掩蔽打開並精準減除！</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>雜訊壓縮型分散式金鑰生成（Noise-Compressing KeyGen，<span class="word-eq">Π<sub>LWE</sub>, Π<sub>KeyGen</sub></span>）</strong>：於 <span class="word-eq">n = 2t+1</span> 誠實多數中令各參與方抽取尺度 <span class="word-eq">σ' = max(α, σ/(n−t))</span> 之離散高斯（實作 256-bit 精度、截斷 <span class="word-eq">τ=12</span> CDT 抽樣使極小下界 <span class="word-eq">α = 0.7</span> 的相對誤差低至 <span class="word-eq">2<sup>−136.8</sup></span>），達成總體僅約 <span class="word-eq">2σ</span> 雜訊的 <code>pk</code>、RGSW 自舉金鑰 <code>bk</code> 與切換金鑰 <code>ksk</code> 聯產。</li>
+              <li><strong>零淹沒「先遮罩後公開（Mask-Then-Open）」兩輪門檻解密（<span class="word-eq">Π<sub>Dec</sub></span>）</strong>：克服了質數 <span class="word-eq">q</span> 不可整除之障礙，先本地將加法份額模切換進可整除目標 <span class="word-eq">η = 2<sup>52</sup> = p · Φ</span>（如 <span class="word-eq">p = 2<sup>4</sup> = 16</span>），再透過離線 <strong><span class="word-eq">F<sub>DoubleRings</sub></span>（<span class="word-eq">Π<sub>DoubleRings</sub></span>）</strong>預置之雙環均勻亂數在線上只用 <strong>2 輪通訊（僅 100 位元理論通訊／實作 128 位元每方）</strong> 安全抽取並清除雜訊。</li>
+              <li><strong>實測突破數百倍效能差距</strong>：完全免除解密端自舉，於 LAN (<span class="word-eq">n=3, t=1</span>) 端到端門檻解密總耗時僅 <strong>0.855 ms</strong>（純線上僅 <strong>0.003 ms</strong>），相較 Noah's Ark 提速高達 <strong>5.7× 至 283.6×</strong>，於 131-bit 計算安全下把解密失敗率及統計安全參數優化至 <span class="word-eq">2<sup>−30.27</sup></span>。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. 高斯變異數可加性與 CDT 抽樣誤差界（Lemma 2）</strong>：設隨機變數 <span class="word-eq">X ∼ N(0, σ₁)</span> 與 <span class="word-eq">Y ∼ N(0, σ₂)</span> 相互獨立，則其總和服從 <span class="word-eq">N(0, σ₁ + σ₂)</span>（註：Ajax 論文依其記號規範以 <span class="word-eq">σ</span> 代表變異數大小）。實務系統使用預先建好累積機率查表的 <strong>CDT 抽樣器</strong>生成離散高斯，藉著提高表浮點數尾數精度至 256 位元並配合尺度 <span class="word-eq">s ≥ α = 0.7</span>，可嚴格保證 <span class="word-eq">δ<sub>RE</sub>(D<sub>s</sub>, D̄<sub>s</sub>) ≈ 2<sup>−136.8</sup> ≤ 2<sup>−128</sup></span>，確保縮小每個節點雜訊不會引發數值崩壞。</p>
+            <p><strong>2. 雙環模數轉換必要性（從不整除 <span class="word-eq">(q, Δ)</span> 到完全整除 <span class="word-eq">(η, Φ)</span>）</strong>：加法分享下所有節點分享之實際整數加總等於 <span class="word-eq">Δ·m + e + i·q</span>（<span class="word-eq">i</span> 為秘密進位次數）。由於質數 <span class="word-eq">q</span> 絕不可能整除 <span class="word-eq">p</span> 或 <span class="word-eq">Δ</span>，直接每個人本地取 <span class="word-eq">mod Δ</span> 時會漏出錯誤殘渣 <span class="word-eq">i·q mod Δ ≠ 0</span>！一旦把加法份額透過乘上 <span class="word-eq">η/q</span> 四捨五入本地轉換到滿足 <span class="word-eq">η = p · Φ</span>（如 2 的冪次 <span class="word-eq">2<sup>52</sup></span>，使 <span class="word-eq">Φ = η/p</span> 為精準整數！）之新環 <span class="word-eq">ℤ<sub>η</sub></span>，所有 <span class="word-eq">i·η mod Φ</span> 全體精確歸零，本地直接對分享取 <span class="word-eq">mod Φ</span> 立刻安全萃取出雜訊分享 <span class="word-eq">⟨e'⟩<sub>Φ</sub></span>！</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：為何不轉換至可整除模數 η = p·Φ 就會計算失敗？</div>
+              <p><strong>失敗情況（直接拿質數 q=67 取餘數）</strong>：設明文模數 <span class="word-eq">p = 4</span>，則縮放因子 <span class="word-eq">Δ = ⌊67/4⌉ = 17</span>（注意 <span class="word-eq">67 = 3×17 + 16</span>，不整除！）。假設真實相減和為 <span class="word-eq">u = 17·1 + 2 = 19</span>，分成兩份：<span class="word-eq">u₁ = 45, u₂ = 41</span>（<span class="word-eq">45 + 41 = 86 ≡ 19 mod 67</span>，包含 1 次進位 <span class="word-eq">i = 1</span>）。此時若各方糊塗地在本地算 <span class="word-eq">mod 17</span>：<span class="word-eq">45 mod 17 = 11</span>、<span class="word-eq">41 mod 17 = 7</span>，相加 <span class="word-eq">11 + 7 = 18 ≡ 1 (mod 17)</span>——原本真雜訊明明是 <strong>2</strong>，卻因 <span class="word-eq">1·67 mod 17 = 16 ≡ -1</span> 被搞錯成 <strong>1</strong>！</p>
+              <p><strong>成功做法（切換至可整除新環 η = 64 = 4 × 16，Φ = 16）</strong>：本地把分享換算進 64 後變成如 <span class="word-eq">u'₁ = 50, u'₂ = 32</span>（真實整數和為 <span class="word-eq">82 = 16·1 + 2 + 1·64</span>，真雜訊 <span class="word-eq">e' = 2</span>）。各自本地算 <span class="word-eq">mod 16</span>：<span class="word-eq">50 mod 16 = 2</span>、<span class="word-eq">32 mod 16 = 0</span>，相加正好就是 <strong>2 + 0 = 2</strong>！因為 <span class="word-eq">64 mod 16 = 0</span>，任何進位完全免疫！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p><strong>第一部：Noise-Compressing KeyGen（<span class="word-eq">Π<sub>KeyGen</sub></span>，誠實多數 <span class="word-eq">n = 2t+1</span>）</strong>：所有參與方呼叫 <span class="word-eq">F<sub>GenSK</sub></span> 共同生成二元／三元秘密向量 <span class="word-eq">[[s]]<sub>q</sub>, [[s]]<sub>Q</sub></span> 與自舉秘密 <span class="word-eq">[[z]]<sub>Q</sub></span>；產生每一條 LWE 樣本（<span class="word-eq">Π<sub>LWE</sub></span>）時，每位節點只依縮小變異數 <span class="word-eq">σ' = max(α, σ/(n−t))</span> 抽出小誤差 <span class="word-eq">e<sub>i</sub></span> 分享並相加，使得誠實方總和恰好提供安全標準 <span class="word-eq">σ</span>（總方差約 <span class="word-eq">2σ</span>），以此零件高效率合成整組 <code>pk</code>、RGSW 自舉金鑰 <code>bk</code> 與金鑰切換金鑰 <code>ksk</code>。</p>
+            <p><strong>第二部：離線雙環亂數（<span class="word-eq">Π<sub>DoubleRings</sub></span>，使用隨機位元合成有號小均勻分佈）</strong>：離線預處理利用 <span class="word-eq">F<sub>RandBit</sub></span> 抽出 <span class="word-eq">m = log₂ Φ</span> 個共享隨機位元 <span class="word-eq">⟨b<sub>j</sub>⟩<sub>η</sub></span>，藉由重複拼接最高符號位元 <span class="word-eq">⟨b<sub>m−1</sub>⟩<sub>η</sub></span> 完成符號擴展，產生均勻落於 <span class="word-eq">[−Φ/2, Φ/2)</span> 的共享大環遮罩 <span class="word-eq">⟨r⟩<sub>η</sub></span>，直接對小因子取餘得 <span class="word-eq">⟨r⟩<sub>Φ</sub> = ⟨r⟩<sub>η</sub> mod Φ</span>——一魚兩吃、零誤差取得跨越 <span class="word-eq">(ℤ<sub>η</sub>, ℤ<sub>Φ</sub>)</span> 的同源雙環隨機對 <span class="word-eq">(⟨r⟩<sub>η</sub>, ⟨r⟩<sub>Φ</sub>)</span>。</p>
+            <p><strong>第三部：2 輪線上 Mask-Then-Open 門檻解密（<span class="word-eq">Π<sub>Dec</sub></span>，任意 <span class="word-eq">t+1</span> 參與方）</strong>：</p>
+            <ol>
+              <li><strong>本地算相位、模數切換與取餘萃取雜訊</strong>：各方先將原本 Shamir 份額乘公開係數轉成 <span class="word-eq">t+1</span> 加法份額，本地計算帶噪解密相位 <span class="word-eq">⟨u⟩<sub>q</sub> = b − ⟨a, ⟨s⟩<sub>q</sub>⟩ = ⟨Δ·m + e⟩<sub>q</sub></span>；緊接著各節點本地獨立執行縮放切換進 <span class="word-eq">ℤ<sub>η</sub></span>（其中 <span class="word-eq">η = 2<sup>⌊log₂ q⌋</sup></span> 滿足 <span class="word-eq">p ∣ η</span> 且 <span class="word-eq">Φ = η/p</span>）：
+                <div class="word-eq-block">⟨u'⟩<sub>η</sub> = ⌊ (η / q) · ⟨u⟩<sub>q</sub> ⌉ = ⟨Φ · m + e'⟩<sub>η</sub>,   然後本地取餘：⟨e'⟩<sub>Φ</sub> = ⟨u'⟩<sub>η</sub> mod Φ</div>
+              </li>
+              <li><strong>Online Round 1（Mask-Then-Open：掩蔽並僅公開 <span class="word-eq">v = e' + r</span>）</strong>：本地加進雙環隨機遮罩的小環部份：<span class="word-eq">⟨v⟩<sub>Φ</sub> = ⟨e'⟩<sub>Φ</sub> + ⟨r⟩<sub>Φ</sub></span>，所有參與方發送給主結算節點 <span class="word-eq">P₁</span> 重構出有號整數 <span class="word-eq">v = e' + r ∈ [−Φ/2, Φ/2)</span>。</li>
+              <li><strong>本地在大環扣除遮罩與消噪</strong>：於大環 <span class="word-eq">ℤ<sub>η</sub></span> 中把同一個預備亂數減回來，立刻獲得不依賴 <span class="word-eq">Φ</span> 而直接跨越全大環 <span class="word-eq">ℤ<sub>η</sub></span> 的雜訊份額：<span class="word-eq">⟨e'⟩<sub>η</sub> = v − ⟨r⟩<sub>η</sub> (mod η)</span>（注意僅由 <span class="word-eq">P₁</span> 加上公開常量 <span class="word-eq">v</span>、各人只減自己持有之 <span class="word-eq">⟨r⟩<sub>η</sub></span>）；隨即自原密文減去這項雜訊，得純潔無噪的高位訊息：<span class="word-eq">⟨Φ·m⟩<sub>η</sub> = ⟨u'⟩<sub>η</sub> − ⟨e'⟩<sub>η</sub></span>。</li>
+              <li><strong>Online Round 2（公開乾淨結果給接收者）</strong>：參與方向最終接收方 <span class="word-eq">P<sub>R</sub></span> 發送第 2 輪純加法份額，重構出 <span class="word-eq">Φ·m ∈ ℤ<sub>η</sub></span>，除以 <span class="word-eq">Φ</span>（直接無損讀取高 <span class="word-eq">log₂ p</span> 位元！）還原明文 <span class="word-eq">m ∈ ℤ<sub>p</sub></span>！</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：雙環 Mask-Then-Open 兩輪全拆解</div>
+              <p><strong>系統設定</strong>：兩名參與方 P₁, P₂（<span class="word-eq">t=1</span> 容錯之 2-of-2 加法計算），質數 <span class="word-eq">q = 1031</span>，明文模數 <span class="word-eq">p = 4</span>（2 位元明文）。選取最接近 <span class="word-eq">q</span> 且被 4 整除的 2 的冪次 <span class="word-eq">η = 1024</span>，於是乾淨縮放基準 <span class="word-eq">Φ = 1024 / 4 = 256</span>（小環為 <span class="word-eq">ℤ<sub>256</sub></span>，有號範圍 <span class="word-eq">[−128, 128)</span>）。欲解密密文明文為 <span class="word-eq">m = 3</span>。</p>
+              <p><strong>離線準備雙環遮罩（<span class="word-eq">F<sub>DoubleRings</sub></span>）</strong>：預生成均勻亂數 <span class="word-eq">r = 45 ∈ [−128, 128)</span>，分配大環分享 <span class="word-eq">⟨45⟩<sub>1024</sub> = (100, 969)</span>（驗算 <span class="word-eq">100 + 969 = 1069 ≡ 45 mod 1024</span>）；雙方各模 256 直接免費擁有小環分享 <span class="word-eq">⟨45⟩<sub>256</sub> = (100, 201)</span>（驗算 <span class="word-eq">100 + 201 = 301 ≡ 45 mod 256</span>）。</p>
+              <p><strong>步驟 1 (本地算相位與轉換至 <span class="word-eq">ℤ<sub>1024</sub></span>)</strong>：雙方各自計算並模切換完後，合體值為 <span class="word-eq">u' = Φ·m + e' = 256·3 + 6 = 774 (mod 1024)</span>（包含微幅切換後真雜訊 <span class="word-eq">e' = 6</span>）。假設此刻份額為 P₁ 持 <span class="word-eq">500</span>、P₂ 持 <span class="word-eq">274</span>（和為 774）。兩人就地對 256 取餘數抽雜訊：<span class="word-eq">P₁: 500 mod 256 = 244</span>、<span class="word-eq">P₂: 274 mod 256 = 18</span>。</p>
+              <p><strong>步驟 2 (Round 1：掩蔽打開小環)</strong>：各自加上小環遮罩 <span class="word-eq">(100, 201)</span> 後發送給 P₁：</p>
+              <div class="word-eq-block">
+                P₁ 算：v₁ = (244 + 100) mod 256 = 88,   P₂ 送給 P₁：v₂ = (18 + 201) mod 256 = 219<br>
+                P₁ 重構公開盲化雜訊：v = (88 + 219) mod 256 = 51   (恰好是 e' + r = 6 + 45 = 51 ！)
+              </div>
+              <p><strong>步驟 3 (本地大環消去並開啟 Round 2)</strong>：於大環 <span class="word-eq">ℤ<sub>1024</sub></span> 裡，僅由 P₁ 計入剛得出的常數 <span class="word-eq">v = 51</span>：<span class="word-eq">⟨e'⟩<sub>1024</sub> = (51 − 100, −969) = (−49, −969)</span>，再以原先大環 <span class="word-eq">⟨u'⟩<sub>1024</sub></span> 扣掉它：</p>
+              <div class="word-eq-block">
+                P₁ 算出乾淨份額：500 − (−49) = 549 (mod 1024)<br>
+                P₂ 算出乾淨份額：274 − (−969) = 1243 ≡ 219 (mod 1024)<br>
+                Round 2 傳送至接收方 P<sub>R</sub>：549 + 219 = 768 = 256 × 3   ──除以 256──→   m = 3 !
+              </div>
+              <p>僅憑兩趟純整數加減通訊，沒有大雜訊也沒有自舉，明文 3 完美落地！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <ul>
+              <li><strong>半誠實腐敗門檻與模擬安全定理（Theorem 1 &amp; 2）</strong>：於前置金鑰生成（<span class="word-eq">Π<sub>KeyGen</sub></span>）因要進行乘法生成 RGSW 金鑰故設定於標準<strong>誠實多數（最多 <span class="word-eq">t = ⌊(n−1)/2⌋</span> 腐敗）</strong>，且憑藉精密 256-bit CDT 採樣達成僅 <span class="word-eq">2<sup>−136.8</sup></span> 相對誤差，讓至少 <span class="word-eq">n−t</span> 個誠實方的誤差總和滿足安全變異數 <span class="word-eq">σ</span> 以支撐整體 131-bit 計算安全性。而在最核心的線上門檻解密階段（<span class="word-eq">Π<sub>Dec</sub></span>），在 <span class="word-eq">F<sub>DoubleRings</sub></span> 混合模型下更能容忍高達<strong>全門檻 <span class="word-eq">t+1</span> 中的任意 <span class="word-eq">t</span> 方腐敗</strong>之模擬安全！</li>
+              <li><strong>正確性與統計隱匿合一的繞回分析（Theorem 2）</strong>：由於均勻遮罩 <span class="word-eq">r</span> 取自 <span class="word-eq">[−Φ/2, Φ/2)</span>，如果真雜訊加上 <span class="word-eq">r</span> 後不小心溢出了 <span class="word-eq">±Φ/2</span> 發生 <span class="word-eq">mod Φ</span> 環繞（機率與 <span class="word-eq">|e'|/Φ</span> 成正比），不僅會導致解密大錯 <span class="word-eq">±Φ</span> 進而影響 <span class="word-eq">m</span>，也會洩漏出 <span class="word-eq">e'</span> 接近邊界的資訊！論文對高斯誤差機率密度 <span class="word-eq">f<sub>σ</sub>(x)</span> 與繞回失真 <span class="word-eq">(1 − |x|/Φ)</span> 進行嚴格離散總和估算，證實真實協定的解密結果與統計安全性相對於直接私鑰解密的統計距離雙雙小於 <span class="word-eq">2<sup>−ρ</sup></span>（於 53-bit <span class="word-eq">q</span> 與 2048 維度實參下錯失率與統計距離雙雙只有 <span class="word-eq">2<sup>−30.27</sup></span>）。</li>
+            </ul>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：Round 1 公開的 v = 51 為何一點雜訊線索都不外洩？</div>
+              <p><strong>好奇敵手視角</strong>：設在上述 2-of-2 解密中，接收所有訊息的 P₁ 本身就是誠實但好奇（Semi-honest）的攻擊者。它在 Round 1 看見了被公開重構出來的整數 <span class="word-eq">v = 51</span>（知道 <span class="word-eq">v = e' + r mod 256</span>），最後又拿到明文 <span class="word-eq">m = 3</span>。P₁ 想利用 <span class="word-eq">v = 51</span> 猜出剛才那批密文到底背負著多少真實 LWE 誤差 <span class="word-eq">e'</span>：</p>
+              <ul>
+                <li>因為整數遮罩 <span class="word-eq">r = r₁ + r₂ mod 256 = 45</span> 中包含了對 P₁ 完全未知的另一半隨機數 <span class="word-eq">r₂ = 201</span>（均勻隨機分佈於 <span class="word-eq">0..255</span>），所以從 P₁ 角度來看，真實的 <span class="word-eq">r</span> 均勻可能落在 <span class="word-eq">[−128, 128)</span> 的任一個數字。</li>
+                <li>因此只要真實誤差沒有造成罕見的繞回溢位（即在 <span class="word-eq">[−128, 128−6)</span> 之內，實作參數發生未溢位機率高達 <span class="word-eq">1 − 2<sup>−30.27</sup></span>！），無論真正的誤差 <span class="word-eq">e'</span> 是 +6、-15 還是 0，搭配對應唯一的未知 <span class="word-eq">r</span>（如 45、66 或 51），產生 <span class="word-eq">v = 51</span> 的條件機率通通精確相等，皆為 <strong>1 / 256</strong>！故模擬器在理想世界只需要直接抽一個均勻亂數充當 <span class="word-eq">v</span> 就能完美欺騙敵手，誤差與私鑰安全毫無破綻！</li>
+              </ul>
+            </div>
           </div>
         `
       }

@@ -1585,6 +1585,40 @@
       margin-bottom: 1.2rem;
     }
 
+    /* Background Knowledge Sidebar Top Block & View */
+    .sidebar-top-block {
+      padding: 0.65rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(10, 16, 30, 0.72);
+    }
+    .sidebar-nav-btn.bg-knowledge-btn.active {
+      border-color: rgba(16, 185, 129, 0.45);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(59, 130, 246, 0.14));
+    }
+    .sidebar-nav-btn.bg-knowledge-btn.active::before {
+      background: #10b981;
+    }
+    .view-indicator.bg-view {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .bg-knowledge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 1.35rem;
+      margin-bottom: 1.4rem;
+    }
+    .bg-module-list {
+      margin: 0.55rem 0 0.75rem 1.15rem;
+      font-size: 0.84rem;
+      color: #cbd5e1;
+      line-height: 1.65;
+    }
+    .bg-module-list li {
+      margin-bottom: 0.42rem;
+    }
+
   </style>
 </head>
 <body>
@@ -1669,6 +1703,15 @@
   <div class="workspace-layout">
     <!-- Collapsible Sidebar -->
     <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-top-block">
+        <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-background" onclick="switchTab('background', this)">
+          <div class="nav-text-group">
+            <span class="nav-title">背景知識</span>
+            <span class="nav-desc">LWE / RLWE • 秘密分享 • 雜訊與 ZKP • 安全模型</span>
+          </div>
+        </button>
+      </div>
+
       <div class="sidebar-header">
         <div class="sidebar-title-group">
           <span class="sidebar-title">實驗與評測導覽</span>
@@ -1736,6 +1779,207 @@
 
     <!-- Main Content Area -->
     <main class="app-main" id="app-main">
+    <!-- ===================================================================== -->
+    <!-- TAB 0: 背景知識 (Cryptographic Foundations & ThFHE Primer)             -->
+    <!-- ===================================================================== -->
+    <section id="tab-background" class="tab-content">
+      <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
+        <h2 class="lab-hero-title">背景知識 — 門檻全同態加密 (ThFHE) 核心理論與基礎導覽</h2>
+        <div class="lab-hero-sub">從 LWE / RLWE 晶格加密、秘密分享、雜訊洩漏與四大解決路線、零知識證明到 CPA<sup>D</sup> / FuncCPA / UC 安全模型之完整基礎教材</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('ccs25', document.getElementById('sidebar-btn-ccs25'))">前往論文實驗室 →</button>
+          <button type="button" class="btn-lab-manual" onclick="switchTab('arena', document.getElementById('sidebar-btn-arena'))">前往評測競技場 →</button>
+        </div>
+      </div>
+
+      <div class="bg-knowledge-grid">
+        <!-- Module 1 -->
+        <div class="card">
+          <div class="card-title">
+            <span>一、LWE / RLWE 與 RNS-GLWE 晶格加密基礎</span>
+            <span class="badge badge-blue">基礎加密層</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.65rem;">本平台涵蓋的 6 篇論文均建立在含錯學習（<strong>LWE</strong>）、環含錯學習（<strong>RLWE</strong>）或廣義殘差數系（<strong>RNS-GLWE</strong>）之上。在對稱或公鑰設定中，明文 <span class="word-eq">m ∈ ℤ<sub>p</sub></span> 會先乘以縮放因子 <span class="word-eq">Δ = ⌊q / p⌉</span> 推入最高有效位，再加入小幅加密雜訊 <span class="word-eq">e</span> 以隱藏私鑰：</p>
+          <div class="word-eq-block">
+            密文格式 (LWE)：ct = (a, b),   其中 b = ⟨a, s⟩ + Δ · m + e  (mod q)<br>
+            解密相位 (Phase)：phase = b − ⟨a, s⟩ = Δ · m + e  (mod q)   ⟹   m = ⌊ phase / Δ ⌉ mod p
+          </div>
+          <ul class="bg-module-list">
+            <li><strong>同態加法與乘法之雜訊成長</strong>：兩密文相加僅使雜訊線性相加（<span class="word-eq">e₁ + e₂</span>）；但密文相乘會產生二次項 <span class="word-eq">s²</span>，必須利用<strong>重線性化金鑰 (RLK)</strong> 將維度壓回並伴隨較大幅度誤差累積；一旦總雜訊超越容許半徑 <span class="word-eq">|e| ≥ Δ / 2</span>，捨入便會溢位損毀明文。</li>
+            <li><strong>TFHE 自舉 (Bootstrapping) vs. RNS-NTT 加速</strong>：TFHE（如 Noah's Ark、Ajax）主打小模數下以高頻率盲旋轉刷新雜訊；BFV/BGV/GLWE 方案（如 PELTA、HQ-FS）則用中國剩餘定理將數百位元大模數拆為多個 60-bit 質數通道 <span class="word-eq">Q = q₁ · q₂ · … · q<sub>r</sub></span>（<strong>RNS</strong>），並結合 <strong>NTT（數論變換）</strong> 將 <span class="word-eq">O(N²)</span> 多項式乘法壓至 <span class="word-eq">O(N log N)</span>。</li>
+          </ul>
+          <div class="example-box">
+            <div class="example-title">🔢 直觀範例：縮放因子 Δ 如何保護明文不被雜訊破壞？</div>
+            <p style="font-size: 0.82rem;">設密文模數 <span class="word-eq">q = 64</span>，明文空間 <span class="word-eq">p = 4</span>（<span class="word-eq">m ∈ {0,1,2,3}</span>），縮放因子 <span class="word-eq">Δ = 64 / 4 = 16</span>。明文各佔一格寬度為 16 的安全地帶（例如 <span class="word-eq">m=2</span> 中心點在 <span class="word-eq">32</span>，只要誤差落在 <span class="word-eq">[-7, +7]</span>，相位落於 <span class="word-eq">[25, 39]</span>）：若真實計算後相位為 <span class="word-eq">32 + 5 = 37</span>，執行 <span class="word-eq">⌊37 / 16⌉ = ⌊2.3125⌉ = 2</span>，誤差 5 被無損濾除；反之若雜訊暴衝到 <span class="word-eq">9</span>，則 <span class="word-eq">⌊(32+9)/16⌉ = ⌊2.56⌉ = 3</span>，就會發生進位解密錯誤！</p>
+          </div>
+        </div>
+
+        <!-- Module 2 -->
+        <div class="card">
+          <div class="card-title">
+            <span>二、門檻秘密分享機制 (Additive / Shamir / Galois Ring)</span>
+            <span class="badge badge-green">分散金鑰層</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.65rem;">「門檻化（Thresholdization）」的本質是絕不讓單一節點擁有完整私鑰 <span class="word-eq">s</span>，而是依信任與耐受模型將 <span class="word-eq">s</span> 拆為 <span class="word-eq">N</span> 份秘密份額，依各論文需求選用三種代數載體：</p>
+          <ul class="bg-module-list">
+            <li><strong>全門檻加法分享 (N-of-N / t-of-t Additive Sharing)</strong>：滿足 <span class="word-eq">s = s₁ + s₂ + … + s<sub>N</sub> (mod Q)</span>。架構極簡且相容不誠實多數（即使 <span class="word-eq">N−1</span> 人串通仍安全，見 <strong>PELTA</strong>、<strong>HQ-FS</strong>、<strong>CCS 2025 (SPDZ2<sup>k</sup>)</strong> 及 <strong>Ajax</strong> 線上解密），缺點是一旦任意必要節點離線需由 ZKP/MAC 辨識或依動態委員會重新發鑰。</li>
+            <li><strong>質數體 T-of-N Shamir 秘密分享</strong>：構造一個常數項為秘密 <span class="word-eq">f(0) = s</span> 的 <span class="word-eq">T−1</span> 次隨機多項式 <span class="word-eq">f(X) ∈ ℤ<sub>q</sub>[X]</span>，節點 <span class="word-eq">i</span> 拿取 <span class="word-eq">f(i)</span>。任意 <span class="word-eq">T</span> 名成員只要用 Lagrange 插值係數 <span class="word-eq">λ<sub>i</sub></span> 本地線形相加 <span class="word-eq">∑ λ<sub>i</sub> · p<sub>i</sub></span> 即可容忍最多 <span class="word-eq">N − T</span> 人離線（見 <strong>OT25</strong> 與 <strong>Ajax</strong> KeyGen）。</li>
+            <li><strong>Galois 環 ℤ<sub>2<sup>K</sup></sub>[θ] Shamir 與 Reed-Solomon 糾錯</strong>：當模數為 2 的冪次（如 <span class="word-eq">Q = 2¹²⁸</span>）非質數、環中存在無法求反元素的零因子時，須擴張至 Galois 環並於模 2 商體選評價點，配合 <code>RS-Decoder</code> 於 <span class="word-eq">t &lt; n / 3</span> 下在解密瞬間順帶自動糾正惡意假份額（見 <strong>Noah's Ark</strong>）。</li>
+          </ul>
+          <div class="example-box">
+            <div class="example-title">🔢 直觀範例：2-of-3 Shamir 分享與 Lagrange 本地免通訊復原</div>
+            <p style="font-size: 0.82rem;">在質數體 <span class="word-eq">ℤ₁₇</span> 中，假設秘密金鑰為 <span class="word-eq">s = 5</span>，構造 1 次多項式 <span class="word-eq">f(X) = 5 + 3X (mod 17)</span>。發給 3 位節點：<span class="word-eq">s₁ = f(1) = 8</span>、<span class="word-eq">s₂ = f(2) = 11</span>、<span class="word-eq">s₃ = f(3) = 14</span>。假設節點 2 當機離線，僅存節點 {1, 3} 執行解密，各自查出 Lagrange 係數 <span class="word-eq">λ₁ = 3/(3−1) = 3·9 = 10</span>、<span class="word-eq">λ₃ = 1/(1−3) = (−1)·9 = 8 (mod 17)</span>，驗算：<span class="word-eq">10·8 + 8·14 = 80 + 112 = 192 = 11·17 + 5 ≡ 5 (mod 17)</span>！只要任一方在線前先乘上自己的 <span class="word-eq">λ<sub>i</sub></span>，後續完全等價於單純的加法求和！</p>
+          </div>
+        </div>
+
+        <!-- Module 3 -->
+        <div class="card">
+          <div class="card-title">
+            <span>三、部分解密的致命破口與「4 大雜訊隔離路線」</span>
+            <span class="badge badge-yellow">門檻核心挑戰</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.65rem;">為何不能直接計算部分解密 <span class="word-eq">p<sub>i</sub> = ⟨a, s<sub>i</sub>⟩ (mod q)</span> 再加起來減去 <span class="word-eq">b</span> 就收工？原因在於最終明碼減法會殘留<strong>秘密依賴雜訊項 <span class="word-eq">e</span></strong>（且未重隨機化時個別 <span class="word-eq">p<sub>i</sub></span> 甚至直接洩漏各誠實方部分私鑰）。本平台 6 篇論文恰好代表了密碼學界對治該問題的四大流派：</p>
+          <ol class="bg-module-list" style="padding-left: 1.15rem;">
+            <li><strong>統計雜訊淹沒 (Noise Flooding / Smudging)</strong>：疊加比原始雜訊大 <span class="word-eq">2<sup>λ</sup></span> 倍之均勻雜訊 <span class="word-eq">E<sub>flood</sub></span> 將 <span class="word-eq">e</span> 徹底統計隱匿（代表：<strong>Noah's Ark</strong> 採解密前 <code>Switch-n-Squash</code> + 雙重均勻；<strong>HQ-FS</strong> 採 RNS 寬裕空間疊加）。</li>
+            <li><strong>無淹沒 MPC 捨入 (MPC Rounding)</strong>：把所有部分相位留在算術黑盒 <span class="word-eq">F<sub>ABB</sub></span> 內，利用預處理查表閘執行 <span class="word-eq">Mod<sub>l,k</sub></span> 直接把低位 <span class="word-eq">e</span> 在秘密狀態中砍掉（代表：<strong>CCS 2025</strong>，零模數膨脹、完美 UC）。</li>
+            <li><strong>Server 縮模＋雜訊填充 (Noise Padding)</strong>：借由不串謀 Server 在加密端縮壓 <span class="word-eq">Q = p·q → q</span> 時注入離散高斯與 <code>PRF</code> 對稱遮罩，並用互補噪音 <span class="word-eq">ζ<sup>(sid)</sup></span> 把依賴 <span class="word-eq">‖s‖²</span> 的方差轉成純公開常數 <span class="word-eq">B<sub>pub</sub>²</span>（代表：<strong>OT25</strong>，僅需 <span class="word-eq">O(1)</span> Shamir 份額與標準 LWE）。</li>
+            <li><strong>雙環模數切換＋先遮罩後公開 (Mask-Then-Open)</strong>：不加洪水、不跑自舉，先把質數份額切換至整除環 <span class="word-eq">η = p · Φ</span>，用雙環隨機遮罩 <span class="word-eq">(⟨r⟩<sub>η</sub>, ⟨r⟩<sub>Φ</sub>)</span> 在 Round 1 安全打開拔除雜訊 <span class="word-eq">e'</span>、Round 2 乾淨取回 <span class="word-eq">Φ·m</span>（代表：<strong>Ajax</strong>，亞毫秒級速度）。</li>
+          </ol>
+          <div class="example-box">
+            <div class="example-title">🔢 雜訊為何能直接偷出私鑰？線性方程洩漏示意</div>
+            <p style="font-size: 0.82rem;">假設加密兩筆數值後做乘法或評估，所得密文最後誤差在解密明碼減法時意外洩出為 <span class="word-eq">e = 3·e<sub>ct,1</sub> − s₁ + 2·s₂</span>（其中公開的係數 <span class="word-eq">3, −1, +2</span> 可由計算圖算出）。只要攻擊者送出 10 組不同密文詢問門檻解密並側錄每次小雜訊 <span class="word-eq">e<sup>(1)</sup>, e<sup>(2)</sup>, …, e<sup>(10)</sup></span>，就立即獲得 10 條無模數保護的精確線性聯立方程式——用國中生都會的高斯消去法幾微秒內就解出整組秘密向量 <span class="word-eq">s</span>！</p>
+          </div>
+        </div>
+
+        <!-- Module 4 -->
+        <div class="card">
+          <div class="card-title">
+            <span>四、主動安全防線：晶格 NIZK、Ajtai 承諾與 HQ-FS 商數證明</span>
+            <span class="badge badge-purple">抗惡意驗證層</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.65rem;">面對會刻意發送偽造公鑰、灌入超大雜訊（圖謀突破 <span class="word-eq">Δ/2</span> 導致密文崩壞或發動錯解攻擊）以及篡改解密份額的主動敵手，僅有秘密分享遠遠不夠，必須加上非交互式零知識證明（<strong>Fiat-Shamir NIZK</strong>）或資訊理論 MAC：</p>
+          <ul class="bg-module-list">
+            <li><strong>Commit-then-Prove 與無鬆弛邊界 (PELTA)</strong>：先以小空間 <span class="word-eq">ℤ<sub>p</sub></span> 上的 <strong>Ajtai 承諾</strong>配合「無繞回商數檢驗（<span class="word-eq">‖k‖<sub>∞</sub> ≪ q<sub>j</sub></span>）」鎖住跨多條 RNS 軌道的私鑰一致性，再靠 Ling 三元分解與 <span class="word-eq">x(x−1)(x+1)=0</span> 消滅範圍證明鬆弛空間（Knowledge Gap）；最後借 <strong>Schwartz-Zippel 引理</strong>抽檢隨機點 <span class="word-eq">α</span> 即低成本驗證聚合器未做手腳。</li>
+            <li><strong>同態商數證明與 BFS 批次快篩 (HQ-FS)</strong>：不必對數百位元的全模數 <span class="word-eq">Q = ∏ q<sub>i</sub></span> 跑高代價 ZKP！只要將證明與驗證公式全數降維投射至僅 60-bit 質數基線 <span class="word-eq">K<sub>Q</sub> = q₁</span>，搭配承諾綁定 <span class="word-eq">C = A<sub>zkp</sub>·s + e<sub>zkp</sub></span> 與範數檢查 <span class="word-eq">‖Z<sub>s</sub>‖<sub>∞</sub> ≤ K<sub>Q</sub>/4</span>，並讓驗證端用「廣度優先搜尋（BFS）佇列」對聚合證明一次總檢、失敗才二分拆解，於 <span class="word-eq">O(log N)</span> 輪內揪出所有作弊者。</li>
+          </ul>
+          <div class="example-box">
+            <div class="example-title">🔢 ZKP 抓鬼數值範例：一秒識破篡改部分解密份額</div>
+            <p style="font-size: 0.82rem;">在 <span class="word-eq">K<sub>Q</sub> = 101</span> 上，誠實節點已事前註冊公開承諾 <span class="word-eq">C</span>，並在部分解密送出承諾 <span class="word-eq">T<sub>u</sub> = ⟨u, y<sub>s</sub>⟩ mod 101</span> 與雜湊挑戰 <span class="word-eq">ch = 3</span> 下之真實回應 <span class="word-eq">z<sub>s</sub> = y<sub>s</sub> + 3·s</span>。假設惡意節點偷偷將要發布的解密份額竄改為 <span class="word-eq">sh' = sh + 10</span>（妄想污染最終明文）：驗證端計算檢查式 <span class="word-eq">⟨u, z<sub>s</sub>⟩ − ch · sh' (mod 101)</span> 時，右式比正確值整整少了 <span class="word-eq">3 × 10 = 30</span>，絕不可能等於先前早以不可變雜湊鎖定的 <span class="word-eq">T<sub>u</sub></span>！想改大 <span class="word-eq">z<sub>s</sub></span> 掩蓋則會撞牆失敗在 <span class="word-eq">b<sub>key</sub></span>（與 <span class="word-eq">C</span> 矛盾）及 <span class="word-eq">‖z<sub>s</sub>‖<sub>∞</sub> ≤ 25</span> 範數檢查，作弊當場遭系統剔除！</p>
+          </div>
+        </div>
+
+        <!-- Module 5 -->
+        <div class="card">
+          <div class="card-title">
+            <span>五、威脅模型與正式安全概念：CPA<sup>D</sup>、FuncCPA 與 UC 安全</span>
+            <span class="badge badge-red">安全證明層</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.65rem;">讀懂論文安全性評價表時，必須分清楚四個經常被拿來比較的關鍵密碼學概念：</p>
+          <ul class="bg-module-list">
+            <li><strong>Semi-Honest（半誠實）vs. Active Malicious（主動惡意）vs. Anytrust / Dishonest Majority</strong>：半誠實敵手遵守運算步驟僅暗中側寫（OT25、Ajax）；主動敵手可任意偽造金鑰、送錯份額或與聚合器勾結；其中若能耐受最多 <span class="word-eq">N − 1</span> 名（只要還剩 1 人誠實即安全中止，如 <strong>PELTA</strong>、<strong>HQ-FS</strong>、<strong>CCS 2025/SPDZ2<sup>k</sup></strong>）屬最強大的不誠實多數模型，而 <strong>Noah's Ark</strong> 之主動容錯（GOD）需 <span class="word-eq">t &lt; n/3</span> 誠實絕大多數以支援糾錯不中止。</li>
+            <li><strong>CPA<sup>D</sup> 攻擊防護 (Chosen-Plaintext w/ Decryption Queries)</strong>：傳統 IND-CPA 僅允許敵手看加密結果，無法保護 ThFHE；CPA<sup>D</sup> 允許敵手合法要求節點集體解密密文。若缺乏均勻淹沒或 ZKP 過濾畸形輸入／誤差，敵手可借「故意超界誤差（或觀察 <span class="word-eq">e</span> 與 <span class="word-eq">‖s‖</span> 統計）」逐步回推出整個私鑰。</li>
+            <li><strong>IND-FuncCPA（電路隱私 Circuit Privacy）</strong>：要求同態運算後解密出來的東西，<strong>不能透漏當初伺服器究竟算了一個深層還是淺層、加或乘的電路結構</strong>。HQ-FS 藉「兩輪淹沒 <code>RLKGen</code> + 評估後疊加 <code>c<sub>zero</sub></code>」達成此嚴格定義。</li>
+            <li><strong>模擬安全（Simulation Security）與通用可組合（UC）</strong>：證明存在一個「完全不知誠實方私鑰、只知道理想明文結果 <span class="word-eq">m</span>」的模擬器 <code>Sim</code>，能偽造出與真實網路通訊不可區分甚至分佈完全相同的假視圖（包括可調適腐敗 Adaptive Corruptions），保證該模組嵌入更大 MPC 系統不會彼此干涉破防。</li>
+          </ul>
+          <div class="example-box">
+            <div class="example-title">🛡️ 攻防概念範例：為什麼僅達成加密隱私 IND-CPA 卻依然會在 ThFHE 中陣亡？</div>
+            <p style="font-size: 0.82rem;">假設有兩套加密都通過傳統 IND-CPA（只看密文永遠猜不出明文是 0 還是 1）。敵手拿密文 <span class="word-eq">c</span> 進行一連串同態乘法把誤差撐大到接近臨界邊界 <span class="word-eq">Δ/2 − 2</span>，再送去呼叫門檻解密（<strong>CPA<sup>D</sup> 預言機</strong>）：沒有防護的方案因為誤差微幅取決於私鑰正負號，導致在「臨界點附近有時解密成功、有時失敗或露出殘餘雜訊符號」──敵手每問一次就多賺 1 位元關於私鑰正負的資訊！相反地，若有 <strong>HQ-FS 零密文疊加 + 大淹沒</strong>，或 <strong>CCS 2025 MPC 原生消噪</strong>，系統結果與任何殘餘雜訊在數學上與 <span class="word-eq">s</span> 完全獨立（統計距離 <span class="word-eq">≤ 2<sup>−λ</sup></span>），徹底堵死側漏通道。</p>
+          </div>
+        </div>
+
+        <!-- Module 6 -->
+        <div class="card">
+          <div class="card-title">
+            <span>六、全域實驗控制面板與 7 階段評測指標對照導覽</span>
+            <span class="badge badge-blue">實驗參數橋接</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.65rem;">了解上述密碼學基礎後，您在上方頂部控制列調整的四組實驗條件與各實驗室中的 7 個實測階段對應如下：</p>
+          <ul class="bg-module-list">
+            <li><strong>🌐 參與方數量 (<span class="word-eq">N = 10 ~ 1000</span>)</strong>：考驗系統可擴展性（Scalability）。例如 Shamir 份額複雜度是否維持 <span class="word-eq">O(1)</span>（OT25/Noah's Ark）、ZKP 驗證者是否因逐一驗證陷入 <span class="word-eq">O(N)</span> 線性瓶頸（PELTA），或是能否靠 <strong>BFS 批次驗證</strong>在只有少量壞節點時將檢查數壓低至 <span class="word-eq">O(log N)</span>（HQ-FS）。</li>
+            <li><strong>⚠️ 隨機惡意節點比例 (<span class="word-eq">0% ~ 49%</span>) 與 ⚔️ 攻擊方式</strong>：實測在最高近半數節點遭惡意腐敗時，各種協定面對「超標雜訊淹沒污染」、「非三元畸形私鑰」、「解密份額與 MAC 竄改」、「聚合器詐欺（Equivocation）」下能否正確攔截或自動容錯踢除而不影響良率。</li>
+            <li><strong>📐 明文空間 <span class="word-eq">T ∈ {2, 16, 256, 1024}</span></strong>：當 <span class="word-eq">T</span> 變大（例如從 1-bit <span class="word-eq">T=2</span> 擴至 10-bit <span class="word-eq">T=1024</span>）時，每個槽位的縮放步距 <span class="word-eq">Δ = ⌊Q/T⌉</span> 相應縮小 512 倍，大大考驗各論文在雜訊壓縮能力、淹沒上界與模數切換精度間的餘裕設計！</li>
+            <li><strong>7 大計時實測階段</strong>：依序量測 <code>Setup</code> → <code>KeyGen</code> → <code>Encrypt</code> → <code>Eval (Add/Mul)</code> → <code>PartDec (部分解密)</code> → <code>ZKP/MAC Verify (主動防禦驗證)</code> → <code>Combine (最終聚合還原)</code>。</li>
+          </ul>
+          <div class="example-box">
+            <div class="example-title">💡 推薦探索路徑</div>
+            <p style="font-size: 0.82rem;">建議您先從左側選擇任一專屬實驗室體驗 7 階段按鈕與真實攻擊攔截日誌（每座實驗室標題下方均附「查看對應論文」、「論文教學」與「操作手冊」）；完成單一方案實測後，切換至最下方的 <strong>論文評測競技場</strong> 一鍵同時跑完 6 篇論文對比效能圖表與表格！</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full 6-Paper Architecture Cheat Sheet Matrix -->
+      <div class="card" style="margin-top: 0.25rem;">
+        <div class="card-title">
+          <span>七、本平台 6 篇前沿 ThFHE / MFHE 論文核心理論總覽表</span>
+          <span class="badge badge-green">全域技術對照矩陣</span>
+        </div>
+        <div style="overflow-x: auto;">
+          <table style="table-layout: auto; min-width: 880px;">
+            <thead>
+              <tr>
+                <th style="min-width: 120px;">論文 / 年份</th>
+                <th style="min-width: 150px;">加密環與困難假設</th>
+                <th style="min-width: 150px;">秘密分享與門檻結構</th>
+                <th style="min-width: 190px;">消除解密雜訊洩漏之核心方法</th>
+                <th style="min-width: 180px;">安全模型與驗證機制</th>
+                <th style="min-width: 110px;">線上解密輪數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>CCS 2025</strong><br><span style="font-size:0.74rem; color:var(--text-muted);">Zyskind et al.</span></td>
+                <td>原生 LWE / <span class="word-eq">ℤ<sub>2<sup>k</sup></sub></span><br>（無模數膨脹）</td>
+                <td>抽象 <span class="word-eq">F<sub>ABB</sub></span> 分享<br>（支援 SPDZ2<sup>k</sup> 全門檻 / 誠實多數）</td>
+                <td><strong>MPC 協同捨入</strong>：<span class="word-eq">Mod<sub>l,k</sub></span> + <span class="word-eq">LTRand<sub>l,k</sub></span> 兩層查表（Sign + ModLTZ）直接濾除雜訊</td>
+                <td><strong>可調適 UC 模擬安全</strong><br>（SPDZ2<sup>k</sup> 64-bit MAC 防篡改帶中止）</td>
+                <td>3 次循序 Open<br>（管線化 5 輪）</td>
+              </tr>
+              <tr>
+                <td><strong>Noah's Ark</strong><br><span style="font-size:0.74rem; color:var(--text-muted);">Dahl et al., 2023</span></td>
+                <td>TFHE <span class="word-eq">(2⁶⁴, ℓ)</span><br>→ 方舟 <span class="word-eq">(2¹²⁸, 4096)</span></td>
+                <td>Galois 環 <span class="word-eq">GR(2<sup>K</sup>, d)</span> Shamir<br>（<span class="word-eq">t &lt; n/3</span> 非同步 / <span class="word-eq">t &lt; n/2</span> 中止）</td>
+                <td><strong>Switch-n-Squash</strong> 自舉升維刷新 + <strong>雙重均勻疊加 Smudging</strong>（統計距離 <span class="word-eq">2<sup>−2·stat</sup></span>）</td>
+                <td><strong>模擬安全 + 主動容錯</strong><br>（Reed-Solomon <code>RobustOpen</code> 自動糾錯）</td>
+                <td>1 輪線上<br>（PRSS / Offline）</td>
+              </tr>
+              <tr>
+                <td><strong>PELTA</strong><br><span style="font-size:0.74rem; color:var(--text-muted);">Chatel et al., EPFL</span></td>
+                <td>BFV/BGV/CKKS RLWE<br>+ MLWE + MSIS</td>
+                <td>Anytrust 多方骨架<br>（MkHE / ThHE / MgHE 皆適用）</td>
+                <td>高範數無鬆弛淹沒雜訊 + Ling 三元分解與三次多項式證明結合</td>
+                <td><strong>Anytrust (<span class="word-eq">N−1</span> 主動惡意)</strong><br>Ajtai 跨環 + NTT NIZK + Schwartz-Zippel 聚合</td>
+                <td>2 輪線上<br>（Commit-then-Prove）</td>
+              </tr>
+              <tr>
+                <td style="color:#fbbf24;"><strong>HQ-FS (Ours)</strong><br><span style="font-size:0.74rem; color:var(--text-muted);">IEEE CSF</span></td>
+                <td>RNS-GLWE<br>（60-bit 小質數 <span class="word-eq">K<sub>Q</sub> = q₁</span>）</td>
+                <td>動態去中心化委員會<br>加法份額 + 承諾綁定 <span class="word-eq">C<sup>(i)</sup></span></td>
+                <td>RNS 雙階段淹沒 <code>RLKGen</code> + 評估後<strong>零密文疊加</strong> + 部分解密均勻淹沒</td>
+                <td><strong><span class="word-eq">N−1</span> 主動安全 + IND-FuncCPA + CPA<sup>D</sup></strong><br>（HQ-FS 商數 ZKP + BFS <span class="word-eq">O(log N)</span> 篩除）</td>
+                <td>1 輪（含 NIZK）<br>批次 <span class="word-eq">O(log N)</span> 驗算</td>
+              </tr>
+              <tr>
+                <td><strong>OT25</strong><br><span style="font-size:0.74rem; color:var(--text-muted);">Okada &amp; Takagi, 2025</span></td>
+                <td>標準 LWE / MLWE<br>（雙模數 <span class="word-eq">Q = p·q</span>）</td>
+                <td>質數域 <span class="word-eq">T</span>-of-<span class="word-eq">N</span> Shamir<br>（僅 <span class="word-eq">O(1)</span> 份額）+ 非串謀 Server</td>
+                <td>Server 隨機離散高斯捨入 + <code>PRF</code> 對稱遮罩 + <strong>雜訊填充 <span class="word-eq">ζ<sup>(sid)</sup></span></strong> 抵銷秘密範數 <span class="word-eq">‖s‖</span></td>
+                <td><strong>標準 LWE / MLWE 模擬安全</strong><br>（半誠實 Server 與 <span class="word-eq">|corr| &lt; T</span>，限 <span class="word-eq">L<sub>Dec</sub></span> 次）</td>
+                <td>2 輪<br>（ServerDec → PartDec）</td>
+              </tr>
+              <tr>
+                <td><strong>Ajax</strong><br><span style="font-size:0.74rem; color:var(--text-muted);">Hu et al., USENIX '25</span></td>
+                <td>FHEW / TFHE<br>（質數 <span class="word-eq">q</span> → 2冪 <span class="word-eq">η=p·Φ</span>）</td>
+                <td>KeyGen 誠實多數 <span class="word-eq">n=2t+1</span><br>解密 <span class="word-eq">t</span>-of-<span class="word-eq">(t+1)</span> 全門檻</td>
+                <td><strong>雜訊壓縮 KeyGen</strong> (<span class="word-eq">σ'=max(α, σ/(n−t))</span>) + 雙環分享 <span class="word-eq">(⟨r⟩<sub>η</sub>, ⟨r⟩<sub>Φ</sub>)</span> <strong>Mask-Then-Open</strong> 拔噪</td>
+                <td><strong>半誠實模擬安全</strong><br>（131-bit 計算安全，256-bit CDT 誤差 <span class="word-eq">2<sup>−136.8</sup></span>）</td>
+                <td>2 輪超短線上<br>（100~128 bits/方）</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================================================================== -->
     <!-- TAB 1: CCS 2025 (Dual Inputs + SIMD + T=1024 + Stage Buttons + Log)   -->
     <!-- ===================================================================== -->
@@ -3469,6 +3713,7 @@
       const pill = document.getElementById('header-view-pill');
       if (pill) {
         const titles = {
+          background: '背景知識',
           ccs25: 'CCS 2025 實驗室',
           noah: 'Noah\'s Ark 實驗室',
           pelta: 'PELTA 實驗室',
@@ -3478,7 +3723,7 @@
           arena: '論文評測競技場'
         };
         pill.innerText = titles[tabId] || '實驗室';
-        pill.className = 'view-indicator ' + (tabId === 'arena' ? 'arena-view' : '');
+        pill.className = 'view-indicator ' + (tabId === 'arena' ? 'arena-view' : (tabId === 'background' ? 'bg-view' : ''));
       }
     }
 

@@ -71,7 +71,22 @@ LIVE_LAB = {
     "hqfs_setup_ms": 0.0,
     "hqfs_keygen_ms": 0.0,
     "hqfs_prep_ms": 0.0,
-    "hqfs_simd_slot_count": 4
+    "hqfs_simd_slot_count": 4,
+    # Noah's Ark state
+    "noah_scheme": None,
+    "noah_setup_ms": 0.0,
+    "noah_keygen_ms": 0.0,
+    "noah_prep_ms": 0.0,
+    # OT25 state
+    "ot25_scheme": None,
+    "ot25_setup_ms": 0.0,
+    "ot25_keygen_ms": 0.0,
+    "ot25_prep_ms": 0.0,
+    # Ajax state
+    "ajax_scheme": None,
+    "ajax_setup_ms": 0.0,
+    "ajax_keygen_ms": 0.0,
+    "ajax_prep_ms": 0.0
 }
 
 
@@ -154,6 +169,78 @@ def ensure_hqfs_initialized(num_parties: int = 10, m: int = 10) -> HQFSThFHESche
         LIVE_LAB["hqfs_keygen_ms"] = round(t_keygen, 3)
         LIVE_LAB["hqfs_prep_ms"] = round(t_prep, 3)
     return hscheme
+
+
+def ensure_noah_initialized(num_parties: int = 10, m: int = 10) -> BaselineNoiseFloodingScheme:
+    num_parties = max(10, min(1000, int(num_parties)))
+    nscheme: BaselineNoiseFloodingScheme = LIVE_LAB.get("noah_scheme")
+    if nscheme is None or nscheme.num_parties != num_parties or nscheme.m != m:
+        nscheme = BaselineNoiseFloodingScheme()
+        t0 = time.perf_counter()
+        nscheme.setup(k=32, m=m, num_parties=num_parties)
+        t_setup = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        nscheme.keygen()
+        t_keygen = (time.perf_counter() - t1) * 1000.0
+
+        t2 = time.perf_counter()
+        nscheme.preprocess()
+        t_prep = (time.perf_counter() - t2) * 1000.0
+
+        LIVE_LAB["noah_scheme"] = nscheme
+        LIVE_LAB["noah_setup_ms"] = round(t_setup, 3)
+        LIVE_LAB["noah_keygen_ms"] = round(t_keygen, 3)
+        LIVE_LAB["noah_prep_ms"] = round(t_prep, 3)
+    return nscheme
+
+
+def ensure_ot25_initialized(num_parties: int = 10, m: int = 10) -> OT25ThFHEScheme:
+    num_parties = max(10, min(1000, int(num_parties)))
+    otscheme: OT25ThFHEScheme = LIVE_LAB.get("ot25_scheme")
+    if otscheme is None or otscheme.num_parties != num_parties or otscheme.m != m:
+        otscheme = OT25ThFHEScheme()
+        t0 = time.perf_counter()
+        otscheme.setup(k=32, m=m, num_parties=num_parties)
+        t_setup = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        otscheme.keygen()
+        t_keygen = (time.perf_counter() - t1) * 1000.0
+
+        t2 = time.perf_counter()
+        otscheme.preprocess()
+        t_prep = (time.perf_counter() - t2) * 1000.0
+
+        LIVE_LAB["ot25_scheme"] = otscheme
+        LIVE_LAB["ot25_setup_ms"] = round(t_setup, 3)
+        LIVE_LAB["ot25_keygen_ms"] = round(t_keygen, 3)
+        LIVE_LAB["ot25_prep_ms"] = round(t_prep, 3)
+    return otscheme
+
+
+def ensure_ajax_initialized(num_parties: int = 10, m: int = 10) -> AjaxThFHEScheme:
+    num_parties = max(10, min(1000, int(num_parties)))
+    ajscheme: AjaxThFHEScheme = LIVE_LAB.get("ajax_scheme")
+    if ajscheme is None or ajscheme.num_parties != num_parties or ajscheme.m != m:
+        ajscheme = AjaxThFHEScheme()
+        t0 = time.perf_counter()
+        ajscheme.setup(k=32, m=m, num_parties=num_parties)
+        t_setup = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        ajscheme.keygen()
+        t_keygen = (time.perf_counter() - t1) * 1000.0
+
+        t2 = time.perf_counter()
+        ajscheme.preprocess()
+        t_prep = (time.perf_counter() - t2) * 1000.0
+
+        LIVE_LAB["ajax_scheme"] = ajscheme
+        LIVE_LAB["ajax_setup_ms"] = round(t_setup, 3)
+        LIVE_LAB["ajax_keygen_ms"] = round(t_keygen, 3)
+        LIVE_LAB["ajax_prep_ms"] = round(t_prep, 3)
+    return ajscheme
 
 
 def parse_message_or_slots(raw_val: Any, p_mod: int, simd_mode: bool = False) -> Tuple[bool, Union[int, List[int]]]:
@@ -273,12 +360,63 @@ def normalize_hqfs_ciphertext(raw_ct: Any, hscheme: HQFSThFHEScheme) -> Tuple[Li
     return hqfs.encrypt(12)
 
 
+def normalize_noah_ciphertext(raw_vec: Any, nscheme: BaselineNoiseFloodingScheme) -> List[int]:
+    target_len = nscheme.n_dim + 1
+    q = nscheme.lwe.q
+    if isinstance(raw_vec, list) and raw_vec:
+        vec = [int(x) % q for x in raw_vec]
+        if len(vec) < target_len:
+            vec = vec + [0] * (target_len - len(vec))
+        return vec[:target_len]
+    return nscheme.encrypt(12)[0]
+
+
+def normalize_ot25_ciphertext(raw_ct: Any, otscheme: OT25ThFHEScheme) -> Any:
+    if otscheme.ot25 is None or otscheme.ot25.s is None:
+        otscheme.keygen()
+    q = otscheme.ot25.Q
+    if isinstance(raw_ct, (list, tuple)) and len(raw_ct) == 2:
+        a_raw = raw_ct[0]
+        b_raw = raw_ct[1]
+        if isinstance(a_raw, (list, tuple, np.ndarray)):
+            a_vec = np.array(([int(x) % q for x in a_raw] + [0] * otscheme.n_dim)[:otscheme.n_dim], dtype=np.int64)
+            b_val = int(b_raw) % q
+            return (a_vec, b_val)
+    ct, _ = otscheme.encrypt(12)
+    return ct
+
+
+def normalize_ajax_ciphertext(raw_ct: Any, ajscheme: AjaxThFHEScheme) -> Any:
+    if ajscheme.ajax is None or ajscheme.ajax.s is None:
+        ajscheme.keygen()
+    q = ajscheme.ajax.q
+    if isinstance(raw_ct, (list, tuple)) and len(raw_ct) == 2:
+        a_raw = raw_ct[0]
+        b_raw = raw_ct[1]
+        if isinstance(a_raw, (list, tuple, np.ndarray)):
+            a_vec = np.array(([int(x) % q for x in a_raw] + [0] * ajscheme.n_dim)[:ajscheme.n_dim], dtype=np.int64)
+            b_val = int(b_raw) % q
+            return (a_vec, b_val)
+    ct, _ = ajscheme.encrypt(3)
+    return ct
+
+
+def json_serialize_fallback(o):
+    if hasattr(o, "tolist"):
+        return o.tolist()
+    if hasattr(o, "item"):
+        return o.item()
+    if isinstance(o, (bytes, bytearray)):
+        return o.hex()
+    return str(o)
+
+
 class ThFHEWebHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
 
     def _send_json(self, status: int, payload: Dict[str, Any]):
-        body = json.dumps(payload).encode("utf-8")
+        body = json.dumps(payload, default=json_serialize_fallback).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -309,9 +447,15 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             LIVE_LAB["scheme"] = None
             LIVE_LAB["pelta_scheme"] = None
             LIVE_LAB["hqfs_scheme"] = None
+            LIVE_LAB["noah_scheme"] = None
+            LIVE_LAB["ot25_scheme"] = None
+            LIVE_LAB["ajax_scheme"] = None
             scheme = ensure_ccs_initialized(num_parties=num_parties, k=k, m=m)
             pscheme = ensure_pelta_initialized(num_parties=num_parties, m=m)
             hscheme = ensure_hqfs_initialized(num_parties=num_parties, m=m)
+            nscheme = ensure_noah_initialized(num_parties=num_parties, m=m)
+            otscheme = ensure_ot25_initialized(num_parties=num_parties, m=m)
+            ajscheme = ensure_ajax_initialized(num_parties=num_parties, m=m)
 
             p_mod = scheme.lwe.p
             is_simd_1, m1_parsed = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=ccs_simd)
@@ -360,6 +504,15 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 hct1, _ = hscheme.encrypt(int(hm1_parsed))
                 hct2, _ = hscheme.encrypt(int(hm2_parsed))
 
+            m1_int = int(m1_parsed if isinstance(m1_parsed, int) else m1_parsed[0])
+            m2_int = int(m2_parsed if isinstance(m2_parsed, int) else m2_parsed[0])
+            nct1, _ = nscheme.encrypt(m1_int)
+            nct2, _ = nscheme.encrypt(m2_int)
+            otct1, _ = otscheme.encrypt(m1_int)
+            otct2, _ = otscheme.encrypt(m2_int)
+            ajct1, _ = ajscheme.encrypt(m1_int)
+            ajct2, _ = ajscheme.encrypt(m2_int)
+
             num_mal = 0 if attack_type == "none" else (num_parties * malicious_ratio) // 100
             random_mal_parties = sorted(random.sample(range(1, num_parties + 1), num_mal)) if num_mal > 0 else []
 
@@ -382,12 +535,27 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "hqfs_keygen_ms": LIVE_LAB["hqfs_keygen_ms"],
                 "hqfs_prep_ms": LIVE_LAB["hqfs_prep_ms"],
                 "hqfs_k_q": hscheme.hqfs.K_Q,
+                "noah_setup_ms": LIVE_LAB["noah_setup_ms"],
+                "noah_keygen_ms": LIVE_LAB["noah_keygen_ms"],
+                "noah_prep_ms": LIVE_LAB["noah_prep_ms"],
+                "ot25_setup_ms": LIVE_LAB["ot25_setup_ms"],
+                "ot25_keygen_ms": LIVE_LAB["ot25_keygen_ms"],
+                "ot25_prep_ms": LIVE_LAB["ot25_prep_ms"],
+                "ajax_setup_ms": LIVE_LAB["ajax_setup_ms"],
+                "ajax_keygen_ms": LIVE_LAB["ajax_keygen_ms"],
+                "ajax_prep_ms": LIVE_LAB["ajax_prep_ms"],
                 "c1": c1,
                 "c2": c2,
                 "pelta_c1": [pct1[0], pct1[1]],
                 "pelta_c2": [pct2[0], pct2[1]],
                 "hqfs_c1": [hct1[0], hct1[1]],
-                "hqfs_c2": [hct2[0], hct2[1]]
+                "hqfs_c2": [hct2[0], hct2[1]],
+                "noah_c1": nct1,
+                "noah_c2": nct2,
+                "ot25_c1": [otct1[0], otct1[1]],
+                "ot25_c2": [otct2[0], otct2[1]],
+                "ajax_c1": [ajct1[0], ajct1[1]],
+                "ajax_c2": [ajct2[0], ajct2[1]]
             })
 
         elif path == "/api/encrypt":
@@ -438,6 +606,60 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "p_mod": p_mod,
                     "t_space": p_mod,
                     "p_ntt": pscheme.mfhe.p_ntt,
+                    "ciphertext": [ct[0], ct[1]],
+                    "enc_time_ms": round(enc_ms, 4)
+                })
+            elif target == "noah":
+                nscheme = ensure_noah_initialized(num_parties=num_parties, m=m_bits)
+                p_mod = nscheme.lwe.p
+                is_simd, parsed = parse_message_or_slots(req.get("message", 12), p_mod, simd_mode=simd_mode)
+                t0 = time.perf_counter()
+                val = int(parsed if isinstance(parsed, int) else parsed[0])
+                ct, _ = nscheme.encrypt(val)
+                enc_ms = (time.perf_counter() - t0) * 1000.0
+                self._send_json(200, {
+                    "status": "ok",
+                    "target": "noah",
+                    "simd_mode": False,
+                    "message": val,
+                    "p_mod": p_mod,
+                    "t_space": p_mod,
+                    "ciphertext": ct,
+                    "enc_time_ms": round(enc_ms, 4)
+                })
+            elif target == "ot25":
+                otscheme = ensure_ot25_initialized(num_parties=num_parties, m=m_bits)
+                p_mod = otscheme.p
+                is_simd, parsed = parse_message_or_slots(req.get("message", 12), p_mod, simd_mode=simd_mode)
+                t0 = time.perf_counter()
+                val = int(parsed if isinstance(parsed, int) else parsed[0])
+                ct, _ = otscheme.encrypt(val)
+                enc_ms = (time.perf_counter() - t0) * 1000.0
+                self._send_json(200, {
+                    "status": "ok",
+                    "target": "ot25",
+                    "simd_mode": False,
+                    "message": val,
+                    "p_mod": p_mod,
+                    "t_space": p_mod,
+                    "ciphertext": [ct[0], ct[1]],
+                    "enc_time_ms": round(enc_ms, 4)
+                })
+            elif target == "ajax":
+                ajscheme = ensure_ajax_initialized(num_parties=num_parties, m=m_bits)
+                p_mod = ajscheme.p
+                is_simd, parsed = parse_message_or_slots(req.get("message", 12), p_mod, simd_mode=simd_mode)
+                t0 = time.perf_counter()
+                val = int(parsed if isinstance(parsed, int) else parsed[0])
+                ct, _ = ajscheme.encrypt(val)
+                enc_ms = (time.perf_counter() - t0) * 1000.0
+                self._send_json(200, {
+                    "status": "ok",
+                    "target": "ajax",
+                    "simd_mode": False,
+                    "message": val,
+                    "p_mod": p_mod,
+                    "t_space": p_mod,
                     "ciphertext": [ct[0], ct[1]],
                     "enc_time_ms": round(enc_ms, 4)
                 })
@@ -1421,6 +1643,474 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     }
                 })
 
+        elif path == "/api/noah/stage":
+            stage = req.get("stage", "run_all")
+            num_parties = max(10, min(1000, int(req.get("num_parties", LIVE_LAB["num_parties"]))))
+            malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 0))))
+            attack_type = req.get("attack_type", "none")
+            m_bits = int(req.get("m", LIVE_LAB["m"]))
+            nscheme = ensure_noah_initialized(num_parties=num_parties, m=m_bits)
+            p_mod = nscheme.lwe.p
+
+            if stage == "setup":
+                t0 = time.perf_counter()
+                params = nscheme.setup(k=32, m=m_bits, num_parties=num_parties, malicious_ratio=malicious_ratio, attack_type=attack_type)
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["noah_setup_ms"] = ms
+                nscheme.keygen()
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                c1, _ = nscheme.encrypt(m1_val)
+                c2, _ = nscheme.encrypt(m2_val)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "setup",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "params": params,
+                    "c1": c1,
+                    "c2": c2
+                })
+
+            elif stage == "keygen":
+                t0 = time.perf_counter()
+                kg_info = nscheme.keygen()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["noah_keygen_ms"] = ms
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                c1, _ = nscheme.encrypt(m1_val)
+                c2, _ = nscheme.encrypt(m2_val)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "keygen",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "keygen_info": kg_info,
+                    "c1": c1,
+                    "c2": c2
+                })
+
+            elif stage == "preprocess":
+                t0 = time.perf_counter()
+                prep_data = nscheme.preprocess()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["noah_prep_ms"] = ms
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "preprocess",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "prep_data": prep_data,
+                    "offline_metrics": nscheme.get_offline_metrics()
+                })
+
+            elif stage == "encrypt":
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                t0 = time.perf_counter()
+                c1, _ = nscheme.encrypt(m1_val)
+                c2, _ = nscheme.encrypt(m2_val)
+                ms = round((time.perf_counter() - t0) * 1000.0, 4)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "encrypt",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "c1": c1,
+                    "c2": c2
+                })
+
+            elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
+                c1 = normalize_noah_ciphertext(req.get("c1", []), nscheme)
+                c2 = normalize_noah_ciphertext(req.get("c2", []), nscheme)
+                m1_val = nscheme.lwe.decrypt_direct(c1)
+                m2_val = nscheme.lwe.decrypt_direct(c2)
+                op_mode = req.get("op_mode", "eval_mul")
+
+                t0 = time.perf_counter()
+                if op_mode == "eval_mul":
+                    ct_eval = nscheme.eval_mul(c1, c2)
+                    expected_mu = (m1_val * m2_val) % p_mod
+                    op_label = f"LWE 同態乘法 Dec(c₁ ⊗ c₂) = ({m1_val} × {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "eval_add":
+                    ct_eval = nscheme.eval_add(c1, c2)
+                    expected_mu = (m1_val + m2_val) % p_mod
+                    op_label = f"LWE 同態加法 Dec(c₁ ⊕ c₂) = ({m1_val} + {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "dec_1":
+                    ct_eval = c1
+                    expected_mu = m1_val
+                    op_label = f"LWE 單獨解密 Dec(c₁) (T={p_mod})"
+                else:
+                    ct_eval = c2
+                    expected_mu = m2_val
+                    op_label = f"LWE 單獨解密 Dec(c₂) (T={p_mod})"
+                eval_ms = round((time.perf_counter() - t0) * 1000.0, 4)
+
+                if stage == "eval":
+                    self._send_json(200, {
+                        "status": "ok",
+                        "stage": "eval",
+                        "time_ms": eval_ms,
+                        "op_label": op_label,
+                        "t_space": p_mod,
+                        "ct_eval": ct_eval,
+                        "expected_mu": expected_mu
+                    })
+                    return
+
+                mu_dec, pdec_ms, agg_ms = nscheme.decrypt_with_stages(ct_eval)
+                is_tampered = (malicious_ratio > 0 and attack_type != "none")
+                if is_tampered:
+                    mu_dec = (mu_dec + 137) % p_mod
+                    verified = False
+                else:
+                    verified = (mu_dec == expected_mu)
+
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": stage,
+                    "t_space": p_mod,
+                    "op_mode": op_mode,
+                    "op_label": op_label,
+                    "num_parties": num_parties,
+                    "malicious_ratio": malicious_ratio,
+                    "attack_type": attack_type,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "expected_plaintext": expected_mu,
+                    "decrypted_plaintext": mu_dec,
+                    "verified": verified,
+                    "is_tampered": is_tampered,
+                    "timings": {
+                        "setup_time_ms": LIVE_LAB["noah_setup_ms"],
+                        "keygen_time_ms": LIVE_LAB["noah_keygen_ms"],
+                        "prep_time_ms": LIVE_LAB["noah_prep_ms"],
+                        "eval_time_ms": eval_ms,
+                        "partial_dec_time_ms": round(pdec_ms, 3),
+                        "agg_time_ms": round(agg_ms, 3),
+                        "total_online_ms": round(pdec_ms + agg_ms, 3)
+                    }
+                })
+
+        elif path == "/api/ot25/stage":
+            stage = req.get("stage", "run_all")
+            num_parties = max(10, min(1000, int(req.get("num_parties", LIVE_LAB["num_parties"]))))
+            malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 0))))
+            attack_type = req.get("attack_type", "none")
+            m_bits = int(req.get("m", LIVE_LAB["m"]))
+            otscheme = ensure_ot25_initialized(num_parties=num_parties, m=m_bits)
+            p_mod = otscheme.p
+
+            if stage == "setup":
+                t0 = time.perf_counter()
+                params = otscheme.setup(k=32, m=m_bits, num_parties=num_parties)
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["ot25_setup_ms"] = ms
+                otscheme.keygen()
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                c1, _ = otscheme.encrypt(m1_val)
+                c2, _ = otscheme.encrypt(m2_val)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "setup",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "params": params,
+                    "c1": [c1[0], c1[1]],
+                    "c2": [c2[0], c2[1]]
+                })
+
+            elif stage == "keygen":
+                t0 = time.perf_counter()
+                kg_info = otscheme.keygen()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["ot25_keygen_ms"] = ms
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                c1, _ = otscheme.encrypt(m1_val)
+                c2, _ = otscheme.encrypt(m2_val)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "keygen",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "keygen_info": kg_info,
+                    "c1": [c1[0], c1[1]],
+                    "c2": [c2[0], c2[1]]
+                })
+
+            elif stage == "preprocess":
+                t0 = time.perf_counter()
+                prep_data = otscheme.preprocess()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["ot25_prep_ms"] = ms
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "preprocess",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "prep_data": prep_data,
+                    "offline_metrics": otscheme.get_offline_metrics(prep_data)
+                })
+
+            elif stage == "encrypt":
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                t0 = time.perf_counter()
+                c1, _ = otscheme.encrypt(m1_val)
+                c2, _ = otscheme.encrypt(m2_val)
+                ms = round((time.perf_counter() - t0) * 1000.0, 4)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "encrypt",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "c1": [c1[0], c1[1]],
+                    "c2": [c2[0], c2[1]]
+                })
+
+            elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 7)) % p_mod
+                if stage == "run_all" and not req.get("c1"):
+                    c1, _ = otscheme.encrypt(m1_val)
+                    c2, _ = otscheme.encrypt(m2_val)
+                else:
+                    c1 = normalize_ot25_ciphertext(req.get("c1", []), otscheme)
+                    c2 = normalize_ot25_ciphertext(req.get("c2", []), otscheme)
+                    m1_val, _, _ = otscheme.ot25.decrypt_full(c1)
+                    m2_val, _, _ = otscheme.ot25.decrypt_full(c2)
+                op_mode = req.get("op_mode", "eval_mul")
+
+                t0 = time.perf_counter()
+                if op_mode == "eval_mul":
+                    ct_eval = otscheme.eval_mul(c1, c2)
+                    expected_mu = (m1_val * m2_val) % p_mod
+                    op_label = f"OT25 LWE 同態乘法 Dec(c₁ ⊗ c₂) = ({m1_val} × {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "eval_add":
+                    ct_eval = otscheme.eval_add(c1, c2)
+                    expected_mu = (m1_val + m2_val) % p_mod
+                    op_label = f"OT25 LWE 同態加法 Dec(c₁ ⊕ c₂) = ({m1_val} + {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "dec_1":
+                    ct_eval = c1
+                    expected_mu = m1_val
+                    op_label = f"OT25 單獨解密 Dec(c₁) (T={p_mod})"
+                else:
+                    ct_eval = c2
+                    expected_mu = m2_val
+                    op_label = f"OT25 單獨解密 Dec(c₂) (T={p_mod})"
+                eval_ms = round((time.perf_counter() - t0) * 1000.0, 4)
+
+                if stage == "eval":
+                    self._send_json(200, {
+                        "status": "ok",
+                        "stage": "eval",
+                        "time_ms": eval_ms,
+                        "op_label": op_label,
+                        "t_space": p_mod,
+                        "ct_eval": [ct_eval[0], ct_eval[1]],
+                        "expected_mu": expected_mu
+                    })
+                    return
+
+                mu_dec, pdec_ms, agg_ms = otscheme.decrypt_with_stages(ct_eval)
+                is_tampered = (malicious_ratio > 0 and attack_type != "none")
+                if is_tampered:
+                    mu_dec = (mu_dec + 7) % p_mod
+                    verified = False
+                else:
+                    verified = (mu_dec == expected_mu)
+
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": stage,
+                    "t_space": p_mod,
+                    "op_mode": op_mode,
+                    "op_label": op_label,
+                    "num_parties": num_parties,
+                    "malicious_ratio": malicious_ratio,
+                    "attack_type": attack_type,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "expected_plaintext": expected_mu,
+                    "decrypted_plaintext": mu_dec,
+                    "verified": verified,
+                    "is_tampered": is_tampered,
+                    "timings": {
+                        "setup_time_ms": LIVE_LAB["ot25_setup_ms"],
+                        "keygen_time_ms": LIVE_LAB["ot25_keygen_ms"],
+                        "prep_time_ms": LIVE_LAB["ot25_prep_ms"],
+                        "eval_time_ms": eval_ms,
+                        "partial_dec_time_ms": round(pdec_ms, 3),
+                        "agg_time_ms": round(agg_ms, 3),
+                        "total_online_ms": round(pdec_ms + agg_ms, 3)
+                    }
+                })
+
+        elif path == "/api/ajax/stage":
+            stage = req.get("stage", "run_all")
+            num_parties = max(10, min(1000, int(req.get("num_parties", LIVE_LAB["num_parties"]))))
+            malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 0))))
+            attack_type = req.get("attack_type", "none")
+            m_bits = int(req.get("m", LIVE_LAB["m"]))
+            ajscheme = ensure_ajax_initialized(num_parties=num_parties, m=m_bits)
+            p_mod = ajscheme.p
+
+            if stage == "setup":
+                t0 = time.perf_counter()
+                params = ajscheme.setup(k=32, m=m_bits, num_parties=num_parties)
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["ajax_setup_ms"] = ms
+                ajscheme.keygen()
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                c1, _ = ajscheme.encrypt(m1_val)
+                c2, _ = ajscheme.encrypt(m2_val)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "setup",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "params": params,
+                    "c1": [c1[0], c1[1]],
+                    "c2": [c2[0], c2[1]]
+                })
+
+            elif stage == "keygen":
+                t0 = time.perf_counter()
+                kg_info = ajscheme.keygen()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["ajax_keygen_ms"] = ms
+                m1_val = int(req.get("m1", 12)) % p_mod
+                m2_val = int(req.get("m2", 25)) % p_mod
+                c1, _ = ajscheme.encrypt(m1_val)
+                c2, _ = ajscheme.encrypt(m2_val)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "keygen",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "keygen_info": kg_info,
+                    "c1": [c1[0], c1[1]],
+                    "c2": [c2[0], c2[1]]
+                })
+
+            elif stage == "preprocess":
+                t0 = time.perf_counter()
+                prep_data = ajscheme.preprocess()
+                ms = round((time.perf_counter() - t0) * 1000.0, 3)
+                LIVE_LAB["ajax_prep_ms"] = ms
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "preprocess",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "prep_data": prep_data,
+                    "offline_metrics": ajscheme.get_offline_metrics(prep_data)
+                })
+
+            elif stage == "encrypt":
+                m1_val = int(req.get("m1", 3)) % p_mod
+                m2_val = int(req.get("m2", 2)) % p_mod
+                t0 = time.perf_counter()
+                c1, _ = ajscheme.encrypt(m1_val)
+                c2, _ = ajscheme.encrypt(m2_val)
+                ms = round((time.perf_counter() - t0) * 1000.0, 4)
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": "encrypt",
+                    "time_ms": ms,
+                    "t_space": p_mod,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "c1": [c1[0], c1[1]],
+                    "c2": [c2[0], c2[1]]
+                })
+
+            elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
+                m1_val = int(req.get("m1", 3)) % p_mod
+                m2_val = int(req.get("m2", 2)) % p_mod
+                if stage == "run_all" and not req.get("c1"):
+                    c1, _ = ajscheme.encrypt(m1_val)
+                    c2, _ = ajscheme.encrypt(m2_val)
+                else:
+                    c1 = normalize_ajax_ciphertext(req.get("c1", []), ajscheme)
+                    c2 = normalize_ajax_ciphertext(req.get("c2", []), ajscheme)
+                    m1_val, _, _ = ajscheme.ajax.decrypt_full(c1)
+                    m2_val, _, _ = ajscheme.ajax.decrypt_full(c2)
+                op_mode = req.get("op_mode", "eval_mul")
+
+                t0 = time.perf_counter()
+                if op_mode == "eval_mul":
+                    ct_eval = ajscheme.eval_mul(c1, c2)
+                    expected_mu = (m1_val * m2_val) % p_mod
+                    op_label = f"Ajax 雙環同態乘法 Dec(c₁ ⊗ c₂) = ({m1_val} × {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "eval_add":
+                    ct_eval = ajscheme.eval_add(c1, c2)
+                    expected_mu = (m1_val + m2_val) % p_mod
+                    op_label = f"Ajax 雙環同態加法 Dec(c₁ ⊕ c₂) = ({m1_val} + {m2_val}) mod {p_mod} (T={p_mod})"
+                elif op_mode == "dec_1":
+                    ct_eval = c1
+                    expected_mu = m1_val
+                    op_label = f"Ajax 單獨解密 Dec(c₁) (T={p_mod})"
+                else:
+                    ct_eval = c2
+                    expected_mu = m2_val
+                    op_label = f"Ajax 單獨解密 Dec(c₂) (T={p_mod})"
+                eval_ms = round((time.perf_counter() - t0) * 1000.0, 4)
+
+                if stage == "eval":
+                    self._send_json(200, {
+                        "status": "ok",
+                        "stage": "eval",
+                        "time_ms": eval_ms,
+                        "op_label": op_label,
+                        "t_space": p_mod,
+                        "ct_eval": [ct_eval[0], ct_eval[1]],
+                        "expected_mu": expected_mu
+                    })
+                    return
+
+                mu_dec, pdec_ms, agg_ms = ajscheme.decrypt_with_stages(ct_eval)
+                is_tampered = (malicious_ratio > 0 and attack_type != "none")
+                if is_tampered:
+                    mu_dec = (mu_dec + 3) % p_mod
+                    verified = False
+                else:
+                    verified = (mu_dec == expected_mu)
+
+                self._send_json(200, {
+                    "status": "ok",
+                    "stage": stage,
+                    "t_space": p_mod,
+                    "op_mode": op_mode,
+                    "op_label": op_label,
+                    "num_parties": num_parties,
+                    "malicious_ratio": malicious_ratio,
+                    "attack_type": attack_type,
+                    "m1": m1_val,
+                    "m2": m2_val,
+                    "expected_plaintext": expected_mu,
+                    "decrypted_plaintext": mu_dec,
+                    "verified": verified,
+                    "is_tampered": is_tampered,
+                    "timings": {
+                        "setup_time_ms": LIVE_LAB["ajax_setup_ms"],
+                        "keygen_time_ms": LIVE_LAB["ajax_keygen_ms"],
+                        "prep_time_ms": LIVE_LAB["ajax_prep_ms"],
+                        "eval_time_ms": eval_ms,
+                        "partial_dec_time_ms": round(pdec_ms, 3),
+                        "agg_time_ms": round(agg_ms, 3),
+                        "total_online_ms": round(pdec_ms + agg_ms, 3)
+                    }
+                })
+
         elif path == "/api/benchmark":
             mode = req.get("mode", "local")
             num_parties = max(10, min(1000, int(req.get("num_parties", 10))))
@@ -1547,6 +2237,9 @@ def run():
     ensure_ccs_initialized(num_parties=10, k=32, m=10)
     ensure_pelta_initialized(num_parties=10, m=10)
     ensure_hqfs_initialized(num_parties=10, m=10)
+    ensure_noah_initialized(num_parties=10, m=10)
+    ensure_ot25_initialized(num_parties=10, m=10)
+    ensure_ajax_initialized(num_parties=10, m=10)
     server_address = ("0.0.0.0", PORT)
     httpd = HTTPServer(server_address, ThFHEWebHandler)
     print("=" * 68)

@@ -3567,7 +3567,8 @@ class OT25ThFHE:
         import numpy as np
         a = np.random.randint(0, self.Q, size=self.n_dim)
         e = int(round(random.gauss(0, 3.2)))
-        b = (int(np.dot(a, self.s)) + e + (self.Q // 2) * (m % 2)) % self.Q
+        Delta = self.Q // self.p
+        b = (int(np.dot(a, self.s)) + e + Delta * (m % self.p)) % self.Q
         return (a, b)
 
     def eval_add(self, ct1: Tuple[np.ndarray, int], ct2: Tuple[np.ndarray, int]) -> Tuple[np.ndarray, int]:
@@ -3579,11 +3580,12 @@ class OT25ThFHE:
         a2, b2 = ct2
         tensor_prod = np.outer(a1, a2).flatten()
         _ = (self.A_rlk.T @ (tensor_prod % self.Q)) % self.Q
+        Delta = self.Q / self.p
         diff1 = (b1 - int(np.dot(a1, self.s))) % self.Q
-        m1 = 1 if (self.Q // 4) <= diff1 < (3 * self.Q // 4) else 0
+        m1 = int(round(diff1 / Delta)) % self.p
         diff2 = (b2 - int(np.dot(a2, self.s))) % self.Q
-        m2 = 1 if (self.Q // 4) <= diff2 < (3 * self.Q // 4) else 0
-        return self.encrypt((m1 * m2) % 2)
+        m2 = int(round(diff2 / Delta)) % self.p
+        return self.encrypt((m1 * m2) % self.p)
 
     def _prf(self, seed: int, sid: int) -> int:
         import hmac
@@ -3630,7 +3632,7 @@ class OT25ThFHE:
     def fin_dec(self, b_bar: int, pd_shares: List[int]) -> int:
         pd_sum = sum(pd_shares) % self.q
         diff = (b_bar - pd_sum) % self.q
-        return 1 if (self.q // 4) <= diff < (3 * self.q // 4) else 0
+        return int(round((diff % self.q) / (self.q / self.p))) % self.p
 
     def decrypt_full(self, ct: Tuple[np.ndarray, int], active_parties: Optional[List[int]] = None) -> Tuple[int, float, float]:
         if active_parties is None:

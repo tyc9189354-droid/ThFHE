@@ -19,6 +19,8 @@ import sys
 import json
 import time
 import random
+import signal
+import subprocess
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Dict, Any, List, Tuple, Union
 
@@ -2233,6 +2235,30 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             self._send_json(404, {"error": f"Unknown API endpoint: {path}"})
 
 
+class ReusableHTTPServer(HTTPServer):
+    allow_reuse_address = True
+
+
+def free_port_if_occupied(port: int):
+    try:
+        out = subprocess.check_output(["lsof", "-ti", f":{port}"], stderr=subprocess.DEVNULL).decode().strip()
+        if out:
+            my_pid = os.getpid()
+            for line in out.splitlines():
+                if not line.strip():
+                    continue
+                pid = int(line.strip())
+                if pid != my_pid:
+                    print(f"[*] 檢測到埠號 {port} 正在被舊程序 (PID {pid}) 佔用，正在嘗試自動釋放埠號...")
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except OSError:
+                        pass
+            time.sleep(0.6)
+    except Exception:
+        pass
+
+
 def run():
     ensure_ccs_initialized(num_parties=10, k=32, m=10)
     ensure_pelta_initialized(num_parties=10, m=10)
@@ -2240,12 +2266,39 @@ def run():
     ensure_noah_initialized(num_parties=10, m=10)
     ensure_ot25_initialized(num_parties=10, m=10)
     ensure_ajax_initialized(num_parties=10, m=10)
-    server_address = ("0.0.0.0", PORT)
-    httpd = HTTPServer(server_address, ThFHEWebHandler)
+
+    target_port = PORT
+    if len(sys.argv) > 1 and sys.argv[1].isdigit():
+        target_port = int(sys.argv[1])
+    elif "PORT" in os.environ and os.environ["PORT"].isdigit():
+        target_port = int(os.environ["PORT"])
+
+    free_port_if_occupied(target_port)
+
+    httpd = None
+    actual_port = target_port
+    candidate_ports = [target_port] + [target_port + i for i in range(1, 20)]
+
+    for p in candidate_ports:
+        try:
+            httpd = ReusableHTTPServer(("0.0.0.0", p), ThFHEWebHandler)
+            actual_port = p
+            break
+        except OSError as e:
+            if e.errno in (48, 98):  # 48 on macOS, 98 on Linux
+                continue
+            raise
+
+    if httpd is None:
+        raise RuntimeError(f"無法在候選埠號 {candidate_ports} 綁定 Web Server，請檢查系統網路設定。")
+
     print("=" * 68)
     print(f"  ThFHE Lab Web Dashboard & Live Benchmark Server running at:")
-    print(f"  👉 http://localhost:{PORT}")
+    print(f"  👉 http://localhost:{actual_port}")
+    if actual_port != target_port:
+        print(f"  (注意: 原預設埠號 {target_port} 已被佔用，已自動切換至可用埠號 {actual_port})")
     print("=" * 68)
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

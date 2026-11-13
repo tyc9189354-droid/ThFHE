@@ -1083,6 +1083,38 @@
     }
 
 
+    
+    /* Lab Hero Header */
+    .lab-hero-header {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.5));
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .lab-hero-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    .lab-hero-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 0.25rem;
+    }
+    .lab-hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-top: 0.25rem;
+    }
+
     /* View Paper Button */
     .btn-view-paper {
       display: inline-flex;
@@ -1288,7 +1320,7 @@
       </div>
 
       <div class="header-right-tools">
-        <div class="view-indicator" id="header-view-pill">⚡ CCS 2025 實驗室</div>
+        <div class="view-indicator" id="header-view-pill">CCS 2025 實驗室</div>
       </div>
     </div>
 
@@ -1425,6 +1457,15 @@
     <!-- TAB 1: CCS 2025 (Dual Inputs + SIMD + T=1024 + Stage Buttons + Log)   -->
     <!-- ===================================================================== -->
     <section id="tab-ccs25" class="tab-content active">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header">
+        <h2 class="lab-hero-title">CCS 2025 實驗室</h2>
+        <div class="lab-hero-sub">Zyskind et al. (ACM CCS 2025) — Practical Threshold Fully Homomorphic Encryption via Rounding</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('ccs25')">📄 查看對應論文</button>
+        </div>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-item">
           <div class="stat-label">Setup 初始化耗時 (實測)</div>
@@ -1452,11 +1493,8 @@
         <!-- Left Card: Dual Ciphertext Inputs + SIMD Bar + Stage Buttons + Result-Only Output Box -->
         <div class="card">
           <div class="card-title">
-            <span>📥 CCS 2025 雙密文輸入與各階段控制</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="btn-view-paper" onclick="openPaperViewer('ccs25')">📄 查看對應論文</button>
-              <span class="badge badge-blue" id="ccs-t-badge">LWE / BFV (明文空間 T = 1024)</span>
-            </div>
+            <span>CCS 2025 雙密文輸入與各階段控制</span>
+            <span class="badge badge-blue" id="ccs-t-badge">LWE / BFV (明文空間 T = 1024)</span>
           </div>
 
           <!-- CCS 2025 SIMD Mode Toggle Bar -->
@@ -1558,6 +1596,15 @@
     <!-- TAB 2: Noah's Ark (Dahl et al. 2023: Noise Flooding / Smudging)        -->
     <!-- ===================================================================== -->
     <section id="tab-noah" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header">
+        <h2 class="lab-hero-title">Noah's Ark 實驗室</h2>
+        <div class="lab-hero-sub">Dahl et al. 2023 — Efficient Threshold-FHE Using Noise Flooding</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('noah')">📄 查看對應論文</button>
+        </div>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-item">
           <div class="stat-label">Setup 系統初始化耗時</div>
@@ -1584,11 +1631,8 @@
       <div class="dashboard-grid">
         <div class="card">
           <div class="card-title">
-            <span>📥 Noah's Ark 密文輸入與各階段控制 (Noise Flooding)</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="btn-view-paper" onclick="openPaperViewer('noah')">📄 查看對應論文</button>
-              <span class="badge badge-red" id="noah-node-count">Noah's Ark (T = 1024)</span>
-            </div>
+            <span>Noah's Ark 密文輸入與各階段控制 (Noise Flooding)</span>
+            <span class="badge badge-red" id="noah-node-count">Noah's Ark (T = 1024)</span>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -1681,6 +1725,15 @@
     <!-- TAB 3: PELTA (Dual Inputs + SIMD + T=1024 + Stage Buttons + Log)      -->
     <!-- ===================================================================== -->
     <section id="tab-pelta" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header">
+        <h2 class="lab-hero-title">PELTA 實驗室</h2>
+        <div class="lab-hero-sub">Chatel et al. (EPFL, IEEE S&P / CCS 2023) — Shielding Practical Homomorphic Encryption Against Malicious Adversaries</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('pelta')">📄 查看對應論文</button>
+        </div>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-item">
           <div class="stat-label">Setup 初始化耗時</div>
@@ -1708,11 +1761,8 @@
         <!-- Left Card: PELTA Dual Inputs + SIMD Bar + Random Malicious Nodes + Stage Buttons + Output Box -->
         <div class="card">
           <div class="card-title">
-            <span>📥 PELTA 雙密文輸入、隨機惡意節點與各階段控制</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="btn-view-paper" onclick="openPaperViewer('pelta')">📄 查看對應論文</button>
-              <span class="badge badge-purple" id="pelta-node-count">RLWE (T = 1024)</span>
-            </div>
+            <span>PELTA 雙密文輸入、隨機惡意節點與各階段控制</span>
+            <span class="badge badge-purple" id="pelta-node-count">RLWE (T = 1024)</span>
           </div>
 
           <!-- Random Malicious Party Topology Chips -->
@@ -1821,6 +1871,12 @@
     <!-- TAB 3: HQ-FS (Our Work: RNS-GLWE + Homomorphic Quotient Proofs + BFS) -->
     <!-- ===================================================================== -->
     <section id="tab-hqfs" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header">
+        <h2 class="lab-hero-title">HQ-FS 實驗室</h2>
+        <div class="lab-hero-sub">Our Work — Homomorphic Quotient Proofs (RNS-GLWE + NIZK CPA^D 防護體系)</div>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-item">
           <div class="stat-label">Setup 初始化耗時 (RNS + CRS)</div>
@@ -1848,7 +1904,7 @@
         <!-- Left Card: HQ-FS Dual Inputs + SIMD Bar + Random Malicious Nodes + Stage Buttons + Output Box -->
         <div class="card">
           <div class="card-title">
-            <span>📥 HQ-FS (Our Work) 雙密文輸入、隨機惡意節點與各階段控制</span>
+            <span>HQ-FS (Our Work) 雙密文輸入、隨機惡意節點與各階段控制</span>
             <span class="badge badge-yellow" id="hqfs-node-count">RNS-GLWE + HQ-FS (T = 1024)</span>
           </div>
 
@@ -1958,6 +2014,15 @@
     <!-- TAB 5: OT25 (Okada & Takagi, Asiacrypt 2025: Noise Padding + PRF Mask) -->
     <!-- ===================================================================== -->
     <section id="tab-ot25" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header">
+        <h2 class="lab-hero-title">OT25 實驗室</h2>
+        <div class="lab-hero-sub">Okada &amp; Takagi (Asiacrypt 2025 / ePrint 2025/409) — Noise Padding and PRF-based Masking for Secure Threshold FHE</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('ot25')">📄 查看對應論文</button>
+        </div>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-item">
           <div class="stat-label">Setup 系統初始化耗時</div>
@@ -1984,11 +2049,8 @@
       <div class="dashboard-grid">
         <div class="card">
           <div class="card-title">
-            <span>📥 OT25 密文輸入與各階段控制 (Noise Padding &amp; PRF Masking)</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="btn-view-paper" onclick="openPaperViewer('ot25')">📄 查看對應論文</button>
-              <span class="badge" id="ot25-node-count" style="background: rgba(6, 182, 212, 0.2); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.4);">OT25 (Asiacrypt 2025)</span>
-            </div>
+            <span>OT25 密文輸入與各階段控制 (Noise Padding &amp; PRF Masking)</span>
+            <span class="badge" id="ot25-node-count" style="background: rgba(6, 182, 212, 0.2); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.4);">OT25 (Asiacrypt 2025)</span>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -2081,6 +2143,15 @@
     <!-- TAB 6: Ajax (Hu et al., USENIX Security 2025: Mask-Then-Open)          -->
     <!-- ===================================================================== -->
     <section id="tab-ajax" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header">
+        <h2 class="lab-hero-title">Ajax 實驗室</h2>
+        <div class="lab-hero-sub">Hu et al. (USENIX Security 2025) — Practical Maliciously Secure Threshold Fully Homomorphic Encryption with Mask-Then-Open</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('ajax')">📄 查看對應論文</button>
+        </div>
+      </div>
+
       <div class="stat-cards">
         <div class="stat-item">
           <div class="stat-label">Setup 系統初始化耗時</div>
@@ -2107,11 +2178,8 @@
       <div class="dashboard-grid">
         <div class="card">
           <div class="card-title">
-            <span>📥 Ajax 密文輸入與各階段控制 (Mask-Then-Open without Noise Flooding)</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button type="button" class="btn-view-paper" onclick="openPaperViewer('ajax')">📄 查看對應論文</button>
-              <span class="badge" id="ajax-node-count" style="background: rgba(236, 72, 153, 0.2); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.4);">Ajax (USENIX 2025)</span>
-            </div>
+            <span>Ajax 密文輸入與各階段控制 (Mask-Then-Open without Noise Flooding)</span>
+            <span class="badge" id="ajax-node-count" style="background: rgba(236, 72, 153, 0.2); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.4);">Ajax (USENIX 2025)</span>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -2207,7 +2275,7 @@
       <div class="card">
         <div class="card-title">
           <div>
-            <span>🏆 論文評測競技場 (Paper Benchmark Arena)</span>
+            <span>論文評測競技場 (Paper Benchmark Arena)</span>
             <span id="arena-status-badge" class="badge badge-yellow" style="margin-left: 8px;">尚未執行實測</span>
           </div>
           <div style="display: flex; gap: 0.6rem; align-items: center;">
@@ -3094,13 +3162,13 @@
       const pill = document.getElementById('header-view-pill');
       if (pill) {
         const titles = {
-          ccs25: '⚡ CCS 2025 實驗室',
-          noah: '🌊 Noah\'s Ark 實驗室',
-          pelta: '🛡️ PELTA 實驗室',
-          hqfs: '🚀 HQ-FS (Our Work) 實驗室',
-          ot25: '🔐 OT25 實驗室',
-          ajax: '⚡ Ajax 實驗室',
-          arena: '🏆 論文評測競技場'
+          ccs25: 'CCS 2025 實驗室',
+          noah: 'Noah\'s Ark 實驗室',
+          pelta: 'PELTA 實驗室',
+          hqfs: 'HQ-FS (Our Work) 實驗室',
+          ot25: 'OT25 實驗室',
+          ajax: 'Ajax 實驗室',
+          arena: '論文評測競技場'
         };
         pill.innerText = titles[tabId] || '實驗室';
         pill.className = 'view-indicator ' + (tabId === 'arena' ? 'arena-view' : '');
@@ -4971,11 +5039,11 @@
       },
       noah: {
         key: 'noah',
-        title: "Noah's Ark: Efficient Threshold-FHE using Noise Flooding / Smudging",
-        authors: 'Morten Dahl et al. (2023)',
-        venue: 'IACR Cryptology ePrint / Research Report 2023',
+        title: "Noah's Ark: Efficient Threshold-FHE Using Noise Flooding",
+        authors: 'Morten Dahl, Daniel Demmler, Sarah El Kazdadi, Arthur Meyre, Jean-Baptiste Orfila, Dragos Rotaru, Nigel P. Smart, Samuel Tap, Michael Walter (Zama & COSIC KU Leuven)',
+        venue: 'IACR Cryptology ePrint 2023',
         pdfUrl: '/papers/noah2023.pdf',
-        hasLocalPdf: false, // Noah's Ark PDF will be provided by user
+        hasLocalPdf: true,
         externalUrl: 'https://eprint.iacr.org/'
       },
       pelta: {

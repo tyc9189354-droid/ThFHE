@@ -1,292 +1,279 @@
 #!/usr/bin/env python3
 """
-================================================================================
-HQ-FS: Server Module (Cloud Service Provider [CSP] & Data Receiver [DR])
-Paper: "Actively Secure and CPA^D-Resistant Threshold FHE via Homomorphic
-        Quotient Proofs"
-================================================================================
-Responsibilities (Fig. 1 & Section III):
-  - CSP:
-      * Algorithm 1 (Setup): Initializes RNS basis Q={q_1..q_r}, auxiliary basis
-        P={p_1..p_k}, baseline ZKP modulus K_Q=q_1, scaling factor Delta,
-        global matrix A, and HQ-FS ZKP reference matrix A_zkp.
-      * Algorithm 2 & 3 Aggregation: Aggregates public keys pk_global and
-        relinearization keys RLK_global from DCN nodes.
-      * Algorithm 7 (Addition): Homomorphic addition + Zero-Ciphertext Superposition
-        to erase algebraic traces and ensure IND-FuncCPA / CPA^D security.
-      * Algorithm 8 (Multiplication): Tensor product + RNS Digit Decomposition
-        relinearization + Zero-Ciphertext Superposition.
-  - DR:
-      * Algorithm 6 (Decryption): Uses a Breadth-First Search (BFS) queue to
-        batch-verify node partial decryptions and HQ-FS ZKP proofs modulo the
-        small baseline prime K_Q = q_1 (checking b_dec, b_key, b_norm), drops
-        malicious nodes, aggregates valid shares, reconstructs via CRT, and
-        extracts plaintext slots via NTT.
-================================================================================
+Decentralized Multi-Port HQ-FS Server / Coordinator Node
+Extracted and refactored from recent decentralized research implementation.
+Utilizes C-accelerated RNS-GLWE, Tree-Bisection ZKP Verification, and Committee Lagrange Reconstruction.
 """
 
 import os
 import sys
-import json
 import time
+import math
+import socket
+import select
+import struct
+import pickle
 import argparse
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import Dict, Any, List
+import logging
+import numpy as np
 
-import importlib.util
+# Import unified crypto & protocol components from tool
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from tool import (
+    RNSRing, PlaintextNTTHelper, get_ntt_primes, modinv_jit,
+    small_poly, get_flood_noise_poly, uniform_poly,
+    embed_vec, decode_vec, encrypt, add, mul,
+    HQFSVerifier, compute_committee_lagrange,
+    send_msg, recv_msg, broadcast_msg
+)
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.dirname(CURRENT_DIR)
-for p in [CURRENT_DIR, PARENT_DIR]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
-
-try:
-    from tool import HQFSRNSGLWE
-except ModuleNotFoundError:
-    _spec = importlib.util.spec_from_file_location("hqfs_tool", os.path.join(CURRENT_DIR, "tool.py"))
-    _mod = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_mod)
-    HQFSRNSGLWE = _mod.HQFSRNSGLWE
-
-SERVER_STATE: Dict[str, Any] = {
-    "hqfs": None,
-    "d": 16,
-    "n_glwe": 2,
-    "m_glwe": 2,
-    "T_plain": 1024,
-    "eta": 1,
-    "B_flood": 64,
-    "num_parties": 10,
-    "setup_ms": 0.0,
-    "keygen_ms": 0.0,
-    "rlkgen_ms": 0.0,
-    "submitted_shares": {},
-    "submitted_proofs": {},
-    "last_ciphertext": None
-}
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def init_server(
-    d: int = 16,
-    n_glwe: int = 2,
-    m_glwe: int = 2,
-    T_plain: int = 1024,
-    eta: int = 1,
-    B_flood: int = 64,
-    num_parties: int = 10
-):
-    print(
-        f"[*] [HQ-FS CSP/DR Server] Running Algorithm 1 (Setup): "
-        f"d={d}, (m,n)=({m_glwe},{n_glwe}), T={T_plain}, B_flood={B_flood}, N={num_parties}..."
+def run_multi_port_server(host="0.0.0.0", base_port=10001, total_ports=10, threshold_t=6, d=16, T=65537):
+    """
+    開啟 total_ports 個獨立的 Socket Ports (base_port ~ base_port + total_ports - 1)，
+    每個 Client 連線至單一專屬 Port。
+    Server 僅充當密文運算中心與聚合驗證節點，不包含任何 Client 端秘密金鑰。
+    """
+    logging.info(f"=== Starting TFHE Coordinator Server on {total_ports} ports (Port {base_port} ~ {base_port + total_ports - 1}) ===")
+    logging.info(f"Target Threshold: t={threshold_t} / N={total_ports}, d={d}, T={T}")
+
+    # 1. 綁定 Server Sockets
+    server_sockets = {}
+    for i in range(total_ports):
+        node_id = i + 1
+        port = base_port + i
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((host, port))
+        s.listen(1)
+        server_sockets[s] = (node_id, port)
+
+    logging.info(f"Successfully bound {total_ports} listening ports. Waiting for clients to connect...")
+
+    # 2. 等待各 Client 連入專屬 Port
+    client_conns = {}
+    sockets_to_watch = list(server_sockets.keys())
+
+    while len(client_conns) < total_ports:
+        readable, _, _ = select.select(sockets_to_watch, [], [], 1.0)
+        for s in readable:
+            conn, addr = s.accept()
+            node_id, port = server_sockets[s]
+            client_conns[node_id] = conn
+            sockets_to_watch.remove(s)
+            logging.info(f"Node {node_id:3d} connected on Port {port} from {addr} ({len(client_conns)}/{total_ports})")
+
+    # 3. 初始化 RNS 環與參數
+    n_glwe = 2
+    m_glwe = 3
+    start_bit = 30 if d >= 128 else 20
+    all_primes = get_ntt_primes(19, start_bit, d)
+    q_primes = all_primes[:6]
+    p_primes = all_primes[6:]
+    R = RNSRing(d, q_primes, p_primes, T)
+    NTT = PlaintextNTTHelper(d, T)
+    Delta = R.Q_big // T
+    p_zkp = int(R.P_q[0]) * int(R.P_q[1])
+
+    # 廣播全域公開參數 (CRS)
+    A_global = [[uniform_poly(R) for _ in range(n_glwe)] for _ in range(m_glwe)]
+    A_crs_global = [[uniform_poly(R) for _ in range(n_glwe)] for _ in range(m_glwe)]
+
+    logging.info(f"Broadcasting global CRS parameters to all {total_ports} clients...")
+    for node_id, conn in client_conns.items():
+        send_msg(conn, {
+            "type": "INIT_PARAMS",
+            "node_id": node_id,
+            "threshold_t": threshold_t,
+            "total_n": total_ports,
+            "A_global": A_global,
+            "A_crs_global": A_crs_global,
+            "d": d,
+            "T": T
+        })
+
+    # 4. DKG 階段：接收 Client 的公鑰與承諾
+    logging.info("Receiving DKG public keys and commitments from clients...")
+    pk_global = [R.zero() for _ in range(m_glwe)]
+    C_coeffs_global = [[R.zero() for _ in range(m_glwe)] for _ in range(threshold_t)]
+
+    for node_id, conn in client_conns.items():
+        msg = recv_msg(conn)
+        if msg is None:
+            raise ConnectionError(f"Node {node_id} disconnected unexpectedly!")
+        assert msg["type"] == "DKG_DEALER_SUBMIT"
+
+        pub_key = msg["pub_key"]
+        for k in range(m_glwe):
+            pk_global[k] = R.add(pk_global[k], pub_key[k])
+
+    # 廣播聚合承諾
+    logging.info("Broadcasting DKG_ROUTED_COMMITMENTS to all clients...")
+    for target_j, conn in client_conns.items():
+        send_msg(conn, {
+            "type": "DKG_ROUTED_COMMITMENTS",
+            "C_coeffs_global": C_coeffs_global
+        })
+
+    # 接收全部 Client 的 DKG_FINAL_COMMITMENT
+    logging.info("Receiving final ZKP commitments from all clients...")
+    public_commitments = {}
+    for node_id, conn in client_conns.items():
+        msg = recv_msg(conn)
+        if msg is None:
+            raise ConnectionError(f"Node {node_id} disconnected before sending DKG_FINAL_COMMITMENT!")
+        assert msg["type"] == "DKG_FINAL_COMMITMENT"
+        public_commitments[node_id] = msg["commitment"]
+
+    # 5. 協同分散式 RLK 生成
+    logging.info(f"Initiating Collective Distributed RLK Generation with {total_ports} clients...")
+    A_rlk_global = {}
+    for a in range(n_glwe):
+        for b_idx in range(n_glwe):
+            A_rlk_global[(a, b_idx)] = [[uniform_poly(R) for _ in range(n_glwe)] for _ in range(R.s_q)]
+
+    payload_rlk = pickle.dumps({"type": "RLK_GEN_REQ", "A_rlk": A_rlk_global})
+    packet_rlk = struct.pack(">I", len(payload_rlk)) + payload_rlk
+    for conn in client_conns.values():
+        conn.sendall(packet_rlk)
+    del payload_rlk, packet_rlk
+
+    # 收集 RLK 份額同態拼裝
+    logging.info(f"Gathering collective RLK shares from all {total_ports} clients...")
+    rlk = {}
+    for a in range(n_glwe):
+        for b_idx in range(n_glwe):
+            rlk[(a, b_idx)] = []
+            for i in range(R.s_q):
+                av = A_rlk_global[(a, b_idx)][i]
+                bv = R.zero()
+                rlk[(a, b_idx)].append((av, bv))
+
+    for node_id, conn in client_conns.items():
+        msg = recv_msg(conn)
+        if msg is None:
+            raise ConnectionError(f"Node {node_id} disconnected during RLK share submission!")
+        assert msg["type"] == "RLK_SHARE_SUBMIT"
+        node_shares = msg["rlk_shares"]
+
+        for a in range(n_glwe):
+            for b_idx in range(n_glwe):
+                for i in range(R.s_q):
+                    av, bv = rlk[(a, b_idx)][i]
+                    node_bv = node_shares[(a, b_idx)][i]
+                    rlk[(a, b_idx)][i] = (av, R.add(bv, node_bv))
+
+    del A_rlk_global
+    logging.info("🎉 Collective Distributed Relinearization Key (RLK) successfully synthesized!")
+
+    # 6. 雲端複合同態計算：(m1 * m2 + m3) mod T
+    logging.info("Server executing homomorphic evaluation: (Enc(m1) * Enc(m2)) + Enc(m3)...")
+    t0_eval = time.time()
+    rng = np.random.default_rng(42)
+    m1 = rng.integers(0, 16, size=d)
+    m2 = rng.integers(0, 16, size=d)
+    m3 = rng.integers(0, 16, size=d)
+
+    ct1 = encrypt(m1, A_global, pk_global, R, NTT, Delta, m_glwe, n_glwe)
+    ct2 = encrypt(m2, A_global, pk_global, R, NTT, Delta, m_glwe, n_glwe)
+    ct3 = encrypt(m3, A_global, pk_global, R, NTT, Delta, m_glwe, n_glwe)
+
+    ct_prod = mul(ct1, ct2, rlk, A_global, pk_global, R, NTT, Delta, m_glwe, n_glwe)
+    ct_mul = add(ct_prod, ct3, A_global, pk_global, R, NTT, Delta, m_glwe, n_glwe)
+    logging.info(f"Homomorphic evaluation finished in {(time.time() - t0_eval):.2f} s. Broadcasting decryption request...")
+
+    # 7. 門限解密請求
+    for node_id, conn in client_conns.items():
+        send_msg(conn, {
+            "type": "DECRYPT_REQ",
+            "u": ct_mul[0]
+        })
+
+    submitted_data = {}
+    for node_id, conn in client_conns.items():
+        resp = recv_msg(conn)
+        assert resp["type"] == "DECRYPT_RESP"
+        submitted_data[node_id] = (resp["p_share"], resp["proof"])
+
+    # 8. 樹狀批次 ZKP 驗證 (BFT 容錯)
+    logging.info(f"Executing BFT Tree Verification across all {total_ports} client submissions...")
+    t0_verify = time.time()
+    valid_ids = HQFSVerifier.verify_n_tree(
+        ct_mul[0], submitted_data, list(submitted_data.keys()),
+        A_crs_global, public_commitments, R, p_zkp, m_glwe, n_glwe, k_idxs=[0, 1], n_branch=4
     )
-    t0 = time.perf_counter()
-    hqfs = HQFSRNSGLWE(
-        d=d,
-        n_glwe=n_glwe,
-        m_glwe=m_glwe,
-        T_plain=T_plain,
-        eta=eta,
-        B_flood=B_flood,
-        num_parties=num_parties
-    )
-    setup_ms = (time.perf_counter() - t0) * 1000.0
+    verify_ms = (time.time() - t0_verify) * 1000
 
-    t1 = time.perf_counter()
-    hqfs.keygen_and_commitment()
-    keygen_ms = (time.perf_counter() - t1) * 1000.0
+    rejected_nodes = sorted(list(set(submitted_data.keys()) - set(valid_ids)))
+    logging.info(f"Verification completed in {verify_ms:.2f} ms. Honest Nodes: {len(valid_ids)}/{total_ports}")
+    if rejected_nodes:
+        logging.warning(f"🛡️ BFT Defense Triggered! Isolated & kicked out Malicious Nodes: {rejected_nodes}")
 
-    t2 = time.perf_counter()
-    hqfs.rlk_gen()
-    rlkgen_ms = (time.perf_counter() - t2) * 1000.0
+    # 9. Lagrange 聚合與解碼還原
+    if len(valid_ids) >= threshold_t:
+        active_set = sorted(valid_ids)[:threshold_t]
+        logging.info(f"Selected {threshold_t} honest nodes for Lagrange interpolation: {active_set}")
+        lams_int_map, Delta_int = compute_committee_lagrange(active_set)
+        logging.info(f"Lagrange Delta_int = {Delta_int}")
 
-    SERVER_STATE["hqfs"] = hqfs
-    SERVER_STATE["d"] = d
-    SERVER_STATE["n_glwe"] = n_glwe
-    SERVER_STATE["m_glwe"] = m_glwe
-    SERVER_STATE["T_plain"] = T_plain
-    SERVER_STATE["eta"] = eta
-    SERVER_STATE["B_flood"] = B_flood
-    SERVER_STATE["num_parties"] = num_parties
-    SERVER_STATE["setup_ms"] = round(setup_ms, 3)
-    SERVER_STATE["keygen_ms"] = round(keygen_ms, 3)
-    SERVER_STATE["rlkgen_ms"] = round(rlkgen_ms, 3)
-    SERVER_STATE["submitted_shares"] = {}
-    SERVER_STATE["submitted_proofs"] = {}
-    SERVER_STATE["last_ciphertext"] = None
+        agg_sum = [np.zeros(d, dtype=np.int64) for _ in range(R.s_q)]
+        for node_id in active_set:
+            part_s = submitted_data[node_id][0]
+            lam_int = lams_int_map[node_id]
+            for mi in range(R.s_q):
+                p_qi = int(R.P_q[mi])
+                lam_mod = lam_int % p_qi
+                agg_sum[mi] = (agg_sum[mi] + (part_s[mi] * lam_mod) % p_qi) % p_qi
 
-    print(
-        f"[✓] [HQ-FS Server] Ready | RNS Q={hqfs.rns.q_primes} (K_Q={hqfs.K_Q}) | "
-        f"Setup={setup_ms:.2f}ms, KeyGen={keygen_ms:.2f}ms, RLKGen={rlkgen_ms:.2f}ms"
-    )
+        v_scaled = [np.zeros(d, dtype=np.int64) for _ in range(R.s_q)]
+        for mi in range(R.s_q):
+            p_qi = int(R.P_q[mi])
+            delta_mod = Delta_int % p_qi
+            v_scaled[mi] = (ct_mul[1][mi] * delta_mod) % p_qi
 
+        v_sub_agg = R.sub(v_scaled, agg_sum)
+        logging.info("Server aggregation finished. Sending blinded decryption result to Client (Node 1)...")
+        send_msg(client_conns[1], {
+            "type": "FINAL_DEC_RESULT",
+            "v_sub_agg": v_sub_agg,
+            "Delta_int": Delta_int
+        })
+    else:
+        logging.error(f"Insufficient honest nodes! Got {len(valid_ids)}, required {threshold_t}.")
 
-class HQFSServerHandler(BaseHTTPRequestHandler):
-    def _send_json(self, status: int, payload: Dict[str, Any]):
-        body = json.dumps(payload).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def do_GET(self):
-        hqfs: HQFSRNSGLWE = SERVER_STATE["hqfs"]
-        if self.path == "/health":
-            self._send_json(200, {
-                "status": "ok",
-                "service": "HQ-FS-RNS-GLWE-Server",
-                "K_Q": hqfs.K_Q,
-                "T": hqfs.T,
-                "num_parties": hqfs.num_parties
-            })
-        elif self.path == "/params":
-            self._send_json(200, {
-                "d": hqfs.d,
-                "n_glwe": hqfs.n_glwe,
-                "m_glwe": hqfs.m_glwe,
-                "T": hqfs.T,
-                "p_ntt": hqfs.p_ntt,
-                "eta": hqfs.eta,
-                "B_flood": hqfs.B_flood,
-                "num_parties": hqfs.num_parties,
-                "q_primes": hqfs.rns.q_primes,
-                "p_primes": hqfs.rns.p_primes,
-                "K_Q": hqfs.K_Q,
-                "setup_ms": SERVER_STATE["setup_ms"],
-                "keygen_ms": SERVER_STATE["keygen_ms"],
-                "rlkgen_ms": SERVER_STATE["rlkgen_ms"]
-            })
-        else:
-            self._send_json(404, {"error": "Endpoint not found"})
-
-    def do_POST(self):
-        length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(length) if length > 0 else b"{}"
+    # 10. 關閉連線
+    logging.info("Closing client connections...")
+    for node_id, conn in client_conns.items():
         try:
-            req = json.loads(raw.decode("utf-8"))
-        except Exception as e:
-            self._send_json(400, {"error": f"Invalid JSON: {e}"})
-            return
-
-        hqfs: HQFSRNSGLWE = SERVER_STATE["hqfs"]
-        endpoint = self.path
-
-        if endpoint == "/encrypt":
-            # Algorithm 4: Encryption (supports scalar or SIMD slot vector via iNTT)
-            slots = req.get("slots")
-            t0 = time.perf_counter()
-            if isinstance(slots, list):
-                ct = hqfs.encrypt_simd([int(x) for x in slots])
-            else:
-                msg = int(req.get("message", 12))
-                ct = hqfs.encrypt(msg)
-            enc_ms = (time.perf_counter() - t0) * 1000.0
-            SERVER_STATE["last_ciphertext"] = ct
-            self._send_json(200, {
-                "status": "ok",
-                "ciphertext": {"u": ct[0], "v": ct[1]},
-                "enc_time_ms": round(enc_ms, 4)
-            })
-
-        elif endpoint == "/eval_add":
-            # Algorithm 7: Addition with Zero-Ciphertext Superposition
-            c1 = req.get("c1")
-            c2 = req.get("c2")
-            ct_alpha = (c1["u"], c1["v"])
-            ct_beta = (c2["u"], c2["v"])
-            t0 = time.perf_counter()
-            ct_add = hqfs.eval_add(ct_alpha, ct_beta)
-            add_ms = (time.perf_counter() - t0) * 1000.0
-            SERVER_STATE["last_ciphertext"] = ct_add
-            self._send_json(200, {
-                "status": "ok",
-                "operation": "Algorithm 7 (Addition + Zero-Ciphertext Superposition)",
-                "ciphertext": {"u": ct_add[0], "v": ct_add[1]},
-                "eval_time_ms": round(add_ms, 4)
-            })
-
-        elif endpoint == "/eval_mul":
-            # Algorithm 8: Multiplication with RNS Digit Decomposition + Zero-Ciphertext Superposition
-            c1 = req.get("c1")
-            c2 = req.get("c2")
-            ct_alpha = (c1["u"], c1["v"])
-            ct_beta = (c2["u"], c2["v"])
-            t0 = time.perf_counter()
-            ct_mul = hqfs.eval_mul(ct_alpha, ct_beta)
-            mul_ms = (time.perf_counter() - t0) * 1000.0
-            SERVER_STATE["last_ciphertext"] = ct_mul
-            self._send_json(200, {
-                "status": "ok",
-                "operation": "Algorithm 8 (Multiplication + RNS Gadget Relin + Zero-Ciphertext Superposition)",
-                "ciphertext": {"u": ct_mul[0], "v": ct_mul[1]},
-                "eval_time_ms": round(mul_ms, 4)
-            })
-
-        elif endpoint == "/decrypt_bfs":
-            # Algorithm 5 & 6: Partial Decryption across N nodes + BFS Batch-Filtering Queue Decryption
-            ct_obj = req.get("ciphertext")
-            if ct_obj:
-                ct = (ct_obj["u"], ct_obj["v"])
-            elif SERVER_STATE["last_ciphertext"] is not None:
-                ct = SERVER_STATE["last_ciphertext"]
-            else:
-                self._send_json(400, {"error": "No ciphertext provided"})
-                return
-
-            malicious_nodes: List[int] = [int(x) for x in req.get("malicious_nodes", [])]
-            attack_type: str = req.get("attack_type", "share_tampering")
-            slot_count: int = int(req.get("slot_count", 4))
-
-            u_rns, _ = ct
-            shares_map = {}
-            proofs_map = {}
-
-            t_pdec0 = time.perf_counter()
-            for node_idx in range(hqfs.num_parties):
-                atk = attack_type if node_idx in malicious_nodes else None
-                sh_i, pi_i = hqfs.partial_decrypt_node(node_idx, u_rns, malicious_attack=atk)
-                shares_map[node_idx] = sh_i
-                proofs_map[node_idx] = pi_i
-            pdec_ms = (time.perf_counter() - t_pdec0) * 1000.0
-
-            t_bfs0 = time.perf_counter()
-            m_vec, audit = hqfs.decrypt_with_bfs(ct, shares_map, proofs_map)
-            bfs_dec_ms = (time.perf_counter() - t_bfs0) * 1000.0
-
-            self._send_json(200, {
-                "status": "ok",
-                "decrypted_slots": m_vec[:slot_count],
-                "decrypted_scalar": m_vec[0],
-                "audit": audit,
-                "timings": {
-                    "partial_dec_and_prove_ms": round(pdec_ms, 3),
-                    "per_node_prove_ms": round(pdec_ms / max(1, hqfs.num_parties), 4),
-                    "bfs_verify_and_crt_dec_ms": round(bfs_dec_ms, 3)
-                }
-            })
-        else:
-            self._send_json(404, {"error": f"Unknown endpoint {endpoint}"})
-
-
-def run(host: str = "0.0.0.0", port: int = 8002, d: int = 16, T_plain: int = 1024, num_parties: int = 10):
-    init_server(d=d, T_plain=T_plain, num_parties=num_parties)
-    httpd = HTTPServer((host, port), HQFSServerHandler)
-    print(f"[*] [HQ-FS Server] Listening on http://{host}:{port}")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[*] Shutting down HQ-FS Server...")
-        httpd.server_close()
+            conn.shutdown(socket.SHUT_WR)
+            conn.settimeout(1.0)
+            while conn.recv(1024): pass
+        except Exception:
+            pass
+        finally:
+            conn.close()
+    for s in server_sockets.keys():
+        s.close()
+    logging.info("All server connections closed cleanly.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="HQ-FS CSP & DR Server (Algorithms 1..8)")
-    parser.add_argument("--host", default="0.0.0.0", help="Bind host")
-    parser.add_argument("--port", type=int, default=8002, help="Bind port (default: 8002)")
-    parser.add_argument("--d", type=int, default=16, help="Polynomial ring degree d (default: 16)")
-    parser.add_argument("--T", type=int, default=1024, help="Plaintext modulus T (default: 1024)")
-    parser.add_argument("--parties", type=int, default=10, help="Number of DCN nodes N (default: 10)")
+    parser = argparse.ArgumentParser(description="Multi-Port Decentralized HQ-FS Server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host address to bind")
+    parser.add_argument("--base_port", type=int, default=10001, help="Starting port number")
+    parser.add_argument("--total_ports", type=int, default=10, help="Total number of nodes/ports")
+    parser.add_argument("--threshold_t", type=int, default=6, help="Threshold t")
+    parser.add_argument("--d", type=int, default=16, help="Polynomial degree (default: 16 for fast testing, 8192 for full scale)")
+    parser.add_argument("--T", type=int, default=65537, help="Plaintext modulus (default: 65537)")
     args = parser.parse_args()
 
-    run(host=args.host, port=args.port, d=args.d, T_plain=args.T, num_parties=args.parties)
+    run_multi_port_server(
+        host=args.host,
+        base_port=args.base_port,
+        total_ports=args.total_ports,
+        threshold_t=args.threshold_t,
+        d=args.d,
+        T=args.T
+    )

@@ -2319,9 +2319,1141 @@ class HQFSRNSGLWE:
         m_vec, _ = self.decrypt_with_bfs(ct, shares, proofs)
         return m_vec[:slot_count] if slot_count else m_vec
 
+# ==============================================================================
+# SECTION D: Decentralized Multi-Port HQ-FS & RNS-GLWE Architecture
+#   - Dynamic C/JIT Acceleration Engine (power_mod, ntt_c, intt_c, negacyclic_mul_c)
+#   - RNS Arithmetic & Ring Operations (RNSRing, PlaintextNTTHelper, get_ntt_primes)
+#   - Homomorphic Evaluation & Noise Flooding (small_poly, uniform_poly, encrypt, add, mul)
+#   - Homomorphic Quotient Fiat-Shamir ZKP Prover (HQFSSystem)
+#   - Tree-Bisection ZKP Verifier & Malicious Node Isolation (HQFSVerifier)
+#   - Integer Lagrange Committee Reconstruction (compute_committee_lagrange)
+#   - Decentralized Node State Machine with JSON Persistence (DecentralizedClientNode)
+#   - Unified Decentralized HQ-FS Engine (DecentralizedHQFS)
+#   - Multi-Port Socket Protocol Helpers (send_msg, recv_msg, client_worker, run_client, run_multi_port_server)
+# ==============================================================================
+
+import os
+import sys
+import math
+import time
+import json
+import ctypes
+import socket
+import select
+import struct
+import pickle
+import threading
+import logging
+import subprocess
+import numpy as np
+import hashlib
+from collections import defaultdict
+from typing import Any, Dict, List, Tuple, Optional
+
+_c_engine_lib = None
+
+def get_c_acceleration_engine(custom_dylib_path: Optional[str] = None):
+    global _c_engine_lib
+    if _c_engine_lib is not None and custom_dylib_path is None:
+        return _c_engine_lib
+
+    dylib_path = custom_dylib_path or "/tmp/libc_kernel_auto.dylib"
+    if not os.path.exists(dylib_path):
+        c_source = """
+#include <stdint.h>
+#include <stdlib.h>
+
+static inline int64_t power_mod(int64_t a, int64_t b, int64_t m) {
+    int64_t res = 1;
+    a %= m;
+    while (b > 0) {
+        if (b & 1) {
+            __int128 p = (__int128)res * a;
+            res = (int64_t)(p % m);
+        }
+        __int128 sq = (__int128)a * a;
+        a = (int64_t)(sq % m);
+        b >>= 1;
+    }
+    return res;
+}
+
+void ntt_c(int64_t* a, int64_t root, int64_t modulus, const int64_t* bitrev, int n) {
+    for (int i = 0; i < n; i++) {
+        int j = (int)bitrev[i];
+        if (i < j) {
+            int64_t t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+    }
+    for (int length = 1; length < n; length <<= 1) {
+        int step = length << 1;
+        int64_t w_m = power_mod(root, n / step, modulus);
+        for (int i = 0; i < n; i += step) {
+            int64_t w = 1;
+            for (int j = i; j < i + length; j++) {
+                int64_t u = a[j];
+                __int128 vw = (__int128)a[j + length] * w;
+                int64_t v = (int64_t)(vw % modulus);
+                int64_t sum = u + v;
+                if (sum >= modulus) sum -= modulus;
+                int64_t diff = u - v;
+                if (diff < 0) diff += modulus;
+                a[j] = sum;
+                a[j + length] = diff;
+                __int128 ww = (__int128)w * w_m;
+                w = (int64_t)(ww % modulus);
+            }
+        }
+    }
+}
+
+void intt_c(int64_t* a, int64_t inv_root, int64_t modulus, int64_t inv_n, const int64_t* bitrev, int n) {
+    ntt_c(a, inv_root, modulus, bitrev, n);
+    for (int i = 0; i < n; i++) {
+        __int128 p = (__int128)a[i] * inv_n;
+        a[i] = (int64_t)(p % modulus);
+    }
+}
+
+void negacyclic_mul_c(const int64_t* a_in, const int64_t* b_in, int64_t* res,
+                      int n, int64_t p, int64_t root, int64_t inv_root,
+                      int64_t psi, int64_t inv_psi, int64_t inv_n, const int64_t* bitrev) {
+    int64_t* fa = (int64_t*)malloc(n * sizeof(int64_t));
+    int64_t* fb = (int64_t*)malloc(n * sizeof(int64_t));
+    int64_t pwr = 1;
+    for (int i = 0; i < n; i++) {
+        __int128 pa = (__int128)a_in[i] * pwr;
+        __int128 pb = (__int128)b_in[i] * pwr;
+        fa[i] = (int64_t)(pa % p);
+        fb[i] = (int64_t)(pb % p);
+        __int128 pp = (__int128)pwr * psi;
+        pwr = (int64_t)(pp % p);
+    }
+    ntt_c(fa, root, p, bitrev, n);
+    ntt_c(fb, root, p, bitrev, n);
+    for (int i = 0; i < n; i++) {
+        __int128 pr = (__int128)fa[i] * fb[i];
+        fa[i] = (int64_t)(pr % p);
+    }
+    intt_c(fa, inv_root, p, inv_n, bitrev, n);
+    pwr = 1;
+    for (int i = 0; i < n; i++) {
+        __int128 pr = (__int128)fa[i] * pwr;
+        res[i] = (int64_t)(pr % p);
+        __int128 pp = (__int128)pwr * inv_psi;
+        pwr = (int64_t)(pp % p);
+    }
+    free(fa);
+    free(fb);
+}
+"""
+        c_file = "/tmp/c_kernel.c"
+        try:
+            with open(c_file, "w") as f:
+                f.write(c_source)
+            compiler = "clang" if subprocess.run(["which", "clang"], capture_output=True).returncode == 0 else "gcc"
+            cmd = f"{compiler} -O3 -shared -fPIC {c_file} -o {dylib_path}"
+            subprocess.check_call(cmd, shell=True)
+        except Exception as e:
+            logging.warning(f"Failed to compile C kernel: {e}")
+            return None
+
+    try:
+        _c_engine_lib = ctypes.CDLL(dylib_path)
+        _c_engine_lib.ntt_c.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.c_int64, ctypes.c_int64, ctypes.POINTER(ctypes.c_int64), ctypes.c_int]
+        _c_engine_lib.intt_c.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.c_int64, ctypes.c_int64, ctypes.c_int64, ctypes.POINTER(ctypes.c_int64), ctypes.c_int]
+        _c_engine_lib.negacyclic_mul_c.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.POINTER(ctypes.c_int64), ctypes.POINTER(ctypes.c_int64),
+                                                  ctypes.c_int, ctypes.c_int64, ctypes.c_int64, ctypes.c_int64, ctypes.c_int64,
+                                                  ctypes.c_int64, ctypes.c_int64, ctypes.POINTER(ctypes.c_int64)]
+    except Exception as e:
+        logging.warning(f"Failed to load C kernel dylib: {e}")
+        _c_engine_lib = None
+    return _c_engine_lib
+
+def power_mod(a: int, b: int, m: int) -> int:
+    res = 1
+    a %= m
+    while b > 0:
+        if b & 1: res = (res * a) % m
+        a = (a * a) % m
+        b >>= 1
+    return res
+
+def modinv_jit(a: int, m: int) -> int:
+    m0, x0, x1 = m, 0, 1
+    if m == 1: return 0
+    while a > 1:
+        q = a // m
+        t = m
+        m = a % m
+        a = t
+        t = x0
+        x0 = x1 - q * x0
+        x1 = t
+    if x1 < 0: x1 += m0
+    return x1
+
+def is_prime(n: int) -> bool:
+    if n < 2: return False
+    if n in (2, 3): return True
+    if n % 2 == 0 or n % 3 == 0: return False
+    d = n - 1
+    s = 0
+    while d % 2 == 0:
+        d //= 2
+        s += 1
+    for a in [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]:
+        if n <= a: break
+        x = power_mod(a, d, n)
+        if x == 1 or x == n - 1: continue
+        for _ in range(s - 1):
+            x = power_mod(x, 2, n)
+            if x == n - 1: break
+        else: return False
+    return True
+
+def get_ntt_primes(count: int, start_bit: int, n_poly: int) -> List[int]:
+    primes = []
+    p = (1 << start_bit) + 1
+    m = 2 * n_poly
+    p = (p // m) * m + 1
+    while len(primes) < count:
+        if is_prime(p):
+            primes.append(p)
+        p += m
+    return primes
+
+def negacyclic_mul_core(a_in: np.ndarray, b_in: np.ndarray, n: int, p: int,
+                        root: int, inv_root: int, psi: int, inv_psi: int,
+                        inv_n: int, bitrev: np.ndarray) -> np.ndarray:
+    c_engine = get_c_acceleration_engine()
+    if c_engine is not None:
+        a_c = np.ascontiguousarray(a_in, dtype=np.int64)
+        b_c = np.ascontiguousarray(b_in, dtype=np.int64)
+        res = np.zeros(n, dtype=np.int64)
+        c_engine.negacyclic_mul_c(
+            a_c.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)),
+            b_c.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)),
+            res.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)),
+            n, p, root, inv_root, psi, inv_psi, inv_n,
+            bitrev.ctypes.data_as(ctypes.POINTER(ctypes.c_int64))
+        )
+        return res
+
+    a = np.array(a_in, dtype=np.int64)
+    b = np.array(b_in, dtype=np.int64)
+    fa = (a * np.array([power_mod(psi, i, p) for i in range(n)], dtype=object)) % p
+    fb = (b * np.array([power_mod(psi, i, p) for i in range(n)], dtype=object)) % p
+
+    def py_ntt(x, r):
+        res_arr = x[bitrev].copy()
+        length = 1
+        while length < n:
+            step = length << 1
+            w_m = power_mod(r, n // step, p)
+            for i in range(0, n, step):
+                w = 1
+                for j in range(i, i + length):
+                    u = res_arr[j]
+                    v = (res_arr[j + length] * w) % p
+                    res_arr[j] = (u + v) % p
+                    res_arr[j + length] = (u - v) % p
+                    w = (w * w_m) % p
+            length = step
+        return res_arr
+
+    fa_ntt = py_ntt(fa, root)
+    fb_ntt = py_ntt(fb, root)
+    fc_ntt = (fa_ntt * fb_ntt) % p
+    fc = py_ntt(fc_ntt, inv_root)
+    fc = (fc * inv_n) % p
+    res_py = (fc * np.array([power_mod(inv_psi, i, p) for i in range(n)], dtype=object)) % p
+    return res_py.astype(np.int64)
+
+class PlaintextNTTHelper:
+    def __init__(self, d: int, T: int):
+        self.d = d
+        self.T = T
+        self.ln = d.bit_length() - 1
+        self.bitrev = np.array([int(format(i, '0' + str(self.ln) + 'b')[::-1], 2) for i in range(d)], dtype=np.int64)
+
+        self.is_ntt_friendly = (is_prime(T) and (T - 1) % (2 * d) == 0)
+        if self.is_ntt_friendly:
+            g = self._find_primitive_root(T)
+            self.psi = power_mod(g, (T - 1) // (2 * d), T)
+            self.inv_psi = power_mod(self.psi, T - 2, T)
+            self.root = (self.psi * self.psi) % T
+            self.inv_root = power_mod(self.root, T - 2, T)
+            self.inv_d = power_mod(d, T - 2, T)
+        else:
+            self.psi = 1; self.inv_psi = 1; self.root = 1; self.inv_root = 1; self.inv_d = 1
+
+    def _find_primitive_root(self, p: int) -> Optional[int]:
+        for g in range(2, p):
+            if power_mod(g, (p - 1) // 2, p) != 1: return g
+        return None
+
+    def ntt_forward(self, coeffs: np.ndarray) -> np.ndarray:
+        if not self.is_ntt_friendly:
+            return np.array(coeffs, dtype=np.int64) % self.T
+        c_engine = get_c_acceleration_engine()
+        a = np.array(coeffs, dtype=np.int64).copy()
+        pwr = 1
+        for i in range(self.d):
+            a[i] = (a[i] * pwr) % self.T
+            pwr = (pwr * self.psi) % self.T
+        if c_engine is not None:
+            c_engine.ntt_c(a.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.root, self.T,
+                           self.bitrev.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.d)
+        return a
+
+    def ntt_inverse(self, slots: np.ndarray) -> np.ndarray:
+        if not self.is_ntt_friendly:
+            return np.array(slots, dtype=np.int64) % self.T
+        c_engine = get_c_acceleration_engine()
+        a = np.array(slots, dtype=np.int64).copy()
+        if c_engine is not None:
+            c_engine.intt_c(a.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.inv_root, self.T, self.inv_d,
+                            self.bitrev.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)), self.d)
+        pwr = 1
+        for i in range(self.d):
+            a[i] = (a[i] * pwr) % self.T
+            pwr = (pwr * self.inv_psi) % self.T
+        return a
+
+class RNSRing:
+    def __init__(self, N: int, P_q: List[int], P_p: List[int], T: int):
+        self.N = N
+        self.P_q = np.array(P_q, dtype=np.int64)
+        self.P_p = np.array(P_p, dtype=np.int64)
+        self.P_all = np.concatenate([self.P_q, self.P_p])
+        self.s_q = len(P_q)
+        self.s_p = len(P_p)
+        self.s_all = len(self.P_all)
+        self.T = T
+
+        self.ln = N.bit_length() - 1
+        self.bitrev = np.array([int(format(i, '0' + str(self.ln) + 'b')[::-1], 2) for i in range(N)], dtype=np.int64)
+
+        self.roots = []
+        self.inv_roots = []
+        self.psis = []
+        self.inv_psis = []
+        self.invN = []
+
+        for p in self.P_all:
+            p_val = int(p)
+            g = self._find_primitive_root(p_val)
+            psi = power_mod(g, (p_val - 1) // (2 * N), p_val)
+            inv_psi = power_mod(psi, p_val - 2, p_val)
+            root = (psi * psi) % p_val
+            inv_root = power_mod(root, p_val - 2, p_val)
+            self.roots.append(root)
+            self.inv_roots.append(inv_root)
+            self.psis.append(psi)
+            self.inv_psis.append(inv_psi)
+            self.invN.append(power_mod(N, p_val - 2, p_val))
+
+        self.Q_big = 1
+        for p in self.P_q: self.Q_big *= int(p)
+        self.P_big = 1
+        for p in self.P_p: self.P_big *= int(p)
+
+        self.q_hat_inv_mod_q = []
+        Q_prod = self.Q_big
+        for i in range(self.s_q):
+            qi = int(self.P_q[i]); q_hat = Q_prod // qi
+            self.q_hat_inv_mod_q.append(modinv_jit(q_hat % qi, qi))
+
+    def _find_primitive_root(self, p: int) -> Optional[int]:
+        for g in range(2, p):
+            if power_mod(g, (p - 1) // 2, p) != 1: return g
+        return None
+
+    def zero(self) -> List[np.ndarray]:
+        return [np.zeros(self.N, dtype=np.int64) for _ in range(self.s_q)]
+
+    def add(self, a: List[np.ndarray], b: List[np.ndarray]) -> List[np.ndarray]:
+        return [(a[i] + b[i]) % self.P_q[i] for i in range(self.s_q)]
+
+    def sub(self, a: List[np.ndarray], b: List[np.ndarray]) -> List[np.ndarray]:
+        return [(a[i] - b[i]) % self.P_q[i] for i in range(self.s_q)]
+
+    def scale(self, poly: List[np.ndarray], scalar: int) -> List[np.ndarray]:
+        res = []
+        scalar_int = int(scalar)
+        for i in range(self.s_q):
+            qi = int(self.P_q[i])
+            s_mod = scalar_int % qi
+            res.append((poly[i] * s_mod) % qi)
+        return res
+
+    def from_int_coeffs(self, coeffs_int: Any) -> List[np.ndarray]:
+        if not isinstance(coeffs_int, np.ndarray) or coeffs_int.dtype != object:
+            coeffs_int = np.array(coeffs_int, dtype=object)
+        return [(coeffs_int % int(p)).astype(np.int64) for p in self.P_q]
+
+    def to_int_coeffs(self, poly_rns: List[np.ndarray]) -> np.ndarray:
+        x = poly_rns[0].copy().astype(object)
+        m = int(self.P_q[0])
+        for i in range(1, self.s_q):
+            p = int(self.P_q[i])
+            inv_m = modinv_jit(m % p, p)
+            t = (poly_rns[i] - x) % p
+            t = (t * inv_m) % p
+            x += t * m
+            m *= p
+        return x
+
+    def negacyclic_mul(self, a: List[np.ndarray], b: List[np.ndarray]) -> List[np.ndarray]:
+        return [negacyclic_mul_core(a[i], b[i], self.N, self.P_q[i], self.roots[i], self.inv_roots[i], self.psis[i],
+                                    self.inv_psis[i], self.invN[i], self.bitrev) for i in range(self.s_q)]
+
+    def fast_base_conv(self, poly_in: List[np.ndarray], matrix_ignored: Any, moduli_out: np.ndarray) -> np.ndarray:
+        s_in = len(poly_in)
+        basis_in = self.P_q if s_in == self.s_q else self.P_p
+        N = len(poly_in[0])
+        res = np.zeros((len(moduli_out), N), dtype=np.int64)
+        M = 1
+        for p in basis_in: M *= int(p)
+        poly_big = np.zeros(N, dtype=object)
+        for i in range(s_in):
+            p = int(basis_in[i]); Mi = M // p; inv_Mi = pow(Mi, -1, p)
+            term = (poly_in[i].astype(object) * inv_Mi) % p
+            poly_big += term * Mi
+        poly_big %= M
+        for j in range(len(moduli_out)):
+            res[j] = (poly_big % int(moduli_out[j])).astype(np.int64)
+        return res
+
+    def fast_mul_and_scale(self, A_q: List[np.ndarray], B_q: List[np.ndarray]) -> List[np.ndarray]:
+        A_p = self.fast_base_conv(A_q, None, self.P_p)
+        B_p = self.fast_base_conv(B_q, None, self.P_p)
+        C_q = [negacyclic_mul_core(A_q[i], B_q[i], self.N, self.P_q[i], self.roots[i], self.inv_roots[i], self.psis[i],
+                                   self.inv_psis[i], self.invN[i], self.bitrev) for i in range(self.s_q)]
+        C_p = [negacyclic_mul_core(A_p[i], B_p[i], self.N, self.P_p[i], self.roots[self.s_q + i],
+                                   self.inv_roots[self.s_q + i], self.psis[self.s_q + i], self.inv_psis[self.s_q + i],
+                                   self.invN[self.s_q + i], self.bitrev) for i in range(self.s_p)]
+        C_all = C_q + C_p
+
+        res_exact = np.zeros(self.N, dtype=object)
+        M = 1
+        for p in self.P_all: M *= int(p)
+        for i in range(self.s_all):
+            p = int(self.P_all[i]); Mi = M // p; inv_Mi = pow(Mi, -1, p)
+            term = (C_all[i].astype(object) * inv_Mi) % p
+            res_exact += term * Mi
+        res_exact %= M
+
+        half_M = M // 2
+        res_centered = np.where(res_exact > half_M, res_exact - M, res_exact)
+
+        half_Q = self.Q_big // 2
+        Res_q = []
+        for i in range(self.s_q):
+            qi = int(self.P_q[i])
+            scaled = (res_centered * self.T + half_Q) // self.Q_big
+            Res_q.append((scaled % qi).astype(np.int64))
+        return Res_q
+
+# FHE Sampling & Operations
+def centered_binomial(eta: int, deg: int = 8192, rng: Optional[np.random.Generator] = None) -> np.ndarray:
+    if rng is None: rng = np.random.default_rng()
+    s1 = np.sum(rng.binomial(1, 0.5, (eta, deg)), axis=0)
+    s2 = np.sum(rng.binomial(1, 0.5, (eta, deg)), axis=0)
+    return s1 - s2
+
+def small_poly(eta: int, ring: RNSRing, rng: Optional[np.random.Generator] = None) -> List[np.ndarray]:
+    return ring.from_int_coeffs(np.array(centered_binomial(eta, ring.N, rng), dtype=object))
+
+def get_flood_noise_poly(ring: RNSRing, rng: Optional[np.random.Generator] = None, flood_bound: int = 1 << 10) -> List[np.ndarray]:
+    if rng is None: rng = np.random.default_rng()
+    large_coeffs = rng.integers(-flood_bound, flood_bound + 1, size=ring.N, dtype=np.int64)
+    return ring.from_int_coeffs(large_coeffs.astype(object))
+
+def get_ideal_flood_noise_poly(ring: RNSRing, p_zkp: int, rng: Optional[np.random.Generator] = None, flood_bound: int = 1 << 10) -> List[np.ndarray]:
+    if rng is None: rng = np.random.default_rng()
+    delta_coeffs = rng.integers(-flood_bound, flood_bound + 1, size=ring.N, dtype=np.int64)
+    e_flood_big = delta_coeffs.astype(object) * int(p_zkp)
+    return ring.from_int_coeffs(e_flood_big)
+
+def uniform_poly(ring: RNSRing, rng: Optional[np.random.Generator] = None) -> List[np.ndarray]:
+    if rng is None: rng = np.random.default_rng()
+    return [rng.integers(0, p, size=ring.N, dtype=np.int64) for p in ring.P_q]
+
+def embed_vec(vec: np.ndarray, ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int) -> List[np.ndarray]:
+    return ring.from_int_coeffs(helper.ntt_inverse(vec).astype(object) * int(delta_val))
+
+def decode_vec(poly_rns: List[np.ndarray], ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int, t_mod: int) -> np.ndarray:
+    coeffs_big = ring.to_int_coeffs(poly_rns)
+    coeffs_big = np.where(coeffs_big <= ring.Q_big // 2, coeffs_big, coeffs_big - ring.Q_big)
+    res = np.zeros(ring.N, dtype=np.int64)
+    half = int(delta_val) // 2
+    for i in range(ring.N):
+        val = coeffs_big[i]
+        res[i] = (val + half) // delta_val if val >= 0 else -((-val + half) // delta_val)
+    return helper.ntt_forward(res % t_mod)
+
+def keygen_secret(ring: RNSRing, n_glwe: int = 2, eta: int = 3, rng: Optional[np.random.Generator] = None) -> List[List[np.ndarray]]:
+    return [small_poly(eta, ring, rng) for _ in range(n_glwe)]
+
+def keygen_public(A: List[List[List[np.ndarray]]], s: List[List[np.ndarray]], ring: RNSRing,
+                  m_glwe: int = 3, n_glwe: int = 2, eta: int = 3, rng: Optional[np.random.Generator] = None) -> List[List[np.ndarray]]:
+    b = [ring.zero() for _ in range(m_glwe)]
+    for i in range(m_glwe):
+        for j in range(n_glwe):
+            b[i] = ring.add(b[i], ring.negacyclic_mul(A[i][j], s[j]))
+        b[i] = ring.add(b[i], small_poly(eta, ring, rng))
+    return b
+
+def eval_poly_vector_at_x(poly_coeffs: List[List[List[np.ndarray]]], x: int, dim_n: int, ring: RNSRing) -> List[List[np.ndarray]]:
+    res = [ring.zero() for _ in range(dim_n)]
+    for k, p_vec in enumerate(poly_coeffs):
+        x_k = (x ** k)
+        for i in range(dim_n):
+            scaled_p = ring.scale(p_vec[i], x_k)
+            res[i] = ring.add(res[i], scaled_p)
+    return res
+
+def centralized_gen_relin_rns(s_global: List[List[np.ndarray]], ring: RNSRing,
+                              A_rlk_global: Dict[Tuple[int, int], List[List[List[np.ndarray]]]],
+                              n_glwe: int = 2, eta_gk: int = 2, rng: Optional[np.random.Generator] = None) -> Dict[Tuple[int, int], List[Tuple[List[List[np.ndarray]], List[np.ndarray]]]]:
+    rlk = {}
+    Q_prod = ring.Q_big
+    for a in range(n_glwe):
+        for b_idx in range(n_glwe):
+            rlk[(a, b_idx)] = []
+            for i in range(ring.s_q):
+                qi = int(ring.P_q[i])
+                q_hat = Q_prod // qi
+                av = A_rlk_global[(a, b_idx)][i]
+                e = small_poly(eta_gk, ring, rng)
+                sb = ring.zero()
+                for t in range(n_glwe):
+                    sb = ring.add(sb, ring.negacyclic_mul(av[t], s_global[t]))
+                msg = ring.zero()
+                msg[i] = (ring.negacyclic_mul(s_global[a], s_global[b_idx])[i] * (q_hat % qi)) % qi
+                bv = ring.add(ring.add(sb, e), msg)
+                rlk[(a, b_idx)].append((av, bv))
+    return rlk
+
+def encrypt(vec: np.ndarray, A: List[List[List[np.ndarray]]], b: List[List[np.ndarray]],
+            ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int,
+            m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, flood_bound: int = 1 << 10,
+            rng: Optional[np.random.Generator] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+    m_poly = embed_vec(vec, ring, helper, delta_val)
+    r = [small_poly(eta_enc, ring, rng) for _ in range(m_glwe)]
+    e_u = [get_flood_noise_poly(ring, rng, flood_bound) for _ in range(n_glwe)]
+    e_v = get_flood_noise_poly(ring, rng, flood_bound)
+    u = [ring.zero() for _ in range(n_glwe)]
+    for j in range(n_glwe):
+        for i in range(m_glwe):
+            u[j] = ring.add(u[j], ring.negacyclic_mul(A[i][j], r[i]))
+        u[j] = ring.add(u[j], e_u[j])
+    v = ring.zero()
+    for i in range(m_glwe):
+        v = ring.add(v, ring.negacyclic_mul(b[i], r[i]))
+    v = ring.add(v, e_v)
+    v = ring.add(v, m_poly)
+    return u, v
+
+def add(ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+        ct2: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+        A: List[List[List[np.ndarray]]], b: List[List[np.ndarray]],
+        ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int,
+        m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, flood_bound: int = 1 << 10,
+        rng: Optional[np.random.Generator] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+    u_add = [ring.add(ct1[0][k], ct2[0][k]) for k in range(n_glwe)]
+    v_add = ring.add(ct1[1], ct2[1])
+    u_zero, v_zero = encrypt(np.zeros(ring.N, dtype=np.int64), A, b, ring, helper, delta_val, m_glwe, n_glwe, eta_enc, flood_bound, rng)
+    return [ring.add(u_add[j], u_zero[j]) for j in range(n_glwe)], ring.add(v_add, v_zero)
+
+def mul(ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+        ct2: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+        rlk: Dict[Tuple[int, int], List[Tuple[List[List[np.ndarray]], List[np.ndarray]]]],
+        A: List[List[List[np.ndarray]]], b: List[List[np.ndarray]],
+        ring: RNSRing, helper: PlaintextNTTHelper, delta_val: int,
+        m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, flood_bound: int = 1 << 10,
+        rng: Optional[np.random.Generator] = None) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+    u1, v1 = ct1; u2, v2 = ct2
+    v_final = ring.fast_mul_and_scale(v1, v2)
+    u_final = []
+    for j in range(n_glwe):
+        u_final.append(ring.add(ring.fast_mul_and_scale(u1[j], v2), ring.fast_mul_and_scale(u2[j], v1)))
+    for a in range(n_glwe):
+        for b_idx in range(n_glwe):
+            w_rns = ring.fast_mul_and_scale(u1[a], u2[b_idx])
+            keys = rlk[(a, b_idx)]
+            for i in range(ring.s_q):
+                digit_poly_limb = (w_rns[i] * ring.q_hat_inv_mod_q[i]) % ring.P_q[i]
+                digit_in_all_limbs = [digit_poly_limb if k == i else digit_poly_limb % ring.P_q[k] for k in range(ring.s_q)]
+                key_u, key_v = keys[i]
+                for t in range(n_glwe):
+                    u_final[t] = ring.add(u_final[t], ring.negacyclic_mul(digit_in_all_limbs, key_u[t]))
+                v_final = ring.add(v_final, ring.negacyclic_mul(digit_in_all_limbs, key_v))
+
+    u_zero, v_zero = encrypt(np.zeros(ring.N, dtype=np.int64), A, b, ring, helper, delta_val, m_glwe, n_glwe, eta_enc, flood_bound, rng)
+    return [ring.add(u_final[j], u_zero[j]) for j in range(n_glwe)], ring.add(v_final, v_zero)
+
+class HQFSSystem:
+    K_IDXs = [0, 1]
+
+    @staticmethod
+    def commit_public(s_poly: List[List[np.ndarray]], e_crs: List[List[np.ndarray]],
+                      A_crs: List[List[List[np.ndarray]]], ring: RNSRing,
+                      m_glwe: int = 3, n_glwe: int = 2) -> List[List[np.ndarray]]:
+        C = [ring.zero() for _ in range(m_glwe)]
+        for i in range(m_glwe):
+            acc = ring.zero()
+            for j in range(n_glwe):
+                acc = ring.add(acc, ring.negacyclic_mul(A_crs[i][j], s_poly[j]))
+            C[i] = ring.add(acc, e_crs[i])
+        return C
+
+    @classmethod
+    def hash_to_challenge(cls, u: List[List[np.ndarray]], C_i: List[List[np.ndarray]],
+                          p_share: List[np.ndarray], T_u_limbs: List[np.ndarray],
+                          T_A_limbs: List[List[np.ndarray]], d: int,
+                          n_glwe: int = 2, m_glwe: int = 3, k_idxs: Optional[List[int]] = None) -> np.ndarray:
+        if k_idxs is None: k_idxs = cls.K_IDXs
+        h = hashlib.sha256()
+        for j in range(n_glwe):
+            for idx in k_idxs:
+                h.update(u[j][idx].tobytes())
+        for i in range(m_glwe):
+            for idx in k_idxs:
+                h.update(C_i[i][idx].tobytes())
+        for idx in k_idxs:
+            h.update(p_share[idx].tobytes())
+        for tu in T_u_limbs:
+            h.update(tu.tobytes())
+        for ta_list in T_A_limbs:
+            for ta in ta_list:
+                h.update(ta.tobytes())
+        seed = int.from_bytes(h.digest()[:8], 'little')
+        return np.random.default_rng(seed).integers(0, 2, size=d, dtype=np.int64)
+
+    @classmethod
+    def partial_decrypt_with_multi_hq_fs(cls, u: List[List[np.ndarray]], s_poly: List[List[np.ndarray]],
+                                         e_crs: List[List[np.ndarray]], A_crs: List[List[List[np.ndarray]]],
+                                         C_i: List[List[np.ndarray]], ring: RNSRing,
+                                         p_zkp: int, m_glwe: int = 3, n_glwe: int = 2,
+                                         flood_bound: int = 1 << 10, rng: Optional[np.random.Generator] = None,
+                                         k_idxs: Optional[List[int]] = None) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+        if rng is None: rng = np.random.default_rng()
+        if k_idxs is None: k_idxs = cls.K_IDXs
+        d = ring.N
+
+        p_share = ring.zero()
+        for j in range(n_glwe):
+            p_share = ring.add(p_share, ring.negacyclic_mul(u[j], s_poly[j]))
+        p_share = ring.add(p_share, get_ideal_flood_noise_poly(ring, p_zkp, rng, flood_bound))
+
+        bound_y = int(p_zkp // 8)
+        y_s_big = rng.integers(-bound_y, bound_y, size=(n_glwe, d), dtype=np.int64).astype(object)
+        y_e_big = rng.integers(-bound_y, bound_y, size=(m_glwe, d), dtype=np.int64).astype(object)
+
+        y_s_rns = [[(y_s_big[j] % int(ring.P_q[idx])).astype(np.int64) for idx in k_idxs] for j in range(n_glwe)]
+        y_e_rns = [[(y_e_big[i] % int(ring.P_q[idx])).astype(np.int64) for idx in k_idxs] for i in range(m_glwe)]
+
+        T_u_limbs = []
+        T_A_limbs = []
+
+        for k, idx in enumerate(k_idxs):
+            K_p = int(ring.P_q[idx])
+            T_u = np.zeros(d, dtype=np.int64)
+            for j in range(n_glwe):
+                term = negacyclic_mul_core(u[j][idx], y_s_rns[j][k], d, K_p, ring.roots[idx], ring.inv_roots[idx],
+                                           ring.psis[idx], ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                T_u = (T_u + term) % K_p
+            T_u_limbs.append(T_u)
+
+            T_A = [np.zeros(d, dtype=np.int64) for _ in range(m_glwe)]
+            for i in range(m_glwe):
+                acc = np.zeros(d, dtype=np.int64)
+                for j in range(n_glwe):
+                    term = negacyclic_mul_core(A_crs[i][j][idx], y_s_rns[j][k], d, K_p, ring.roots[idx], ring.inv_roots[idx],
+                                               ring.psis[idx], ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                    acc = (acc + term) % K_p
+                T_A[i] = (acc + y_e_rns[i][k]) % K_p
+            T_A_limbs.append(T_A)
+
+        c = cls.hash_to_challenge(u, C_i, p_share, T_u_limbs, T_A_limbs, d, n_glwe, m_glwe, k_idxs)
+
+        z_s_limbs = [[] for _ in k_idxs]
+        for k, idx in enumerate(k_idxs):
+            K_p = int(ring.P_q[idx])
+            for j in range(n_glwe):
+                cs = negacyclic_mul_core(c, s_poly[j][idx], d, K_p, ring.roots[idx], ring.inv_roots[idx], ring.psis[idx],
+                                         ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                z_s_limbs[k].append((y_s_rns[j][k] + cs) % K_p)
+
+        z_e_limbs = [[] for _ in k_idxs]
+        for k, idx in enumerate(k_idxs):
+            K_p = int(ring.P_q[idx])
+            for i in range(m_glwe):
+                ce = negacyclic_mul_core(c, e_crs[i][idx], d, K_p, ring.roots[idx], ring.inv_roots[idx], ring.psis[idx],
+                                         ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                z_e_limbs[k].append((y_e_rns[i][k] + ce) % K_p)
+
+        return p_share, {
+            "c": c,
+            "z_s_limbs": z_s_limbs,
+            "z_e_limbs": z_e_limbs,
+            "T_u_limbs": T_u_limbs,
+            "T_A_limbs": T_A_limbs
+        }
+
+class HQFSVerifier:
+    K_IDXs = [0, 1]
+
+    @classmethod
+    def hash_to_challenge(cls, u: List[List[np.ndarray]], C_i: List[List[np.ndarray]],
+                          p_share: List[np.ndarray], T_u_limbs: List[np.ndarray],
+                          T_A_limbs: List[List[np.ndarray]], d: int,
+                          n_glwe: int = 2, m_glwe: int = 3, k_idxs: Optional[List[int]] = None) -> np.ndarray:
+        return HQFSSystem.hash_to_challenge(u, C_i, p_share, T_u_limbs, T_A_limbs, d, n_glwe, m_glwe, k_idxs)
+
+    @classmethod
+    def crt_2_primes_poly(cls, a0: np.ndarray, a1: np.ndarray, p0: int, p1: int, d: int) -> np.ndarray:
+        m = p0 * p1
+        inv_p0 = pow(int(p0), -1, int(p1))
+        inv_p1 = pow(int(p1), -1, int(p0))
+        res = np.zeros(d, dtype=object)
+        for i in range(d):
+            t0 = (int(a0[i]) * p1 * inv_p1)
+            t1 = (int(a1[i]) * p0 * inv_p0)
+            res[i] = (t0 + t1) % m
+        return res
+
+    @classmethod
+    def verify_n_tree(cls, u: List[List[np.ndarray]], submitted_data: Dict[int, Tuple[List[np.ndarray], Dict[str, Any]]],
+                      node_list: List[int], A_crs: List[List[List[np.ndarray]]],
+                      public_commitments: Dict[int, List[List[np.ndarray]]], ring: RNSRing,
+                      p_zkp: int, m_glwe: int = 3, n_glwe: int = 2,
+                      k_idxs: Optional[List[int]] = None, n_branch: int = 4) -> List[int]:
+        if not node_list: return []
+        if k_idxs is None: k_idxs = cls.K_IDXs
+        d = ring.N
+
+        is_valid = True
+        agg_z_s_limbs = [[np.zeros(d, dtype=np.int64) for _ in range(n_glwe)] for _ in k_idxs]
+
+        for uid in node_list:
+            p_share, proof = submitted_data[uid]
+            C_i = public_commitments[uid]
+            c_expected = cls.hash_to_challenge(u, C_i, p_share, proof["T_u_limbs"], proof["T_A_limbs"], d, n_glwe, m_glwe, k_idxs)
+            if not np.array_equal(proof["c"], c_expected):
+                is_valid = False
+                break
+
+        if is_valid:
+            for k, idx in enumerate(k_idxs):
+                K_p = int(ring.P_q[idx])
+                agg_z_s = [np.zeros(d, dtype=np.int64) for _ in range(n_glwe)]
+                agg_z_e = [np.zeros(d, dtype=np.int64) for _ in range(m_glwe)]
+                agg_T_u = np.zeros(d, dtype=np.int64)
+                agg_T_A = [np.zeros(d, dtype=np.int64) for _ in range(m_glwe)]
+                agg_cp = np.zeros(d, dtype=np.int64)
+                agg_cC = [np.zeros(d, dtype=np.int64) for _ in range(m_glwe)]
+
+                for uid in node_list:
+                    p_share, proof = submitted_data[uid]
+                    C_i = public_commitments[uid]
+                    c = proof["c"]
+                    for j in range(n_glwe): agg_z_s[j] = (agg_z_s[j] + proof["z_s_limbs"][k][j]) % K_p
+                    for i in range(m_glwe): agg_z_e[i] = (agg_z_e[i] + proof["z_e_limbs"][k][i]) % K_p
+                    agg_T_u = (agg_T_u + proof["T_u_limbs"][k]) % K_p
+                    for i in range(m_glwe): agg_T_A[i] = (agg_T_A[i] + proof["T_A_limbs"][k][i]) % K_p
+                    cp = negacyclic_mul_core(c, p_share[idx], d, K_p, ring.roots[idx], ring.inv_roots[idx], ring.psis[idx],
+                                             ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                    agg_cp = (agg_cp + cp) % K_p
+                    for i in range(m_glwe):
+                        cC = negacyclic_mul_core(c, C_i[i][idx], d, K_p, ring.roots[idx], ring.inv_roots[idx], ring.psis[idx],
+                                                 ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                        agg_cC[i] = (agg_cC[i] + cC) % K_p
+
+                uz = np.zeros(d, dtype=np.int64)
+                for j in range(n_glwe):
+                    term = negacyclic_mul_core(u[j][idx], agg_z_s[j], d, K_p, ring.roots[idx], ring.inv_roots[idx],
+                                               ring.psis[idx], ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                    uz = (uz + term) % K_p
+                if not np.array_equal((uz - agg_cp) % K_p, agg_T_u): is_valid = False
+
+                for i in range(m_glwe):
+                    Az = np.zeros(d, dtype=np.int64)
+                    for j in range(n_glwe):
+                        term = negacyclic_mul_core(A_crs[i][j][idx], agg_z_s[j], d, K_p, ring.roots[idx], ring.inv_roots[idx],
+                                                   ring.psis[idx], ring.inv_psis[idx], ring.invN[idx], ring.bitrev)
+                        Az = (Az + term) % K_p
+                    if not np.array_equal((Az + agg_z_e[i] - agg_cC[i]) % K_p, agg_T_A[i]): is_valid = False
+
+                agg_z_s_limbs[k] = agg_z_s
+
+            bound_y = int(p_zkp // 2)
+            z_bound_dynamic = len(node_list) * bound_y + 100000
+            p0 = int(ring.P_q[k_idxs[0]]); p1 = int(ring.P_q[k_idxs[1]])
+            for j in range(n_glwe):
+                z_s_crt = cls.crt_2_primes_poly(agg_z_s_limbs[0][j], agg_z_s_limbs[1][j], p0, p1, d)
+                z_centered = np.where(z_s_crt <= p_zkp // 2, z_s_crt, z_s_crt - p_zkp)
+                if np.max(np.abs(z_centered)) > z_bound_dynamic: is_valid = False
+
+        if is_valid: return node_list
+        if len(node_list) == 1: return []
+
+        chunk_size = math.ceil(len(node_list) / n_branch)
+        valid_nodes = []
+        for i in range(0, len(node_list), chunk_size):
+            valid_nodes.extend(cls.verify_n_tree(u, submitted_data, node_list[i:i + chunk_size],
+                                                 A_crs, public_commitments, ring, p_zkp,
+                                                 m_glwe, n_glwe, k_idxs, n_branch))
+        return valid_nodes
+
+def compute_committee_lagrange(subset_ids: List[int]) -> Tuple[Dict[int, int], int]:
+    D = {}; num_all = {}
+    for xi in subset_ids:
+        d_i = 1; n_i = 1
+        for xj in subset_ids:
+            if xi == xj: continue
+            d_i *= (xi - xj); n_i *= (-xj)
+        g = math.gcd(n_i, d_i)
+        n_i //= g
+        d_i //= g
+        if d_i < 0:
+            n_i = -n_i
+            d_i = -d_i
+        D[xi] = d_i; num_all[xi] = n_i
+
+    def get_lcm(a: int, b: int) -> int: return abs(a * b) // math.gcd(a, b)
+
+    delta_int = 1
+    for d_i in D.values(): delta_int = get_lcm(delta_int, abs(d_i))
+
+    lams_int_map = {}
+    for xi in subset_ids:
+        lam_int = num_all[xi] * (delta_int // D[xi])
+        lams_int_map[xi] = lam_int
+    return lams_int_map, delta_int
+
+class DecentralizedClientNode:
+    def __init__(self, node_id: int, t: int, n_users: int, ring_manager: RNSRing,
+                 A_global: List[List[List[np.ndarray]]], A_crs: List[List[List[np.ndarray]]],
+                 m_glwe: int = 3, n_glwe: int = 2, eta_enc: int = 3, eta_gk: int = 2,
+                 p_zkp: Optional[int] = None, rng: Optional[np.random.Generator] = None):
+        self.id = node_id
+        self.t = t
+        self.N = n_users
+        self.R = ring_manager
+        self.A = A_global
+        self.A_crs = A_crs
+        self.m_glwe = m_glwe
+        self.n_glwe = n_glwe
+        self.eta_enc = eta_enc
+        self.eta_gk = eta_gk
+        self.p_zkp = p_zkp if p_zkp is not None else int(self.R.P_q[0]) * int(self.R.P_q[1])
+        self.rng = rng if rng is not None else np.random.default_rng()
+        self.final_s = None
+        self.final_e = None
+        self.zkp_commitment = None
+        self.s_base = None
+        self.public_key_share = None
+
+    def execute_dkg_dealer_phase(self) -> Tuple[List[List[np.ndarray]], Dict[int, List[List[np.ndarray]]],
+                                                Dict[int, List[List[np.ndarray]]], List[List[List[np.ndarray]]]]:
+        s_poly_coeffs = [keygen_secret(self.R, self.n_glwe, self.eta_gk, self.rng) for _ in range(self.t)]
+        e_crs_coeffs = [[small_poly(self.eta_enc, self.R, self.rng) for _ in range(self.m_glwe)] for _ in range(self.t)]
+
+        self.s_base = s_poly_coeffs[0]
+        self.public_key_share = keygen_public(self.A, self.s_base, self.R, self.m_glwe, self.n_glwe, self.eta_enc, self.rng)
+
+        C_coeffs = []
+        for k in range(self.t):
+            C_coeffs.append(HQFSSystem.commit_public(s_poly_coeffs[k], e_crs_coeffs[k], self.A_crs, self.R, self.m_glwe, self.n_glwe))
+
+        sub_shares_s = {}
+        sub_shares_e = {}
+        for target_j in range(1, self.N + 1):
+            sub_shares_s[target_j] = eval_poly_vector_at_x(s_poly_coeffs, target_j, self.n_glwe, self.R)
+            sub_shares_e[target_j] = eval_poly_vector_at_x(e_crs_coeffs, target_j, self.m_glwe, self.R)
+
+        return self.public_key_share, sub_shares_s, sub_shares_e, C_coeffs
+
+    def execute_dkg_receiver_phase(self, acc_s: List[List[np.ndarray]], acc_e: List[List[np.ndarray]],
+                                   C_coeffs_global: List[List[List[np.ndarray]]]) -> List[List[np.ndarray]]:
+        self.final_s = acc_s
+        self.final_e = acc_e
+
+        C_expected = [self.R.zero() for _ in range(self.m_glwe)]
+        for k in range(self.t):
+            x_k = (self.id ** k)
+            for i in range(self.m_glwe):
+                scaled_C = self.R.scale(C_coeffs_global[k][i], x_k)
+                C_expected[i] = self.R.add(C_expected[i], scaled_C)
+
+        C_actual = HQFSSystem.commit_public(self.final_s, self.final_e, self.A_crs, self.R, self.m_glwe, self.n_glwe)
+
+        for i in range(self.m_glwe):
+            for mi in range(self.R.s_q):
+                assert np.array_equal(C_actual[i][mi], C_expected[i][mi]),                     f"DKG Feldman verification failed at Node {self.id}!"
+
+        self.zkp_commitment = C_actual
+        return self.zkp_commitment
+
+    def compute_collective_rlk_share(self, A_rlk: Dict[Tuple[int, int], List[List[List[np.ndarray]]]],
+                                     s_global_approx: Any = None) -> Dict[Tuple[int, int], List[List[np.ndarray]]]:
+        node_shares = {}
+        Q_prod = self.R.Q_big
+        for a in range(self.n_glwe):
+            for b_idx in range(self.n_glwe):
+                lst = []
+                for i in range(self.R.s_q):
+                    qi = int(self.R.P_q[i])
+                    q_hat = Q_prod // qi
+                    av = A_rlk[(a, b_idx)][i]
+                    e = small_poly(self.eta_gk, self.R, self.rng)
+
+                    sb = self.R.zero()
+                    for t_dim in range(self.n_glwe):
+                        sb = self.R.add(sb, self.R.negacyclic_mul(av[t_dim], self.final_s[t_dim]))
+
+                    msg = self.R.zero()
+                    msg[i] = (self.R.negacyclic_mul(self.final_s[a], self.final_s[b_idx])[i] * (q_hat % qi)) % qi
+
+                    bv_share = self.R.add(self.R.add(sb, e), msg)
+                    lst.append(bv_share)
+                node_shares[(a, b_idx)] = lst
+        return node_shares
+
+    def save_to_json(self, data_dir: str = "./node_data") -> str:
+        os.makedirs(data_dir, exist_ok=True)
+        file_path = os.path.join(data_dir, f"user_{self.id}.json")
+
+        def poly_to_list(poly): return [limb.tolist() for limb in poly]
+        def vec_to_list(vec): return [poly_to_list(p) for p in vec]
+
+        data = {
+            "node_id": int(self.id),
+            "threshold_t": int(self.t),
+            "total_n": int(self.N),
+            "final_s": vec_to_list(self.final_s) if self.final_s else None,
+            "final_e": vec_to_list(self.final_e) if self.final_e else None,
+            "zkp_commitment": vec_to_list(self.zkp_commitment) if self.zkp_commitment else None
+        }
+        with open(file_path, "w") as f:
+            json.dump(data, f)
+        return file_path
+
+    @staticmethod
+    def load_from_json(node_id: int, data_dir: str = "./node_data") -> Dict[str, Any]:
+        file_path = os.path.join(data_dir, f"user_{node_id}.json")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"User {node_id} data file not found at {file_path}")
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
+        def list_to_poly(poly_list): return [np.array(limb, dtype=np.int64) for limb in poly_list]
+        def list_to_vec(vec_list): return [list_to_poly(p) for p in vec_list]
+
+        return {
+            "node_id": data["node_id"],
+            "threshold_t": data["threshold_t"],
+            "total_n": data["total_n"],
+            "final_s": list_to_vec(data["final_s"]) if data.get("final_s") is not None else None,
+            "final_e": list_to_vec(data["final_e"]) if data.get("final_e") is not None else None,
+            "zkp_commitment": list_to_vec(data["zkp_commitment"]) if data.get("zkp_commitment") is not None else None
+        }
+
+# Socket Networking Helpers
+def recv_exact(sock: socket.socket, n: int) -> Optional[bytes]:
+    buf = bytearray()
+    while len(buf) < n:
+        packet = sock.recv(n - len(buf))
+        if not packet: return None
+        buf.extend(packet)
+    return bytes(buf)
+
+def send_msg(sock: socket.socket, data: Any):
+    payload = pickle.dumps(data)
+    sock.sendall(struct.pack(">I", len(payload)) + payload)
+
+def recv_msg(sock: socket.socket) -> Optional[Any]:
+    raw_len = recv_exact(sock, 4)
+    if not raw_len: return None
+    msg_len = struct.unpack(">I", raw_len)[0]
+    raw_data = recv_exact(sock, msg_len)
+    return pickle.loads(raw_data) if raw_data else None
+
+def broadcast_msg(conns_dict: Dict[int, socket.socket], data: Any):
+    payload = pickle.dumps(data)
+    packet = struct.pack(">I", len(payload)) + payload
+    for conn in conns_dict.values():
+        conn.sendall(packet)
+
+class DecentralizedHQFS:
+    """
+    High-level orchestration engine for the Decentralized Multi-Port HQ-FS Architecture.
+    Encapsulates:
+      - RNS Ring Manager (RNSRing) with 19 primes (6 Q-primes + 13 P-primes)
+      - PlaintextNTTHelper (NTT forward/inverse over Z_T)
+      - Dynamic C/JIT Kernel acceleration
+      - Feldman DKG Key Generation and Commitment
+      - Distributed / Centralized RLK Generation
+      - Homomorphic Encrypt, Add, Mul with Zero-Ciphertext Superposition
+      - Multi-limb Fiat-Shamir ZKP Prover (HQFSSystem)
+      - 4-ary Tree-Bisection Verifier (HQFSVerifier) isolating malicious nodes
+      - Committee Lagrange Reconstruction (compute_committee_lagrange)
+    """
+    def __init__(self, d: int = 16, T: int = 65537, n_glwe: int = 2, m_glwe: int = 3,
+                 num_parties: int = 10, threshold_t: int = 6, flood_bound: int = 1024,
+                 eta_enc: int = 3, eta_gk: int = 2, seed: int = 2026):
+        self.d = d
+        self.T = T
+        self.n_glwe = n_glwe
+        self.m_glwe = m_glwe
+        self.N = num_parties
+        self.t = threshold_t
+        self.flood_bound = flood_bound
+        self.eta_enc = eta_enc
+        self.eta_gk = eta_gk
+        self.rng = np.random.default_rng(seed)
+
+        start_bit = 30 if d >= 128 else 20
+        self.all_primes = get_ntt_primes(19, start_bit, self.d)
+        self.q_primes = self.all_primes[:6]
+        self.p_primes = self.all_primes[6:]
+
+        self.R = RNSRing(self.d, self.q_primes, self.p_primes, self.T)
+        self.NTT = PlaintextNTTHelper(self.d, self.T)
+        self.Q_big = self.R.Q_big
+        self.Delta = self.Q_big // self.T
+
+        self.zkp_k_idxs = [0, 1]
+        self.p_zkp = int(self.R.P_q[self.zkp_k_idxs[0]]) * int(self.R.P_q[self.zkp_k_idxs[1]])
+
+        self.A_global = None
+        self.A_crs_global = None
+        self.A_rlk_global = None
+        self.pk_global = None
+        self.rlk = None
+        self.nodes = {}
+        self.public_commitments = {}
+
+    def setup(self):
+        self.A_global = [[uniform_poly(self.R, self.rng) for _ in range(self.n_glwe)] for _ in range(self.m_glwe)]
+        self.A_crs_global = [[uniform_poly(self.R, self.rng) for _ in range(self.n_glwe)] for _ in range(self.m_glwe)]
+        self.A_rlk_global = {}
+        for a in range(self.n_glwe):
+            for b_idx in range(self.n_glwe):
+                self.A_rlk_global[(a, b_idx)] = [[uniform_poly(self.R, self.rng) for _ in range(self.n_glwe)] for _ in range(self.R.s_q)]
+
+        self.nodes = {
+            i: DecentralizedClientNode(i, self.t, self.N, self.R, self.A_global, self.A_crs_global,
+                                      self.m_glwe, self.n_glwe, self.eta_enc, self.eta_gk, self.p_zkp, self.rng)
+            for i in range(1, self.N + 1)
+        }
+
+    def keygen(self):
+        if not self.nodes: self.setup()
+        self.pk_global = [self.R.zero() for _ in range(self.m_glwe)]
+        C_coeffs_global = [[self.R.zero() for _ in range(self.m_glwe)] for _ in range(self.t)]
+        acc_s = {i: [self.R.zero() for _ in range(self.n_glwe)] for i in range(1, self.N + 1)}
+        acc_e = {i: [self.R.zero() for _ in range(self.m_glwe)] for i in range(1, self.N + 1)}
+
+        for node in self.nodes.values():
+            pub_k, sub_s, sub_e, C_c = node.execute_dkg_dealer_phase()
+            for k in range(self.m_glwe): self.pk_global[k] = self.R.add(self.pk_global[k], pub_k[k])
+            for deg in range(self.t):
+                for k in range(self.m_glwe): C_coeffs_global[deg][k] = self.R.add(C_coeffs_global[deg][k], C_c[deg][k])
+            for j in range(1, self.N + 1):
+                for dim in range(self.n_glwe): acc_s[j][dim] = self.R.add(acc_s[j][dim], sub_s[j][dim])
+                for dim in range(self.m_glwe): acc_e[j][dim] = self.R.add(acc_e[j][dim], sub_e[j][dim])
+
+        self.public_commitments = {}
+        for node in self.nodes.values():
+            comm = node.execute_dkg_receiver_phase(acc_s[node.id], acc_e[node.id], C_coeffs_global)
+            self.public_commitments[node.id] = comm
+
+    def preprocess(self):
+        if not self.pk_global: self.keygen()
+        s_global = [self.R.zero() for _ in range(self.n_glwe)]
+        for node in self.nodes.values():
+            for dim in range(self.n_glwe):
+                s_global[dim] = self.R.add(s_global[dim], node.s_base[dim])
+        self.rlk = centralized_gen_relin_rns(s_global, self.R, self.A_rlk_global, self.n_glwe, self.eta_gk, self.rng)
+
+    def encrypt_simd(self, vec: List[int]) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+        if self.pk_global is None: self.keygen()
+        v = np.array(vec, dtype=np.int64)
+        if len(v) < self.d:
+            v = np.pad(v, (0, self.d - len(v)), mode='constant')
+        return encrypt(v, self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
+                       self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng)
+
+    def eval_add(self, ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+                 ct2: Tuple[List[List[np.ndarray]], List[np.ndarray]]) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+        return add(ct1, ct2, self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
+                   self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng)
+
+    def eval_mul(self, ct1: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+                 ct2: Tuple[List[List[np.ndarray]], List[np.ndarray]]) -> Tuple[List[List[np.ndarray]], List[np.ndarray]]:
+        if self.rlk is None: self.preprocess()
+        return mul(ct1, ct2, self.rlk, self.A_global, self.pk_global, self.R, self.NTT, self.Delta,
+                   self.m_glwe, self.n_glwe, self.eta_enc, self.flood_bound, self.rng)
+
+    def partial_decrypt(self, node_id: int, u: List[List[np.ndarray]], is_malicious: bool = False) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+        node = self.nodes[node_id]
+        p_sh, pf = HQFSSystem.partial_decrypt_with_multi_hq_fs(
+            u, node.final_s, node.final_e, self.A_crs_global, node.zkp_commitment,
+            self.R, self.p_zkp, self.m_glwe, self.n_glwe, self.flood_bound, self.rng, self.zkp_k_idxs
+        )
+        if is_malicious:
+            p_sh[0][0] = (p_sh[0][0] + 999999) % int(self.R.P_q[0])
+            pf["z_s_limbs"][0][0][0] = (pf["z_s_limbs"][0][0][0] + 999999) % int(self.R.P_q[self.zkp_k_idxs[0]])
+        return p_sh, pf
+
+    def decrypt(self, ct: Tuple[List[List[np.ndarray]], List[np.ndarray]],
+                submitted_data: Dict[int, Tuple[List[np.ndarray], Dict[str, Any]]],
+                n_branch: int = 4) -> Tuple[np.ndarray, List[int], List[int]]:
+        valid_ids = HQFSVerifier.verify_n_tree(
+            ct[0], submitted_data, list(submitted_data.keys()),
+            self.A_crs_global, self.public_commitments, self.R,
+            self.p_zkp, self.m_glwe, self.n_glwe, self.zkp_k_idxs, n_branch
+        )
+        rejected = sorted(list(set(submitted_data.keys()) - set(valid_ids)))
+        if len(valid_ids) < self.t:
+            raise ValueError(f"Insufficient honest nodes! Got {len(valid_ids)}, required {self.t}")
+
+        active_set = sorted(valid_ids)[:self.t]
+        lams_int_map, Delta_int = compute_committee_lagrange(active_set)
+
+        agg_sum = [np.zeros(self.d, dtype=np.int64) for _ in range(self.R.s_q)]
+        for uid in active_set:
+            part_s = submitted_data[uid][0]
+            lam_int = lams_int_map[uid]
+            for mi in range(self.R.s_q):
+                p_qi = int(self.R.P_q[mi])
+                lam_mod = lam_int % p_qi
+                agg_sum[mi] = (agg_sum[mi] + (part_s[mi] * lam_mod) % p_qi) % p_qi
+
+        v_scaled = [np.zeros(self.d, dtype=np.int64) for _ in range(self.R.s_q)]
+        for mi in range(self.R.s_q):
+            p_qi = int(self.R.P_q[mi])
+            delta_mod = Delta_int % p_qi
+            v_scaled[mi] = (ct[1][mi] * delta_mod) % p_qi
+
+        v_sub_agg = self.R.sub(v_scaled, agg_sum)
+        dec_scaled = decode_vec(v_sub_agg, self.R, self.NTT, self.Delta, self.T)
+        inv_delta_T = modinv_jit(Delta_int % self.T, self.T)
+        dec = (dec_scaled * inv_delta_T) % self.T
+        return dec, valid_ids, rejected
+
 
 # ==============================================================================
-# Self-Test for All Three Architectures (CCS 2025 + PELTA + HQ-FS RNS-GLWE)
+# Self-Test for All Four Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS)
+# ==============================================================================
+# ==============================================================================
+# Self-Test for All Four Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS) (CCS 2025 + PELTA + HQ-FS RNS-GLWE)
 # ==============================================================================
 
 if __name__ == "__main__":
@@ -2447,6 +3579,33 @@ if __name__ == "__main__":
     assert bfs_audit["dropped_malicious_nodes"] == mal_nodes, f"BFS filter mismatch: {bfs_audit}"
     assert dec_filtered[:4] == [36, 1000, 1000, 0]
     print(f"  [✓] HQ-FS Alg 5/6 BFS Queue isolated malicious nodes {mal_nodes} in {bfs_audit['bfs_steps']} BFS checks over K_Q={hqfs.K_Q}!")
+
+    # 4. Verify Decentralized Multi-Port HQ-FS & RNS-GLWE Architecture (Section D)
+    print("\n[4] Verifying Decentralized Multi-Port HQ-FS Architecture (C/JIT, Tree ZKP, Lagrange)...")
+    dec_hqfs = DecentralizedHQFS(d=16, T=65537, num_parties=5, threshold_t=3)
+    dec_hqfs.setup()
+    dec_hqfs.keygen()
+    dec_hqfs.preprocess()
+
+    msg_a = [12, 25, 100, 512]
+    msg_b = [3, 40, 10, 2]
+    ct_d1 = dec_hqfs.encrypt_simd(msg_a)
+    ct_d2 = dec_hqfs.encrypt_simd(msg_b)
+    ct_d_add = dec_hqfs.eval_add(ct_d1, ct_d2)
+    ct_d_mul = dec_hqfs.eval_mul(ct_d1, ct_d2)
+
+    # Partial decrypt with node 4 malicious
+    sub_shares_add = {i: dec_hqfs.partial_decrypt(i, ct_d_add[0], is_malicious=(i == 4)) for i in range(1, 6)}
+    sub_shares_mul = {i: dec_hqfs.partial_decrypt(i, ct_d_mul[0], is_malicious=(i == 4)) for i in range(1, 6)}
+
+    dec_out_add, val_add, rej_add = dec_hqfs.decrypt(ct_d_add, sub_shares_add, n_branch=2)
+    dec_out_mul, val_mul, rej_mul = dec_hqfs.decrypt(ct_d_mul, sub_shares_mul, n_branch=2)
+
+    assert rej_add == [4] and rej_mul == [4], f"Tree verifier failed to isolate malicious node 4: {rej_add}, {rej_mul}"
+    assert np.array_equal(dec_out_add[:4], [(x + y) % 65537 for x, y in zip(msg_a, msg_b)])
+    assert np.array_equal(dec_out_mul[:4], [(x * y) % 65537 for x, y in zip(msg_a, msg_b)])
+    print(f"  [✓] Section D Decentralized HQ-FS Add + Tree ZKP (isolated {rej_add}): {dec_out_add[:4]}")
+    print(f"  [✓] Section D Decentralized HQ-FS Mul + Tree ZKP (isolated {rej_mul}): {dec_out_mul[:4]}")
 
     print("\n" + "=" * 78)
     print("  [SUCCESS] All Paper Fidelity, Homomorphic Mul, and SIMD Tests Passed!")

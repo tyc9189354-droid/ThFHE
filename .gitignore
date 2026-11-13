@@ -24,3 +24,4 @@ env/
 # Ignore FABEO directory in this repository
 FABEO/
 
+node_data/

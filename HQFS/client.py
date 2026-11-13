@@ -1,231 +1,237 @@
 #!/usr/bin/env python3
 """
-================================================================================
-HQ-FS: Client Module (Data Owner [DO] & Decentralized Computing Network [DCN] Node)
-Paper: "Actively Secure and CPA^D-Resistant Threshold FHE via Homomorphic
-        Quotient Proofs"
-================================================================================
-Responsibilities (Fig. 1 & Section III):
-  - DCN Node:
-      * Algorithm 2 (KeyGen & ZKP Commitment): Samples secret s^{(i)}, error e^{(i)},
-        ZKP error e_zkp^{(i)}, computes pk_i = A*s^{(i)} + e^{(i)} (mod Q) and
-        commitment C_i = A_zkp * s^{(i)} + e_zkp^{(i)} (mod Q).
-      * Algorithm 3 (RLKGen): Generates RNS relinearization key shares with
-        high-variance flooding noise.
-      * Algorithm 5 (Partial Decryption & HQ-FS ZKP): Computes raw share
-        sh_raw^{(i)} = <u, s^{(i)}>, adds K_Q-multiple ideal flooding noise
-        e_flood^{(i)}, and constructs HQ-FS ZKP proof pi^{(i)} = (ch, z_s, z_e, T_u, T_A)
-        confined to baseline prime K_Q = q_1.
-  - Data Owner (DO):
-      * Algorithm 4 (Encryption): Encodes message vector m_vec via iNTT(m) and
-        encrypts under pk_global with flooding noise y_0, y_1.
-================================================================================
+Decentralized Multi-Port HQ-FS Client Node Engine
+Extracted and refactored from recent decentralized research implementation.
+Simulates independent client nodes connecting across separate TCP ports,
+executing Feldman DKG, RLK share generation, and HQ-FS partial decryption with ZKP.
 """
 
 import os
 import sys
-import json
 import time
-import random
+import math
+import socket
 import argparse
-import urllib.request
-import urllib.error
-from typing import Dict, Any, List, Optional
+import threading
+import logging
+from collections import defaultdict
+import numpy as np
 
-import importlib.util
+# Import unified crypto & protocol components from tool
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from tool import (
+    RNSRing, PlaintextNTTHelper, get_ntt_primes, modinv_jit,
+    decode_vec, HQFSSystem, DecentralizedClientNode,
+    send_msg, recv_msg
+)
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.dirname(CURRENT_DIR)
-for p in [CURRENT_DIR, PARENT_DIR]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] (%(threadName)s) %(message)s")
 
-try:
-    from tool import HQFSRNSGLWE
-except ModuleNotFoundError:
-    _spec = importlib.util.spec_from_file_location("hqfs_tool", os.path.join(CURRENT_DIR, "tool.py"))
-    _mod = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_mod)
-    HQFSRNSGLWE = _mod.HQFSRNSGLWE
-
-
-class HQFSClient:
-    """HTTP Client interacting with the HQ-FS CSP/DR Server."""
-
-    def __init__(self, server_url: str = "http://127.0.0.1:8002"):
-        self.server_url = server_url.rstrip("/")
-
-    def _get(self, endpoint: str) -> Dict[str, Any]:
-        url = f"{self.server_url}{endpoint}"
-        with urllib.request.urlopen(url, timeout=5) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-
-    def _post(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        url = f"{self.server_url}{endpoint}"
-        body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-
-    def fetch_params(self) -> Dict[str, Any]:
-        return self._get("/params")
-
-    def encrypt_simd(self, slots: List[int]) -> Dict[str, Any]:
-        return self._post("/encrypt", {"slots": slots})
-
-    def eval_add(self, c1: Dict[str, Any], c2: Dict[str, Any]) -> Dict[str, Any]:
-        return self._post("/eval_add", {"c1": c1, "c2": c2})
-
-    def eval_mul(self, c1: Dict[str, Any], c2: Dict[str, Any]) -> Dict[str, Any]:
-        return self._post("/eval_mul", {"c1": c1, "c2": c2})
-
-    def decrypt_bfs(
-        self,
-        ciphertext: Dict[str, Any],
-        malicious_nodes: Optional[List[int]] = None,
-        attack_type: str = "share_tampering",
-        slot_count: int = 4
-    ) -> Dict[str, Any]:
-        return self._post("/decrypt_bfs", {
-            "ciphertext": ciphertext,
-            "malicious_nodes": malicious_nodes or [],
-            "attack_type": attack_type,
-            "slot_count": slot_count
-        })
+# Global synchronizations for simulating N client nodes in one host
+compute_semaphore = threading.Semaphore(16)
+shared_lock = threading.Lock()
+local_C_coeffs_global = None
+local_acc_s = None
+local_acc_e = None
+dkg_dealer_barrier = None
 
 
-def run_local_simulation(num_parties: int = 10, T_plain: int = 1024):
-    print("=" * 78)
-    print(f"  HQ-FS Local Full-Protocol Verification (Algorithms 1..8 | N={num_parties}, T={T_plain})")
-    print("=" * 78)
+def client_worker(server_ip, port, node_index, total_ports, is_malicious=False, data_dir="./node_data"):
+    thread_id = f"Node-{node_index:03d}"
+    threading.current_thread().name = thread_id
 
-    # 1. Algorithm 1: Setup
-    t0 = time.perf_counter()
-    hqfs = HQFSRNSGLWE(
-        d=16,
-        n_glwe=2,
-        m_glwe=2,
-        T_plain=T_plain,
-        eta=1,
-        B_flood=64,
-        num_parties=num_parties
-    )
-    setup_ms = (time.perf_counter() - t0) * 1000.0
-    print(f"\n[Algorithm 1: Setup] RNS Primes Q = {hqfs.rns.q_primes} | Baseline K_Q = {hqfs.K_Q}")
-    print(f"  • Composite Q bits = {hqfs.rns.Q_big.bit_length()} bits | Plaintext T = {hqfs.T} | Setup = {setup_ms:.3f} ms")
-
-    # 2. Algorithm 2: KeyGen & ZKP Commitment
-    t1 = time.perf_counter()
-    kg_info = hqfs.keygen_and_commitment()
-    keygen_ms = (time.perf_counter() - t1) * 1000.0
-    print(f"\n[Algorithm 2: KeyGen & ZKP Commitment] Generated {kg_info['num_parties']} node keys & commitments C_i")
-    print(f"  • Aggregated pk_global = sum(pk_i) mod Q | KeyGen = {keygen_ms:.3f} ms")
-
-    # 3. Algorithm 3: RLKGen
-    t2 = time.perf_counter()
-    rlk_info = hqfs.rlk_gen()
-    rlkgen_ms = (time.perf_counter() - t2) * 1000.0
-    print(f"\n[Algorithm 3: RLKGen] Generated {rlk_info['rlk_entries']} RNS-decomposed RLK entries with flooding noise")
-    print(f"  • RLKGen = {rlkgen_ms:.3f} ms")
-
-    # 4. Algorithm 4: Encryption (with iNTT SIMD slot encoding & flooding noise)
-    slots_alpha = [12, 25, 100, 512]
-    slots_beta = [3, 40, 10, 2]
-    t3 = time.perf_counter()
-    ct_alpha = hqfs.encrypt_simd(slots_alpha)
-    ct_beta = hqfs.encrypt_simd(slots_beta)
-    enc_ms = (time.perf_counter() - t3) * 1000.0
-    print(f"\n[Algorithm 4: Encryption (DO)] Encoded via iNTT & encrypted with flooding noise (y_0, y_1)")
-    print(f"  • m_alpha = {slots_alpha}, m_beta = {slots_beta} | Encrypt = {enc_ms:.3f} ms")
-
-    # 5. Algorithm 7: Homomorphic Addition + Zero-Ciphertext Superposition
-    t4 = time.perf_counter()
-    ct_add = hqfs.eval_add(ct_alpha, ct_beta)
-    add_ms = (time.perf_counter() - t4) * 1000.0
-    dec_add = hqfs.decrypt_simd(ct_add, slot_count=4)
-    expected_add = [(a + b) % T_plain for a, b in zip(slots_alpha, slots_beta)]
-    assert dec_add == expected_add, f"Add mismatch: {dec_add} != {expected_add}"
-    print(f"\n[Algorithm 7: Addition + Zero-Ciphertext Superposition]")
-    print(f"  • Dec(c_alpha (+) c_beta + c_zero) = {dec_add} (Expected: {expected_add}) | Time = {add_ms:.3f} ms")
-
-    # 6. Algorithm 8: Homomorphic Multiplication + RNS Digit Decomposition + Zero-CT Superposition
-    t5 = time.perf_counter()
-    ct_mul = hqfs.eval_mul(ct_alpha, ct_beta)
-    mul_ms = (time.perf_counter() - t5) * 1000.0
-    expected_mul = [(a * b) % T_plain for a, b in zip(slots_alpha, slots_beta)]
-    print(f"\n[Algorithm 8: Multiplication + RNS Digit Decomposition + Zero-Ciphertext Superposition]")
-    print(f"  • Homo Mul Time = {mul_ms:.3f} ms")
-
-    # 7. Algorithm 5 & 6: Partial Decryption with HQ-FS ZKP & BFS Batch-Filtering Queue under Active Attack
-    num_mal = max(1, (num_parties * 20) // 100)
-    malicious_nodes = sorted(random.sample(range(num_parties), num_mal))
-    u_mul, _ = ct_mul
-    shares_map = {}
-    proofs_map = {}
-
-    t6 = time.perf_counter()
-    for i in range(num_parties):
-        atk = "share_tampering" if i in malicious_nodes else None
-        sh_i, pi_i = hqfs.partial_decrypt_node(i, u_mul, malicious_attack=atk)
-        shares_map[i] = sh_i
-        proofs_map[i] = pi_i
-    prove_total_ms = (time.perf_counter() - t6) * 1000.0
-
-    t7 = time.perf_counter()
-    dec_mul_full, audit = hqfs.decrypt_with_bfs(ct_mul, shares_map, proofs_map)
-    bfs_dec_ms = (time.perf_counter() - t7) * 1000.0
-    dec_mul = dec_mul_full[:4]
-
-    assert audit["dropped_malicious_nodes"] == malicious_nodes
-    assert dec_mul == expected_mul, f"Mul mismatch: {dec_mul} != {expected_mul}"
-
-    print(f"\n[Algorithm 5 & 6: Partial Decryption, HQ-FS ZKP (mod K_Q={hqfs.K_Q}) & BFS Queue Filtering]")
-    print(f"  • Injected random malicious nodes: {malicious_nodes}")
-    print(f"  • BFS Queue isolated & dropped:    {audit['dropped_malicious_nodes']} (in {audit['bfs_steps']} BFS subset checks)")
-    print(f"  • Per-node HQ-FS ZKP Prove Time:   {prove_total_ms / num_parties:.4f} ms/node (Total: {prove_total_ms:.3f} ms)")
-    print(f"  • BFS Verify + CRT + NTT Dec Time: {bfs_dec_ms:.3f} ms")
-    print(f"  • Final Decrypted SIMD Slots:      {dec_mul} == {expected_mul} [VERIFIED!]")
-
-    print("\n" + "=" * 78)
-    print("  [SUCCESS] All 8 Algorithms of HQ-FS Verified 100%!")
-    print("=" * 78)
-
-
-def run_demo(server_url: str = "http://127.0.0.1:8002", num_parties: int = 10):
-    client = HQFSClient(server_url)
-    try:
-        params = client.fetch_params()
-    except Exception as e:
-        print(f"[!] Server connection failed ({e}). Falling back to local full-protocol simulation...\n")
-        run_local_simulation(num_parties=num_parties)
+    # 1. 建立 TCP 連線
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    retries = 20
+    while retries > 0:
+        try:
+            sock.connect((server_ip, port))
+            break
+        except ConnectionRefusedError:
+            retries -= 1
+            time.sleep(0.2)
+    if retries == 0:
+        logging.error(f"Failed to connect to {server_ip}:{port}")
         return
 
-    print("=" * 78)
-    print(f"  HQ-FS Networked Client-Server Demo (Connected to {server_url})")
-    print(f"  RNS Q={params['q_primes']} | Baseline K_Q={params['K_Q']} | T={params['T']}")
-    print("=" * 78)
+    # 2. 接收全域 CRS 參數
+    init_msg = recv_msg(sock)
+    assert init_msg["type"] == "INIT_PARAMS"
+    assigned_id = init_msg["node_id"]
+    threshold_t = init_msg["threshold_t"]
+    total_n = init_msg["total_n"]
+    A_global = init_msg["A_global"]
+    A_crs_global = init_msg["A_crs_global"]
+    d = init_msg.get("d", 16)
+    T = init_msg.get("T", 65537)
 
-    s1 = [12, 25, 100, 512]
-    s2 = [3, 40, 10, 2]
-    c1 = client.encrypt_simd(s1)["ciphertext"]
-    c2 = client.encrypt_simd(s2)["ciphertext"]
+    # 構造環管理器
+    start_bit = 30 if d >= 128 else 20
+    all_primes = get_ntt_primes(19, start_bit, d)
+    q_primes = all_primes[:6]
+    p_primes = all_primes[6:]
+    R = RNSRing(d, q_primes, p_primes, T)
+    NTT = PlaintextNTTHelper(d, T)
+    p_zkp = int(R.P_q[0]) * int(R.P_q[1])
 
-    mul_res = client.eval_mul(c1, c2)
-    dec_res = client.decrypt_bfs(mul_res["ciphertext"], malicious_nodes=[1, 4], attack_type="share_tampering", slot_count=4)
-    print(f"  • Homo Mul + Zero-CT Time: {mul_res['eval_time_ms']} ms")
-    print(f"  • BFS Isolated Malicious:  {dec_res['audit']['dropped_malicious_nodes']}")
-    print(f"  • Decrypted SIMD Slots:    {dec_res['decrypted_slots']}")
+    # 3. 初始化節點並執行 DKG Dealer
+    with compute_semaphore:
+        node = DecentralizedClientNode(assigned_id, threshold_t, total_n, R, A_global, A_crs_global, p_zkp=p_zkp)
+        pub_key, sub_s, sub_e, C_coeffs = node.execute_dkg_dealer_phase()
+
+    with shared_lock:
+        global local_C_coeffs_global, local_acc_s, local_acc_e
+        if local_C_coeffs_global is None:
+            local_C_coeffs_global = [[R.zero() for _ in range(node.m_glwe)] for _ in range(threshold_t)]
+        for deg in range(threshold_t):
+            for k in range(node.m_glwe):
+                local_C_coeffs_global[deg][k] = R.add(local_C_coeffs_global[deg][k], C_coeffs[deg][k])
+        for target_j in range(1, total_n + 1):
+            for dim in range(node.n_glwe):
+                if local_acc_s[target_j][dim] is None:
+                    local_acc_s[target_j][dim] = sub_s[target_j][dim]
+                else:
+                    local_acc_s[target_j][dim] = R.add(local_acc_s[target_j][dim], sub_s[target_j][dim])
+            for dim in range(node.m_glwe):
+                if local_acc_e[target_j][dim] is None:
+                    local_acc_e[target_j][dim] = sub_e[target_j][dim]
+                else:
+                    local_acc_e[target_j][dim] = R.add(local_acc_e[target_j][dim], sub_e[target_j][dim])
+
+    del sub_s, sub_e, C_coeffs
+
+    send_msg(sock, {
+        "type": "DKG_DEALER_SUBMIT",
+        "node_id": assigned_id,
+        "pub_key": pub_key
+    })
+    del pub_key
+
+    # 等待本地節點完成累加
+    dkg_dealer_barrier.wait()
+
+    # 4. 接收廣播承諾並執行接收者驗證
+    routed_msg = recv_msg(sock)
+    assert routed_msg["type"] in ("DKG_ROUTED_COMMITMENTS", "DKG_ROUTED_SHARES")
+
+    with compute_semaphore:
+        commitment = node.execute_dkg_receiver_phase(
+            local_acc_s[assigned_id],
+            local_acc_e[assigned_id],
+            local_C_coeffs_global
+        )
+        node.save_to_json(data_dir=data_dir)
+
+    send_msg(sock, {
+        "type": "DKG_FINAL_COMMITMENT",
+        "node_id": assigned_id,
+        "commitment": commitment
+    })
+
+    # 5. 分散式 RLK 份額計算
+    rlk_req = recv_msg(sock)
+    assert rlk_req["type"] == "RLK_GEN_REQ"
+    A_rlk_global = rlk_req["A_rlk"]
+
+    with compute_semaphore:
+        node_rlk_shares = node.compute_collective_rlk_share(A_rlk_global)
+
+    send_msg(sock, {
+        "type": "RLK_SHARE_SUBMIT",
+        "node_id": assigned_id,
+        "rlk_shares": node_rlk_shares
+    })
+    del node_rlk_shares, A_rlk_global
+
+    # 6. 等待門限解密請求
+    dec_req = recv_msg(sock)
+    assert dec_req["type"] == "DECRYPT_REQ"
+    u = dec_req["u"]
+
+    with compute_semaphore:
+        user_state = DecentralizedClientNode.load_from_json(assigned_id, data_dir=data_dir)
+        p_share, proof = HQFSSystem.partial_decrypt_with_multi_hq_fs(
+            u, user_state["final_s"], user_state["final_e"], A_crs_global, user_state["zkp_commitment"],
+            R, p_zkp, node.m_glwe, node.n_glwe
+        )
+
+    if is_malicious:
+        logging.warning(f"🚨 [Malicious Node-{assigned_id:03d}] Tampering with partial share and ZKP proof!")
+        p_share[0][0] = (p_share[0][0] + 999999) % int(R.P_q[0])
+        proof["z_s_limbs"][0][0][0] = (proof["z_s_limbs"][0][0][0] + 999999) % int(R.P_q[HQFSSystem.K_IDXs[0]])
+
+    send_msg(sock, {
+        "type": "DECRYPT_RESP",
+        "node_id": assigned_id,
+        "p_share": p_share,
+        "proof": proof
+    })
+
+    # 7. 若為 Node 1，接收最終盲化結果並在本地還原解碼
+    if assigned_id == 1:
+        final_msg = recv_msg(sock)
+        if final_msg and final_msg["type"] == "FINAL_DEC_RESULT":
+            v_sub_agg = final_msg["v_sub_agg"]
+            Delta_int = final_msg["Delta_int"]
+
+            dec_scaled = decode_vec(v_sub_agg, R, NTT, R.Q_big // T, T)
+            inv_delta_T = modinv_jit(Delta_int % T, T)
+            dec = (dec_scaled * inv_delta_T) % T
+
+            logging.info(f"🎉 [Client Node 1 Decrypted Result][:8]: {dec[:8]}")
+            logging.info("Private result successfully retrieved on Client without Server knowing plaintext!")
+
+    sock.close()
+
+
+def run_client(server_ip="127.0.0.1", base_port=10001, total_ports=10, num_hackers=2, data_dir="./node_data"):
+    global local_C_coeffs_global, local_acc_s, local_acc_e, dkg_dealer_barrier
+    local_C_coeffs_global = None
+    local_acc_s = defaultdict(lambda: [None for _ in range(2)])
+    local_acc_e = defaultdict(lambda: [None for _ in range(3)])
+    dkg_dealer_barrier = threading.Barrier(total_ports)
+
+    # 隨機挑選惡意節點 (排除 Node 1 方便打印結果)
+    if num_hackers > 0:
+        candidates = list(range(2, total_ports + 1))
+        hacker_indices = set(np.random.choice(candidates, size=min(num_hackers, len(candidates)), replace=False))
+    else:
+        hacker_indices = set()
+
+    logging.info(f"=== Starting {total_ports} Client Nodes connecting to {server_ip}:{base_port}..{base_port+total_ports-1} ===")
+    logging.info(f"Malicious hackers configured: {sorted(list(hacker_indices))}")
+
+    threads = []
+    for i in range(total_ports):
+        node_id = i + 1
+        port = base_port + i
+        is_mal = (node_id in hacker_indices)
+        t = threading.Thread(
+            target=client_worker,
+            args=(server_ip, port, node_id, total_ports, is_mal, data_dir),
+            name=f"Thread-Client-{node_id}"
+        )
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+    logging.info(f"All {total_ports} client workers finished cleanly.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="HQ-FS Client (DO & DCN Node)")
-    parser.add_argument("--server-url", default="http://127.0.0.1:8002", help="HQ-FS Server URL")
-    parser.add_argument("--parties", type=int, default=10, help="Number of DCN nodes N (default: 10)")
-    parser.add_argument("--T", type=int, default=1024, help="Plaintext modulus T (default: 1024)")
-    parser.add_argument("--local", action="store_true", help="Run local simulation directly")
+    parser = argparse.ArgumentParser(description="Multi-Port Decentralized HQ-FS Client")
+    parser.add_argument("--server_ip", default="127.0.0.1", help="Coordinator Server IP")
+    parser.add_argument("--base_port", type=int, default=10001, help="Starting port number")
+    parser.add_argument("--total_ports", type=int, default=10, help="Total number of nodes")
+    parser.add_argument("--num_hackers", type=int, default=2, help="Number of malicious nodes to simulate")
+    parser.add_argument("--data_dir", default="./node_data", help="Local directory for JSON persistence")
     args = parser.parse_args()
 
-    if args.local:
-        run_local_simulation(num_parties=args.parties, T_plain=args.T)
-    else:
-        run_demo(server_url=args.server_url, num_parties=args.parties)
+    run_client(
+        server_ip=args.server_ip,
+        base_port=args.base_port,
+        total_ports=args.total_ports,
+        num_hackers=args.num_hackers,
+        data_dir=args.data_dir
+    )

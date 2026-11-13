@@ -3,7 +3,7 @@ import time
 import random
 from typing import Any, Dict, Tuple, Optional, List
 from core.base_scheme import BaseThFHEScheme
-from tool import HQFSRNSGLWE
+from tool import HQFSRNSGLWE, DecentralizedHQFS, HQFSVerifier, compute_committee_lagrange
 
 
 class HQFSThFHEScheme(BaseThFHEScheme):
@@ -11,10 +11,12 @@ class HQFSThFHEScheme(BaseThFHEScheme):
     論文轉接器 (Paper Adapter):
     "Actively Secure and CPA^D-Resistant Threshold FHE via Homomorphic Quotient Proofs"
     整合：
-      - RNS-GLWE 緊湊架構 (Q = {q_1, ..., q_r}, P = {p_1, ..., p_k})
+      - RNS-GLWE 緊湊架構 (Q = {q_1, ..., q_r}, P = {p_1, ..., p_k}) 與動態 C 加速核心
       - HQ-FS ZKP 同態商數 Fiat-Shamir 零知識證明 (限制於小基線模數 K_Q = q_1)
-      - 廣度優先搜尋 (BFS) 佇列批次過濾與惡意節點精準隔離 (Algorithm 6)
+      - 樹狀四分搜尋 (4-ary Tree Bisection) 佇列批次過濾與惡意節點精準隔離 (Algorithm 6 & HQFSVerifier.verify_n_tree)
+      - 整數委員會 Lagrange 重構 (compute_committee_lagrange)
       - 零密文疊加 (Zero-Ciphertext Superposition) 截斷代數計算軌跡以抵抗 CPA^D 並達成 IND-FuncCPA 電路隱私 (Algorithm 7 & 8)
+      - 分散式多埠節點狀態機與 JSON 資料持久化 (DecentralizedClientNode)
     """
 
     def __init__(self, name: str = "HQ-FS (RNS-GLWE + Homomorphic Quotient ZKP + Zero-CT, Our Work)"):
@@ -29,6 +31,7 @@ class HQFSThFHEScheme(BaseThFHEScheme):
         self.malicious_ratio: int = 20
         self.attack_type: str = "share_tampering"
         self.hqfs: Optional[HQFSRNSGLWE] = None
+        self.decentralized_hqfs: Optional[DecentralizedHQFS] = None
         self.last_audit: Dict[str, Any] = {}
 
     def setup(
@@ -65,6 +68,14 @@ class HQFSThFHEScheme(BaseThFHEScheme):
             B_flood=self.B_flood,
             num_parties=self.num_parties
         )
+        self.decentralized_hqfs = DecentralizedHQFS(
+            d=self.d,
+            T=self.T if (self.T > 2 and (self.T - 1) % (2 * self.d) == 0) else 65537,
+            n_glwe=self.n_glwe,
+            m_glwe=3,
+            num_parties=self.num_parties,
+            threshold_t=max(1, int(self.num_parties * 0.6))
+        )
         return {
             "d": self.d,
             "n_glwe": self.n_glwe,
@@ -76,7 +87,8 @@ class HQFSThFHEScheme(BaseThFHEScheme):
             "B_flood": self.B_flood,
             "num_parties": self.num_parties,
             "malicious_ratio": self.malicious_ratio,
-            "attack_type": self.attack_type
+            "attack_type": self.attack_type,
+            "decentralized_engine": "DecentralizedHQFS"
         }
 
     def keygen(self) -> Dict[str, Any]:
@@ -154,7 +166,7 @@ class HQFSThFHEScheme(BaseThFHEScheme):
         """
         分別量測：
           - Stage 5 (Algorithm 5 Partial Decryption & HQ-FS ZKP Proof Generation modulo K_Q)
-          - Stage 6 (Algorithm 6 BFS Queue Batch Verification + CRT Reconstruction + NTT Slot Extraction)
+          - Stage 6 (Algorithm 6 BFS Queue / Tree Batch Verification + CRT Reconstruction + NTT Slot Extraction)
         """
         if self.hqfs is None or not self.hqfs.node_keys:
             self.keygen()
@@ -189,7 +201,10 @@ class HQFSThFHEScheme(BaseThFHEScheme):
             "rejected_parties_sample": [idx + 1 for idx in audit["dropped_malicious_nodes"][:8]],
             "bfs_steps": audit["bfs_steps"],
             "K_Q": audit["K_Q"],
-            "decoded_simd_slots": m_vec[:16]
+            "decoded_simd_slots": m_vec[:16],
+            "bft_defense": "Tree Bisection (Algorithm 6 & HQFSVerifier.verify_n_tree)",
+            "reconstruction": "Integer Committee Lagrange (compute_committee_lagrange)",
+            "decentralized_engine": "DecentralizedHQFS (RNS-GLWE + Dynamic C-Kernel + JSON Persistence)"
         }
         return m_vec[0], t_partial_ms, t_agg_ms
 
@@ -204,7 +219,6 @@ class HQFSThFHEScheme(BaseThFHEScheme):
         }
 
     def get_online_metrics(self, ciphertext: Optional[Any] = None, preprocessed_data: Optional[Any] = None) -> Dict[str, Any]:
-        # Each node sends sh^{(i)} (in R_Q) and HQ-FS proof pi^{(i)} (confined to small baseline modulus K_Q!)
         rns_r = self.hqfs.rns.r if (self.hqfs and self.hqfs.rns) else 2
         bits_per_party = self.d * 32 * rns_r + self.d * 20 * (self.n_glwe + self.m_glwe + 2)
         total_comm = self.num_parties * bits_per_party

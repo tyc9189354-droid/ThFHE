@@ -611,6 +611,399 @@
       .stages-grid { grid-template-columns: repeat(4, 1fr); }
       .stage-btns-grid { grid-template-columns: repeat(2, 1fr); }
     }
+  
+    /* =========================================================================
+       Collapsible Sidebar & Modern Workspace Layout
+       ========================================================================= */
+    .workspace-layout {
+      display: flex;
+      flex: 1;
+      width: 100%;
+      min-height: calc(100vh - 120px);
+      position: relative;
+    }
+
+    .app-sidebar {
+      width: 275px;
+      min-width: 275px;
+      background: rgba(13, 20, 36, 0.96);
+      backdrop-filter: blur(16px);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 90;
+      position: sticky;
+      top: 108px;
+      height: calc(100vh - 108px);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .app-sidebar.collapsed {
+      width: 68px;
+      min-width: 68px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.1rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(10, 16, 30, 0.5);
+    }
+
+    .sidebar-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #93c5fd;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .sidebar-collapse-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+    .sidebar-collapse-btn:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .sidebar-toggle-btn {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid var(--card-border);
+      color: #93c5fd;
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.15rem;
+      transition: all 0.2s;
+      margin-right: 0.65rem;
+    }
+    .sidebar-toggle-btn:hover {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .sidebar-nav {
+      padding: 0.85rem 0.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      padding: 0.45rem 0.6rem 0.2rem;
+      white-space: nowrap;
+    }
+
+    .sidebar-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.7rem 0.85rem;
+      border-radius: 10px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: left;
+      font-family: var(--font-sans);
+      transition: all 0.2s;
+      position: relative;
+      width: 100%;
+    }
+    .sidebar-nav-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+    .sidebar-nav-btn.active {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(16, 185, 129, 0.12));
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+    .sidebar-nav-btn.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 15%;
+      bottom: 15%;
+      width: 3.5px;
+      border-radius: 0 3px 3px 0;
+      background: #3b82f6;
+    }
+    .sidebar-nav-btn.arena-btn.active::before {
+      background: #f59e0b;
+    }
+    .sidebar-nav-btn.arena-btn.active {
+      border-color: rgba(245, 158, 11, 0.45);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.12));
+    }
+
+    .nav-icon {
+      font-size: 1.15rem;
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-text-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+    .nav-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-desc {
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .nav-pill {
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: rgba(245, 158, 11, 0.25);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--card-border);
+      background: rgba(10, 16, 30, 0.4);
+    }
+    .sidebar-shortcut-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .sidebar-shortcut-hint code {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--card-border);
+      color: #93c5fd;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+    }
+
+    /* Collapsed Sidebar Rules */
+    .app-sidebar.collapsed .nav-text-group,
+    .app-sidebar.collapsed .nav-section-label,
+    .app-sidebar.collapsed .sidebar-title-group,
+    .app-sidebar.collapsed .sidebar-footer,
+    .app-sidebar.collapsed .nav-pill {
+      display: none !important;
+    }
+    .app-sidebar.collapsed .sidebar-header {
+      justify-content: center;
+      padding: 0.85rem 0.4rem;
+    }
+    .app-sidebar.collapsed .sidebar-nav-btn {
+      justify-content: center;
+      padding: 0.75rem 0.5rem;
+    }
+    .app-sidebar.collapsed .sidebar-nav-btn.active::before {
+      display: none;
+    }
+
+    .app-main {
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+      padding: 1.25rem 2rem;
+      overflow-y: auto;
+      transition: all 0.28s ease;
+    }
+
+    .header-right-tools {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .view-indicator {
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.4rem 0.95rem;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .view-indicator.arena-view {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    /* =========================================================================
+       Paper Selection Panel in Arena (論文評測競技場方案選取器)
+       ========================================================================= */
+    .paper-filter-panel {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.95rem 1.25rem;
+      margin-bottom: 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      backdrop-filter: blur(12px);
+    }
+    .filter-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .filter-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .filter-quick-btns {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .btn-filter-tag {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+      border-radius: 6px;
+      font-size: 0.74rem;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-filter-tag:hover {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: var(--primary);
+      color: white;
+    }
+    .btn-filter-tag.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .paper-chips-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+    .paper-chip-label {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      border-radius: 9px;
+      padding: 0.65rem 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .paper-chip-label:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .paper-chip-label.active {
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    .paper-chip-label.active#chip-label-ccs25 {
+      border-color: rgba(59, 130, 246, 0.7);
+      background: rgba(59, 130, 246, 0.12);
+    }
+    .paper-chip-label.active#chip-label-noah {
+      border-color: rgba(239, 68, 68, 0.7);
+      background: rgba(239, 68, 68, 0.12);
+    }
+    .paper-chip-label.active#chip-label-pelta {
+      border-color: rgba(16, 185, 129, 0.7);
+      background: rgba(16, 185, 129, 0.12);
+    }
+    .paper-chip-label.active#chip-label-hqfs {
+      border-color: rgba(245, 158, 11, 0.8);
+      background: rgba(245, 158, 11, 0.14);
+    }
+    .paper-chip-label input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: #3b82f6;
+      width: 16px;
+      height: 16px;
+    }
+    .chip-color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .chip-title {
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+    .chip-sub {
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
   </style>
 </head>
 <body>
@@ -618,18 +1011,18 @@
   <header>
     <div class="header-top">
       <div class="brand">
+        <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="收合 / 展開側邊欄 (快捷鍵: [ )">
+          <span class="toggle-icon">☰</span>
+        </button>
         <div class="brand-logo">Th</div>
         <div>
           <div class="brand-title">ThFHE Cryptographic Benchmark Lab</div>
-          <div class="brand-sub">CCS 2025 (MPC Rounding) • PELTA (Malicious Shield) • HQ-FS (Our Work: Homomorphic Quotient Proofs) 實測實驗平台</div>
+          <div class="brand-sub">CCS 2025 • Noah's Ark • PELTA • HQ-FS (Our Work) 門檻同態加密與抗惡意評測平台</div>
         </div>
       </div>
 
-      <div class="nav-tabs">
-        <button class="nav-btn active" onclick="switchTab('ccs25', this)">⚡ CCS 2025 同態加/乘法與解密</button>
-        <button class="nav-btn" onclick="switchTab('pelta', this)">🛡️ PELTA 抗惡意同態加/乘法與解密</button>
-        <button class="nav-btn" onclick="switchTab('hqfs', this)">🚀 HQ-FS (Our Work) 同態商數證明與解密</button>
-        <button class="nav-btn" onclick="switchTab('arena', this)">📊 跨論文評測競技場</button>
+      <div class="header-right-tools">
+        <div class="view-indicator" id="header-view-pill">⚡ CCS 2025 實驗室</div>
       </div>
     </div>
 
@@ -691,7 +1084,68 @@
     </div>
   </header>
 
-  <main>
+    <!-- Workspace Layout: Collapsible Sidebar + Main Content -->
+  <div class="workspace-layout">
+    <!-- Collapsible Sidebar -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-group">
+          <span style="font-size: 1.05rem;">🧭</span>
+          <span class="sidebar-title">實驗與評測導覽</span>
+        </div>
+        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar()" title="收合側邊欄 (快捷鍵: [ )">
+          <span id="collapse-arrow">◀</span>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">獨立論文實驗室</div>
+
+        <button class="sidebar-nav-btn active" id="sidebar-btn-ccs25" onclick="switchTab('ccs25', this)">
+          <span class="nav-icon" style="color: #60a5fa;">⚡</span>
+          <div class="nav-text-group">
+            <span class="nav-title">CCS 2025 實驗室</span>
+            <span class="nav-desc">Zyskind et al. (MPC Rounding)</span>
+          </div>
+        </button>
+
+        <button class="sidebar-nav-btn" id="sidebar-btn-pelta" onclick="switchTab('pelta', this)">
+          <span class="nav-icon" style="color: #34d399;">🛡️</span>
+          <div class="nav-text-group">
+            <span class="nav-title">PELTA 實驗室</span>
+            <span class="nav-desc">Chatel et al. (EPFL Malicious Shield)</span>
+          </div>
+        </button>
+
+        <button class="sidebar-nav-btn" id="sidebar-btn-hqfs" onclick="switchTab('hqfs', this)">
+          <span class="nav-icon" style="color: #fbbf24;">🚀</span>
+          <div class="nav-text-group">
+            <span class="nav-title">HQ-FS 實驗室</span>
+            <span class="nav-desc">Our Work (Homomorphic Quotient Proofs)</span>
+          </div>
+          <span class="nav-pill">OURS</span>
+        </button>
+
+        <div class="nav-section-label" style="margin-top: 0.85rem;">橫向綜合評測</div>
+
+        <button class="sidebar-nav-btn arena-btn" id="sidebar-btn-arena" onclick="switchTab('arena', this)">
+          <span class="nav-icon" style="color: #f59e0b;">🏆</span>
+          <div class="nav-text-group">
+            <span class="nav-title">論文評測競技場</span>
+            <span class="nav-desc">論文 7 階段直方圖與比對</span>
+          </div>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-shortcut-hint">
+          <span>快捷鍵 <code>[</code> 收合側欄</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main" id="app-main">
     <!-- ===================================================================== -->
     <!-- TAB 1: CCS 2025 (Dual Inputs + SIMD + T=1024 + Stage Buttons + Log)   -->
     <!-- ===================================================================== -->
@@ -1103,13 +1557,63 @@
       <div class="card">
         <div class="card-title">
           <div>
-            <span>🏆 四篇論文各階段執行時間競技場 (4-Paper 7-Stage Live Benchmark Arena)</span>
+            <span>🏆 論文評測競技場 (Paper Benchmark Arena)</span>
             <span id="arena-status-badge" class="badge badge-yellow" style="margin-left: 8px;">尚未執行實測</span>
           </div>
           <div style="display: flex; gap: 0.6rem; align-items: center;">
             <button class="btn btn-accent" id="btn-run-arena" style="width: auto; padding: 0.5rem 1.15rem;" onclick="runLiveBenchmarkArena()">
-              ▶ 執行跨論文實際基準評測 (Run Live Benchmark)
+              ▶ 執行論文實際基準評測 (Run Benchmark)
             </button>
+          </div>
+        </div>
+
+        <!-- Paper Selection Panel (可自由選取論文方案進行比較) -->
+        <div class="paper-filter-panel">
+          <div class="filter-header">
+            <div class="filter-title">
+              <span>📚 選擇欲比較的論文方案 (Select Papers to Compare)：</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: normal;">(勾選方案動態切換直方圖柱狀與數據表欄位)</span>
+            </div>
+            <div class="filter-quick-btns">
+              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (All 4)</button>
+              <button type="button" class="btn-filter-tag" id="btn-preset-ccs" onclick="selectPapersPreset('ours_vs_ccs')">本論文 vs CCS 2025</button>
+              <button type="button" class="btn-filter-tag" id="btn-preset-pelta" onclick="selectPapersPreset('ours_vs_pelta')">本論文 vs PELTA</button>
+              <button type="button" class="btn-filter-tag" id="btn-preset-noah" onclick="selectPapersPreset('ours_vs_noah')">本論文 vs Noah's Ark</button>
+            </div>
+          </div>
+
+          <div class="paper-chips-container">
+            <!-- Chip 1: CCS 2025 -->
+            <label class="paper-chip-label active" id="chip-label-ccs25">
+              <input type="checkbox" id="paper-check-ccs25" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #3b82f6;"></span>
+              <span class="chip-title">CCS 2025</span>
+              <span class="chip-sub">[Zyskind et al. - MPC Rounding]</span>
+            </label>
+
+            <!-- Chip 2: Noah's Ark -->
+            <label class="paper-chip-label active" id="chip-label-noah">
+              <input type="checkbox" id="paper-check-noah" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #ef4444;"></span>
+              <span class="chip-title">Noah's Ark</span>
+              <span class="chip-sub">[Dahl et al. - Noise Flooding]</span>
+            </label>
+
+            <!-- Chip 3: PELTA -->
+            <label class="paper-chip-label active" id="chip-label-pelta">
+              <input type="checkbox" id="paper-check-pelta" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #10b981;"></span>
+              <span class="chip-title">PELTA</span>
+              <span class="chip-sub">[Chatel et al. EPFL - Malicious Shield]</span>
+            </label>
+
+            <!-- Chip 4: HQ-FS (Our Work) -->
+            <label class="paper-chip-label active" id="chip-label-hqfs">
+              <input type="checkbox" id="paper-check-hqfs" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #f59e0b;"></span>
+              <span class="chip-title">HQ-FS (Our Work)</span>
+              <span class="chip-sub">[RNS-GLWE + HQ-FS ZKP]</span>
+            </label>
           </div>
         </div>
 
@@ -1120,19 +1624,19 @@
               ⏱️ 實測各階段執行時間直方圖 (Measured Stage Latency in ms — 四篇論文同步實測)
             </div>
             <div class="chart-legend" style="flex-wrap: wrap;">
-              <div class="legend-item">
+              <div class="legend-item legend-ccs">
                 <div class="legend-color" style="background: #3b82f6;"></div>
                 <span>CCS 2025 (Zyskind et al.)</span>
               </div>
-              <div class="legend-item">
+              <div class="legend-item legend-noah">
                 <div class="legend-color" style="background: #ef4444;"></div>
                 <span>Noah's Ark (Noise Flooding)</span>
               </div>
-              <div class="legend-item">
+              <div class="legend-item legend-pelta">
                 <div class="legend-color" style="background: #10b981;"></div>
                 <span>PELTA (Chatel et al. EPFL)</span>
               </div>
-              <div class="legend-item">
+              <div class="legend-item legend-hqfs">
                 <div class="legend-color" style="background: #f59e0b;"></div>
                 <span><strong>HQ-FS (Our Work: RNS-GLWE + HQ-FS ZKP)</strong></span>
               </div>
@@ -1143,10 +1647,10 @@
           <div class="stages-grid" id="stages-histogram">
             <div class="empty-arena-overlay" id="arena-empty-overlay">
               <div style="font-size: 1.05rem; font-weight: 600; color: #93c5fd;">
-                📊 競技場目前無數據（等待實際測試）
+                📊 論文評測競技場目前無數據（等待實際測試）
               </div>
               <div style="font-size: 0.85rem; color: var(--text-muted); max-width: 620px;">
-                請於上方選擇參與方數量（<strong>10 ~ 1000</strong> Parties）、隨機惡意節點比例（<strong>0% ~ 49%</strong>）與攻擊方式，並點擊「<strong>▶ 執行跨論文實際基準評測</strong>」，系統將實際執行四篇論文（<strong>CCS 2025</strong>、<strong>Noah's Ark</strong>、<strong>PELTA</strong>、<strong>HQ-FS (Our Work)</strong>）的 7 大階段並繪製實測數據。
+                請於下方選擇欲比較的論文方案、參與方數量與攻擊方式，並點擊「<strong>▶ 執行論文實際基準評測</strong>」，系統將實際執行所選論文的 7 大階段並繪製實測數據與圖表。
               </div>
               <button class="btn" style="width: auto; padding: 0.55rem 1.4rem; margin-top: 0.25rem;" onclick="runLiveBenchmarkArena()">
                 ⚡ 立即執行實際測試 (<span id="overlay-env-label">N=10, Malicious=20%</span>)
@@ -1237,82 +1741,82 @@
           <thead>
             <tr>
               <th>實測評測階段 / 指標 (Metric)</th>
-              <th>CCS 2025 [Zyskind et al.]</th>
-              <th>Noah's Ark [Noise Flooding]</th>
-              <th>PELTA [Chatel et al. EPFL]</th>
-              <th style="color: #fbbf24;">HQ-FS [Our Work: RNS-GLWE + HQ-FS]</th>
+              <th class="col-ccs">CCS 2025 [Zyskind et al.]</th>
+              <th class="col-noah">Noah's Ark [Noise Flooding]</th>
+              <th class="col-pelta">PELTA [Chatel et al. EPFL]</th>
+              <th class="col-hqfs" style="color: #fbbf24;">HQ-FS [Our Work: RNS-GLWE + HQ-FS]</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td><strong>1. Setup 系統初始化耗時</strong></td>
-              <td id="tbl-ccs-setup">-- (尚未測試)</td>
-              <td id="tbl-noah-setup">-- (尚未測試)</td>
-              <td id="tbl-pelta-setup">-- (尚未測試)</td>
-              <td id="tbl-hqfs-setup" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-setup">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-setup">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-setup">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-setup" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>2. KeyGen 分散式金鑰與承諾生成</strong></td>
-              <td id="tbl-ccs-keygen">-- (尚未測試)</td>
-              <td id="tbl-noah-keygen">-- (尚未測試)</td>
-              <td id="tbl-pelta-keygen">-- (尚未測試)</td>
-              <td id="tbl-hqfs-keygen" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-keygen">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-keygen">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-keygen">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-keygen" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>3. Offline Prep / RLKGen 離線預處理耗時</strong></td>
-              <td id="tbl-ccs-prep">-- (尚未測試)</td>
-              <td id="tbl-noah-prep">-- (尚未測試)</td>
-              <td id="tbl-pelta-prep">-- (尚未測試)</td>
-              <td id="tbl-hqfs-prep" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-prep">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-prep">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-prep">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-prep" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>4. Homo Add 同態加法耗時</strong></td>
-              <td id="tbl-ccs-add">-- (尚未測試)</td>
-              <td id="tbl-noah-add">-- (尚未測試)</td>
-              <td id="tbl-pelta-add">-- (尚未測試)</td>
-              <td id="tbl-hqfs-add" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-add">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-add">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-add">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-add" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>5. Homo Mul 同態乘法 (含重線性化) 耗時</strong></td>
-              <td id="tbl-ccs-mul">-- (尚未測試)</td>
-              <td id="tbl-noah-mul">-- (尚未測試)</td>
-              <td id="tbl-pelta-mul">-- (尚未測試)</td>
-              <td id="tbl-hqfs-mul" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-mul">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-mul">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-mul">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-mul" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>6. Partial Dec 部分解密 / MPC 捨入 / ZK 證明</strong></td>
-              <td id="tbl-ccs-pdec">-- (尚未測試)</td>
-              <td id="tbl-noah-pdec">-- (尚未測試)</td>
-              <td id="tbl-pelta-pdec">-- (尚未測試)</td>
-              <td id="tbl-hqfs-pdec" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-pdec">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-pdec">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-pdec">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-pdec" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>7. Aggregation 份額聚合 / BFS 過濾與 CRT 重構</strong></td>
-              <td id="tbl-ccs-agg">-- (尚未測試)</td>
-              <td id="tbl-noah-agg">-- (尚未測試)</td>
-              <td id="tbl-pelta-agg">-- (尚未測試)</td>
-              <td id="tbl-hqfs-agg" style="color: #fde68a;">-- (尚未測試)</td>
+              <td class="col-ccs" id="tbl-ccs-agg">-- (尚未測試)</td>
+              <td class="col-noah" id="tbl-noah-agg">-- (尚未測試)</td>
+              <td class="col-pelta" id="tbl-pelta-agg">-- (尚未測試)</td>
+              <td class="col-hqfs" id="tbl-hqfs-agg" style="color: #fde68a;">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>總線上解密延遲 (Total Online Latency)</strong></td>
-              <td style="color: #34d399; font-weight: 600;" id="tbl-ccs-lat">-- (尚未測試)</td>
-              <td style="color: #f87171; font-weight: 600;" id="tbl-noah-lat">-- (尚未測試)</td>
-              <td style="color: #a78bfa; font-weight: 600;" id="tbl-pelta-lat">-- (尚未測試)</td>
-              <td style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-lat">-- (尚未測試)</td>
+              <td class="col-ccs" style="color: #34d399; font-weight: 600;" id="tbl-ccs-lat">-- (尚未測試)</td>
+              <td class="col-noah" style="color: #f87171; font-weight: 600;" id="tbl-noah-lat">-- (尚未測試)</td>
+              <td class="col-pelta" style="color: #a78bfa; font-weight: 600;" id="tbl-pelta-lat">-- (尚未測試)</td>
+              <td class="col-hqfs" style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-lat">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>實測解密吞吐量 (Measured Throughput)</strong></td>
-              <td style="color: #60a5fa; font-weight: 600;" id="tbl-ccs-thru">-- (尚未測試)</td>
-              <td style="color: #f87171;" id="tbl-noah-thru">-- (尚未測試)</td>
-              <td style="color: #a78bfa;" id="tbl-pelta-thru">-- (尚未測試)</td>
-              <td style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-thru">-- (尚未測試)</td>
+              <td class="col-ccs" style="color: #60a5fa; font-weight: 600;" id="tbl-ccs-thru">-- (尚未測試)</td>
+              <td class="col-noah" style="color: #f87171;" id="tbl-noah-thru">-- (尚未測試)</td>
+              <td class="col-pelta" style="color: #a78bfa;" id="tbl-pelta-thru">-- (尚未測試)</td>
+              <td class="col-hqfs" style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-thru">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>同態加/乘法解密正確性驗證 (Correctness)</strong></td>
-              <td id="tbl-ccs-ok">--</td>
-              <td id="tbl-noah-ok">--</td>
-              <td id="tbl-pelta-ok">--</td>
-              <td id="tbl-hqfs-ok">--</td>
+              <td class="col-ccs" id="tbl-ccs-ok">--</td>
+              <td class="col-noah" id="tbl-noah-ok">--</td>
+              <td class="col-pelta" id="tbl-pelta-ok">--</td>
+              <td class="col-hqfs" id="tbl-hqfs-ok">--</td>
             </tr>
           </tbody>
         </table>
@@ -1320,16 +1824,16 @@
         <!-- Qualitative Security & Feature Comparison (Paper Table II) -->
         <div style="margin-top: 1.65rem; border-top: 1px solid var(--card-border); padding-top: 1.15rem;">
           <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem; color: #fde68a;">
-            🛡️ 跨論文安全性與密碼學架構特性比較表 (Qualitative Security Comparison — Paper Table II)
+            🛡️ 論文安全性與密碼學架構特性比較表 (Qualitative Security Comparison — Paper Table II)
           </div>
           <table>
             <thead>
               <tr>
                 <th>安全屬性 / 架構維度 (Feature)</th>
-                <th>CCS 2025 [Zyskind et al.]</th>
-                <th>Noah's Ark [4] (Smudging)</th>
-                <th>PELTA [19] (Chatel et al.)</th>
-                <th style="color: #fbbf24;">HQ-FS [Our Work]</th>
+                <th class="col-ccs">CCS 2025 [Zyskind et al.]</th>
+                <th class="col-noah">Noah's Ark [4] (Smudging)</th>
+                <th class="col-pelta">PELTA [19] (Chatel et al.)</th>
+                <th class="col-hqfs" style="color: #fbbf24;">HQ-FS [Our Work]</th>
               </tr>
             </thead>
             <tbody>
@@ -1381,6 +1885,7 @@
       </div>
     </section>
   </main>
+  </div>
 
   <script>
     const ATTACK_NAMES = {
@@ -1749,9 +2254,107 @@
 
     function switchTab(tabId, btnEl) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-      document.getElementById('tab-' + tabId).classList.add('active');
-      if (btnEl) btnEl.classList.add('active');
+      document.querySelectorAll('.sidebar-nav-btn, .nav-btn').forEach(el => el.classList.remove('active'));
+      
+      const targetTab = document.getElementById('tab-' + tabId);
+      if (targetTab) targetTab.classList.add('active');
+
+      const sideBtn = document.getElementById('sidebar-btn-' + tabId);
+      if (sideBtn) sideBtn.classList.add('active');
+      if (btnEl && btnEl.classList) btnEl.classList.add('active');
+
+      const pill = document.getElementById('header-view-pill');
+      if (pill) {
+        const titles = {
+          ccs25: '⚡ CCS 2025 實驗室',
+          pelta: '🛡️ PELTA 實驗室',
+          hqfs: '🚀 HQ-FS (Our Work) 實驗室',
+          arena: '🏆 論文評測競技場'
+        };
+        pill.innerText = titles[tabId] || '實驗室';
+        pill.className = 'view-indicator ' + (tabId === 'arena' ? 'arena-view' : '');
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('app-sidebar');
+      if (!sidebar) return;
+      sidebar.classList.toggle('collapsed');
+      const isCollapsed = sidebar.classList.contains('collapsed');
+      try {
+        localStorage.setItem('thfhe_sidebar_collapsed', isCollapsed ? '1' : '0');
+      } catch (e) {}
+      const arrow = document.getElementById('collapse-arrow');
+      if (arrow) arrow.innerText = isCollapsed ? '▶' : '◀';
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === '[' || e.key === ']') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+        toggleSidebar();
+      }
+    });
+
+    // Paper Selection & Filter Logic
+    let LATEST_ARENA_RESULTS = null;
+
+    function getSelectedPapers() {
+      const papers = [];
+      if (document.getElementById('paper-check-ccs25') && document.getElementById('paper-check-ccs25').checked) papers.push('ccs25');
+      if (document.getElementById('paper-check-noah') && document.getElementById('paper-check-noah').checked) papers.push('noah');
+      if (document.getElementById('paper-check-pelta') && document.getElementById('paper-check-pelta').checked) papers.push('pelta');
+      if (document.getElementById('paper-check-hqfs') && document.getElementById('paper-check-hqfs').checked) papers.push('hqfs');
+      return papers;
+    }
+
+    function selectPapersPreset(preset) {
+      const checks = {
+        all: ['ccs25', 'noah', 'pelta', 'hqfs'],
+        ours_vs_ccs: ['ccs25', 'hqfs'],
+        ours_vs_pelta: ['pelta', 'hqfs'],
+        ours_vs_noah: ['noah', 'hqfs']
+      };
+      const selected = checks[preset] || checks['all'];
+      ['ccs25', 'noah', 'pelta', 'hqfs'].forEach(p => {
+        const chk = document.getElementById('paper-check-' + p);
+        if (chk) chk.checked = selected.includes(p);
+      });
+      document.querySelectorAll('.btn-filter-tag').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('btn-preset-' + (preset === 'all' ? 'all' : preset.replace('ours_vs_', '')));
+      if (btn) btn.classList.add('active');
+      onPaperFilterChange();
+    }
+
+    function onPaperFilterChange() {
+      const selected = getSelectedPapers();
+
+      ['ccs25', 'noah', 'pelta', 'hqfs'].forEach(p => {
+        const isChecked = selected.includes(p);
+        const label = document.getElementById('chip-label-' + p);
+        if (label) {
+          if (isChecked) label.classList.add('active');
+          else label.classList.remove('active');
+        }
+
+        const legendItem = document.querySelector('.legend-' + p);
+        if (legendItem) {
+          legendItem.style.opacity = isChecked ? '1' : '0.25';
+        }
+
+        document.querySelectorAll('.col-' + p).forEach(el => {
+          el.style.display = isChecked ? '' : 'none';
+        });
+
+        for (let s = 1; s <= 7; s++) {
+          const bar = document.getElementById(`bar-s${s}-${p}`);
+          if (bar) {
+            bar.style.display = isChecked ? 'block' : 'none';
+          }
+        }
+      });
+
+      if (LATEST_ARENA_RESULTS) {
+        renderArenaResults(LATEST_ARENA_RESULTS, getSelectedParties(), getSelectedMaliciousRatio());
+      }
     }
 
     function onPartySelectChange() {
@@ -2566,10 +3169,16 @@
       const btn = document.getElementById('btn-run-arena');
       const badge = document.getElementById('arena-status-badge');
 
+      const selectedPapers = getSelectedPapers();
+      if (selectedPapers.length === 0) {
+        alert('請至少勾選一項欲評測比對的論文方案！');
+        return;
+      }
+
       btn.disabled = true;
-      btn.innerText = `⏳ 正在實測 N=${numParties}, Mal=${malRatio}%...`;
+      btn.innerText = `⏳ 正在實測 N=${numParties}, Mal=${malRatio}% (${selectedPapers.length} 篇論文)...`;
       badge.className = 'badge badge-blue';
-      badge.innerText = `正在執行實測 (N=${numParties}, Mal=${malRatio}%)...`;
+      badge.innerText = `正在執行實測 (N=${numParties}, Mal=${malRatio}%, ${selectedPapers.length} 篇論文)...`;
 
       try {
         const resp = await fetch('/api/benchmark', {
@@ -2579,6 +3188,7 @@
             num_parties: numParties,
             malicious_ratio: malRatio,
             attack_type: attackType,
+            schemes: selectedPapers,
             k: 64,
             m: 1,
             iterations: 1
@@ -2586,13 +3196,15 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        LATEST_ARENA_RESULTS = data.results;
         renderArenaResults(data.results, numParties, malRatio);
       } catch (e) {
         const localResults = runLocalMeasuredBenchmark(numParties, malRatio, attackType);
+        LATEST_ARENA_RESULTS = localResults;
         renderArenaResults(localResults, numParties, malRatio);
       } finally {
         btn.disabled = false;
-        btn.innerText = `▶ 重新執行跨論文實際基準評測 (Run Live Benchmark)`;
+        btn.innerText = `▶ 重新執行論文實際基準評測 (Run Benchmark)`;
       }
     }
 
@@ -2698,15 +3310,20 @@
     }
 
     function renderArenaResults(results, numParties, malRatio) {
-      document.getElementById('arena-empty-overlay').classList.add('hidden');
+      LATEST_ARENA_RESULTS = results;
+      const overlay = document.getElementById('arena-empty-overlay');
+      if (overlay) overlay.classList.add('hidden');
       const badge = document.getElementById('arena-status-badge');
-      badge.className = 'badge badge-green';
-      badge.innerText = `✓ 已完成四篇論文實測 (N=${numParties}, Mal=${malRatio}%)`;
+      const selected = getSelectedPapers();
+      if (badge) {
+        badge.className = 'badge badge-green';
+        badge.innerText = `✓ 已完成實測 (N=${numParties}, Mal=${malRatio}%, 包含 ${selected.length} 篇論文)`;
+      }
 
-      const ccs = results.ccs25;
-      const noah = results.noah;
-      const pelta = results.pelta;
-      const hqfs = results.hqfs || results.pelta;
+      const ccs = results.ccs25 || {};
+      const noah = results.noah || {};
+      const pelta = results.pelta || {};
+      const hqfs = results.hqfs || results.pelta || {};
 
       const stageKeys = [
         'setup_time_ms',
@@ -2718,9 +3335,13 @@
         'agg_time_ms'
       ];
 
+      // Calculate maxVal among ONLY the currently selected papers
       let maxVal = 0.001;
       stageKeys.forEach(k => {
-        maxVal = Math.max(maxVal, ccs[k] || 0, noah[k] || 0, pelta[k] || 0, hqfs[k] || 0);
+        if (selected.includes('ccs25') && ccs[k]) maxVal = Math.max(maxVal, ccs[k]);
+        if (selected.includes('noah') && noah[k]) maxVal = Math.max(maxVal, noah[k]);
+        if (selected.includes('pelta') && pelta[k]) maxVal = Math.max(maxVal, pelta[k]);
+        if (selected.includes('hqfs') && hqfs[k]) maxVal = Math.max(maxVal, hqfs[k]);
       });
 
       function calcBarHeight(val) {
@@ -2736,17 +3357,37 @@
         const vPelta = pelta[key] || 0;
         const vHqfs = hqfs[key] || 0;
 
-        document.getElementById(`bar-s${sNum}-ccs`).style.height = calcBarHeight(vCcs) + '%';
-        document.getElementById(`tip-s${sNum}-ccs`).innerText = vCcs + ' ms';
+        const bCcs = document.getElementById(`bar-s${sNum}-ccs`);
+        if (bCcs) {
+          bCcs.style.height = calcBarHeight(vCcs) + '%';
+          bCcs.style.display = selected.includes('ccs25') ? 'block' : 'none';
+          const tCcs = document.getElementById(`tip-s${sNum}-ccs`);
+          if (tCcs) tCcs.innerText = vCcs + ' ms';
+        }
 
-        document.getElementById(`bar-s${sNum}-noah`).style.height = calcBarHeight(vNoah) + '%';
-        document.getElementById(`tip-s${sNum}-noah`).innerText = vNoah + ' ms';
+        const bNoah = document.getElementById(`bar-s${sNum}-noah`);
+        if (bNoah) {
+          bNoah.style.height = calcBarHeight(vNoah) + '%';
+          bNoah.style.display = selected.includes('noah') ? 'block' : 'none';
+          const tNoah = document.getElementById(`tip-s${sNum}-noah`);
+          if (tNoah) tNoah.innerText = vNoah + ' ms';
+        }
 
-        document.getElementById(`bar-s${sNum}-pelta`).style.height = calcBarHeight(vPelta) + '%';
-        document.getElementById(`tip-s${sNum}-pelta`).innerText = vPelta + ' ms';
+        const bPelta = document.getElementById(`bar-s${sNum}-pelta`);
+        if (bPelta) {
+          bPelta.style.height = calcBarHeight(vPelta) + '%';
+          bPelta.style.display = selected.includes('pelta') ? 'block' : 'none';
+          const tPelta = document.getElementById(`tip-s${sNum}-pelta`);
+          if (tPelta) tPelta.innerText = vPelta + ' ms';
+        }
 
-        document.getElementById(`bar-s${sNum}-hqfs`).style.height = calcBarHeight(vHqfs) + '%';
-        document.getElementById(`tip-s${sNum}-hqfs`).innerText = vHqfs + ' ms';
+        const bHqfs = document.getElementById(`bar-s${sNum}-hqfs`);
+        if (bHqfs) {
+          bHqfs.style.height = calcBarHeight(vHqfs) + '%';
+          bHqfs.style.display = selected.includes('hqfs') ? 'block' : 'none';
+          const tHqfs = document.getElementById(`tip-s${sNum}-hqfs`);
+          if (tHqfs) tHqfs.innerText = vHqfs + ' ms';
+        }
       });
 
       const mapRow = [
@@ -2779,7 +3420,16 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      try {
+        if (localStorage.getItem('thfhe_sidebar_collapsed') === '1') {
+          const sidebar = document.getElementById('app-sidebar');
+          if (sidebar) sidebar.classList.add('collapsed');
+          const arrow = document.getElementById('collapse-arrow');
+          if (arrow) arrow.innerText = '▶';
+        }
+      } catch (e) {}
       syncEnvironmentUI(true);
+      onPaperFilterChange();
     });
   </script>
 </body>

@@ -1435,22 +1435,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             pelta_scheme = PeltaThFHEScheme()
             hqfs_scheme = HQFSThFHEScheme()
 
-            res_ccs = runner.run_local(
-                ccs_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                malicious_ratio=malicious_ratio, attack_type=attack_type
-            )
-            res_noah = runner.run_local(
-                noah_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                malicious_ratio=malicious_ratio, attack_type=attack_type
-            )
-            res_pelta = runner.run_local(
-                pelta_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                malicious_ratio=malicious_ratio, attack_type=attack_type
-            )
-            res_hqfs = runner.run_local(
-                hqfs_scheme, k=k, m=m, num_parties=num_parties, b=b,
-                malicious_ratio=malicious_ratio, attack_type=attack_type
-            )
+            schemes_requested = req.get("schemes", ["ccs25", "noah", "pelta", "hqfs"])
+            if not isinstance(schemes_requested, list) or not schemes_requested:
+                schemes_requested = ["ccs25", "noah", "pelta", "hqfs"]
 
             def format_res(r):
                 return {
@@ -1469,6 +1456,32 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "gate_storage_bits": r.offline.gate_storage_bits
                 }
 
+            results_map = {}
+            if "ccs25" in schemes_requested:
+                res_ccs = runner.run_local(
+                    ccs_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                    malicious_ratio=malicious_ratio, attack_type=attack_type
+                )
+                results_map["ccs25"] = format_res(res_ccs)
+            if "noah" in schemes_requested:
+                res_noah = runner.run_local(
+                    noah_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                    malicious_ratio=malicious_ratio, attack_type=attack_type
+                )
+                results_map["noah"] = format_res(res_noah)
+            if "pelta" in schemes_requested:
+                res_pelta = runner.run_local(
+                    pelta_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                    malicious_ratio=malicious_ratio, attack_type=attack_type
+                )
+                results_map["pelta"] = format_res(res_pelta)
+            if "hqfs" in schemes_requested:
+                res_hqfs = runner.run_local(
+                    hqfs_scheme, k=k, m=m, num_parties=num_parties, b=b,
+                    malicious_ratio=malicious_ratio, attack_type=attack_type
+                )
+                results_map["hqfs"] = format_res(res_hqfs)
+
             self._send_json(200, {
                 "status": "ok",
                 "num_parties": num_parties,
@@ -1476,12 +1489,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "attack_type": attack_type,
                 "k": k,
                 "m": m,
-                "results": {
-                    "ccs25": format_res(res_ccs),
-                    "noah": format_res(res_noah),
-                    "pelta": format_res(res_pelta),
-                    "hqfs": format_res(res_hqfs)
-                }
+                "schemes": schemes_requested,
+                "results": results_map
             })
 
         else:

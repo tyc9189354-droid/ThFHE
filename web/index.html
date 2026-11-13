@@ -1164,6 +1164,102 @@
       transform: translateY(-1px);
     }
 
+    /* Lab Manual Button */
+    .btn-lab-manual {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      width: fit-content;
+    }
+    .btn-lab-manual:hover {
+      background: rgba(16, 185, 129, 0.32);
+      border-color: #10b981;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+      transform: translateY(-1px);
+    }
+
+    /* Manual Modal */
+    .manual-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.84);
+      backdrop-filter: blur(8px);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .manual-modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    .manual-modal-container {
+      background: #0f172a;
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      border-radius: 14px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75);
+      width: 90vw;
+      max-width: 860px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalSlideUp 0.25s ease-out;
+    }
+    .manual-modal-header {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+    .manual-modal-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .manual-modal-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 2px 7px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+    .manual-modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }
+    .manual-modal-body {
+      padding: 1.5rem 1.6rem;
+      overflow-y: auto;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      line-height: 1.65;
+    }
+
     /* Tutorial Modal */
     .tutorial-modal-overlay {
       position: fixed;
@@ -1608,7 +1704,8 @@
         <div class="lab-hero-sub">Zyskind et al. (ACM CCS 2025) — Practical Threshold Fully Homomorphic Encryption via Rounding</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-view-paper" onclick="openPaperViewer('ccs25')">📄 查看對應論文</button>
-          <button type="button" class="btn-lab-tutorial" onclick="openLabTutorial('ccs25')">📖 教學</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('ccs25')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('ccs25')">📘 操作手冊</button>
         </div>
       </div>
 
@@ -1748,7 +1845,8 @@
         <div class="lab-hero-sub">Dahl et al. 2023 — Efficient Threshold-FHE Using Noise Flooding</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-view-paper" onclick="openPaperViewer('noah')">📄 查看對應論文</button>
-          <button type="button" class="btn-lab-tutorial" onclick="openLabTutorial('noah')">📖 教學</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('noah')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('noah')">📘 操作手冊</button>
         </div>
       </div>
 
@@ -1878,7 +1976,8 @@
         <div class="lab-hero-sub">Chatel et al. (EPFL, IEEE S&P / CCS 2023) — Shielding Practical Homomorphic Encryption Against Malicious Adversaries</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-view-paper" onclick="openPaperViewer('pelta')">📄 查看對應論文</button>
-          <button type="button" class="btn-lab-tutorial" onclick="openLabTutorial('pelta')">📖 教學</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('pelta')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('pelta')">📘 操作手冊</button>
         </div>
       </div>
 
@@ -2025,7 +2124,8 @@
         <div class="lab-hero-sub">IEEE CSF — Actively Secure and CPAD-Resistant Threshold FHE via Homomorphic Quotient Proofs</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-view-paper" onclick="openPaperViewer('hqfs')">📄 查看對應論文</button>
-          <button type="button" class="btn-lab-tutorial" onclick="openLabTutorial('hqfs')">📖 教學</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('hqfs')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('hqfs')">📘 操作手冊</button>
         </div>
       </div>
 
@@ -2172,7 +2272,8 @@
         <div class="lab-hero-sub">Okada &amp; Takagi (Asiacrypt 2025 / ePrint 2025/409) — Noise Padding and PRF-based Masking for Secure Threshold FHE</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-view-paper" onclick="openPaperViewer('ot25')">📄 查看對應論文</button>
-          <button type="button" class="btn-lab-tutorial" onclick="openLabTutorial('ot25')">📖 教學</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('ot25')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('ot25')">📘 操作手冊</button>
         </div>
       </div>
 
@@ -2302,7 +2403,8 @@
         <div class="lab-hero-sub">Hu et al. (USENIX Security 2025) — Practical Maliciously Secure Threshold Fully Homomorphic Encryption with Mask-Then-Open</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-view-paper" onclick="openPaperViewer('ajax')">📄 查看對應論文</button>
-          <button type="button" class="btn-lab-tutorial" onclick="openLabTutorial('ajax')">📖 教學</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('ajax')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('ajax')">📘 操作手冊</button>
         </div>
       </div>
 
@@ -5302,227 +5404,420 @@
     }
 
     
-    // Lab Tutorial Logic
-    const TUTORIALS_INFO = {
+    // 1. Paper Theory Tutorials (論文學術教學：深度剖析密碼學理論、數學架構與核心突破)
+    const PAPER_TUTORIALS_INFO = {
       ccs25: {
         badge: 'ACM CCS 2025 • MPC Rounding',
-        title: 'CCS 2025 實驗室操作與評測教學',
+        title: 'CCS 2025 論文密碼學理論教學 (Zyskind et al.)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 演算法核心密碼學架構</div>
-            <p>CCS 2025 採用創新之 <strong>MPC Rounding（多方安全捨入）</strong> 架構。傳統門檻 FHE 依賴龐大的雜訊淹沒（Noise Flooding），導致密文模數暴增；CCS 2025 透過預處理輔助的低輪數 MPC 線上協同捨入，在保留標準小型密文模數下徹底消除同態運算殘餘雜訊，達成通用可組合（UC）安全。</p>
+            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
+            <p>在門檻同態加密（Threshold FHE）中，解密過程必須由 \( n \) 個分散節點共同計算 \( b - \langle \mathbf{a}, \mathbf{s} \rangle = \Delta m + e \)。為了防止節點發布的部分解密份額洩漏私鑰雜訊 \( e \)，傳統方案廣泛依賴<strong>統計雜訊淹沒（Noise Flooding）</strong>。然而，雜訊淹沒要求淹沒雜訊遠大於原始雜訊（如 \( 2^{\\text{stat}} \cdot B \)），這直接導致密文模數 \( Q \) 暴增數十至數百位元，迫使多項式環維度 \( N \) 大幅提升，使所有同態乘法與自舉運算變得極為沉重。</p>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">📋 建議操作步驟</div>
-            <div class="tutorial-steps-list">
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">1. Setup 初始化與金鑰生成</div>
-                <div class="tutorial-step-desc">點擊下方「1. Setup」與「2. KeyGen」，建立 LWE/BFV 系統公開金鑰與門檻秘密分享份額。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">2. 密文輸入與模式切換</div>
-                <div class="tutorial-step-desc">在輸入框填入數值（例如 m₁=12, m₂=7），點擊「🔐 加密」按鈕。您可切換「單一純量」或「⚡ SIMD 多槽平行」模式體驗向量批次運算。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">3. 執行同態運算與門檻解密</div>
-                <div class="tutorial-step-desc">在下拉選單選擇同態加法或乘法，點擊「⚡ 一鍵完整執行同態運算與解密驗證」，觀察終端機日誌中展示的 MPC Rounding 輪數、雜訊衰減與還原明文。</div>
-              </div>
-            </div>
+            <div class="tutorial-section-title">💡 核心數學創新：MPC 協同捨入 (MPC-Based Rounding)</div>
+            <p>CCS 2025 提出拋棄雜訊淹沒，轉而利用<strong>多方安全計算（MPC）執行整數捨入</strong>：</p>
+            <ul>
+              <li><strong>密文保持標準模數</strong>：密文模數無需為了容納淹沒雜訊而擴張，大幅保持 FHE 同態運算的高效性。</li>
+              <li><strong>協同分散捨入</strong>：各節點持有私鑰的 Shamir 份額，在解密階段透過預處理生成的隨機三元組（Beaver Triples）在 2~3 輪 MPC 互動內精準計算 \( \lfloor (b - \langle \mathbf{a}, \mathbf{s} \rangle) \cdot \frac{p}{q} \rceil \)，直接濾除雜訊 \( e \)。</li>
+              <li><strong>通用可組合安全（UC Security）</strong>：證明了在靜態與自適應對手模型下具備嚴格的模擬安全性，消除了先前博弈模型（Game-based）無法作為大系統黑盒子的限制。</li>
+            </ul>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🛡️ 惡意節點抗性測試</div>
-            <p>利用頂部全域控制列調整惡意節點比例（0% ~ 49%）與攻擊模式。CCS 2025 可透過 MPC 協議的一致性檢查與中止機制防範非誠實節點篡改。</p>
-          </div>
-          <div class="tutorial-note">
-            💡 <strong>小提示</strong>：右側即時控制台可隨時點擊「🧹 清空日誌」進行下一輪獨立評測；亦可點擊上方「📄 查看對應論文」查閱 ACM CCS 原文數學證明。
+            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
+            <p><strong>優勢</strong>：同態加密與密文乘法速度極快、密文尺寸小、模數無膨脹。<br>
+            <strong>理論代價</strong>：解密階段需要節點之間進行多輪網路互動以執行 MPC 協同捨入協議，在網路延遲高（WAN）的場景下解密通訊時間會略有增加。</p>
           </div>
         `
       },
       noah: {
         badge: 'Zama & KU Leuven • Noise Flooding',
-        title: "Noah's Ark 實驗室操作與評測教學",
+        title: "Noah's Ark 論文密碼學理論教學 (Dahl et al., 2023)",
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 演算法核心密碼學架構</div>
-            <p>Noah's Ark 專門解決 TFHE 等小參數 FHE 方案無法直接進行雜訊淹沒的瓶頸。透過專利之 <strong>Switch-n-Squash（切換並擠壓）</strong> 技術，在自舉（Bootstrapping）過程中將密文動態升級至較大模數與維度 (Q, L)，擴展雜訊容許間隙（Noise Gap），隨後注入高斯淹沒雜訊並使用 Galois 環上之 Reed-Solomon 糾錯碼進行非同步穩健解密（RobustOpen）。</p>
+            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
+            <p>Torus-FHE (TFHE) 等方案因使用較小的密文模數（如 \( q = 2^{64} \)）與維度（\( \ell \approx 600 \sim 1000 \)）而擁有極快的自舉速度。但其雜訊容許間隙（Noise Gap）僅有約 \( 2^{30} \sim 2^{50} \)，完全無法容納標準雜訊淹沒所要求的 \( 2^{40} \cdot B \) 額外雜訊（會直接溢位破壞明文最高位元）。這導致 TFHE 長期被認為難以實現無交互的門檻解密。</p>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">📋 建議操作步驟</div>
-            <div class="tutorial-steps-list">
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">1. Setup 初始化與秘密分享</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」完成 Galois 環 \( \mathbb{Z}_Q[\theta] \) 初始化，並進行 Shamir 門檻秘密分享。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">2. 密文加密與隨機抽樣</div>
-                <div class="tutorial-step-desc">輸入明文數值或點擊「🎲 隨機」，點擊「🔐 加密 m₁→c₁」生成 LWE 密文。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">3. 執行 Switch-n-Squash 模數切換</div>
-                <div class="tutorial-step-desc">點擊「3. Switch-n-Squash」，觀察模數如何由 \( q=2^{64} \) 擴增至 \( Q=2^{128} \)，同時壓縮相對雜訊標準差。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">4. 雜訊淹沒與 RobustOpen 聚合</div>
-                <div class="tutorial-step-desc">點擊「4. Noise Flooding」與「5. RobustOpen」，系統將展示 Reed-Solomon 解碼如何抵禦惡意份額並還原正確答案。</div>
-              </div>
-            </div>
+            <div class="tutorial-section-title">💡 核心數學創新：Switch-n-Squash 與 Galois 環秘密分享</div>
+            <p>Dahl 等人提出了巧妙的雙階協議：</p>
+            <ul>
+              <li><strong>Switch-n-Squash（切換並擠壓）</strong>：利用 TFHE 的快速自舉機制，在自舉的同時將密文由小參數 \( (\ell, q=2^{64}) \) 動態切換至大參數 \( (L=4096, Q=2^{128}) \)，同時將相對雜訊擠壓至 \( \sigma'_{BR} \approx 2^{72} \)，成功開闢出高達 50 位元的全新雜訊安全裕度！</li>
+              <li><strong>Galois 環 \( \mathbb{Z}_Q[\theta] \) 上之 Shamir 秘密分享</strong>：針對 \( Q = 2^{128} \) 是 2 的冪次（非質數）無法直接建構有限體之困難，利用 Galois 環多項式擴展實現標準 Shamir 門檻分享。</li>
+              <li><strong>非同步魯棒開啟（RobustOpen via Reed-Solomon）</strong>：在 Galois 環上執行 Berlekamp-Welch / Gao 糾錯演算法，在容許 \( t < n/3 \) 主動惡意節點的前提下，完全不依賴零知識證明（ZKP），單輪非同步通訊即可完成解密。</li>
+            </ul>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🛡️ 惡意節點抗性測試</div>
-            <p>只要惡意節點數量滿足 \( t < n/3 \)，RobustOpen 即可在完全非同步網路上自動識別並糾正錯誤份額，保證輸出絕對正確之明文。</p>
-          </div>
-          <div class="tutorial-note">
-            💡 <strong>小提示</strong>：Noah's Ark 原文由 Zama 團隊提出，您可點擊上方「📄 查看對應論文」查閱附錄關於 PRSS 與 Galois 環糾錯之完整演算法。
+            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
+            <p><strong>優勢</strong>：解密僅需單輪發送份額、支援非同步網路、無須繁複的 ZKP 產生與校驗。<br>
+            <strong>理論代價</strong>：解密前必須先執行一次自舉以完成 Switch-n-Squash 模數擴增，適合原先就頻繁使用 TFHE 自舉的應用管線。</p>
           </div>
         `
       },
       pelta: {
         badge: 'EPFL • Lattice ZKP & Shield',
-        title: 'PELTA 實驗室操作與評測教學',
+        title: 'PELTA 論文密碼學理論教學 (Chatel et al., EPFL)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 演算法核心密碼學架構</div>
-            <p>PELTA 方案由 EPFL 團隊提出，基於 RLWE 晶格難題建構。為抵禦惡意節點對部分解密份額的篡改，PELTA 在多方計算中引入了<strong>晶格承諾（Lattice Commitments）與非交互式零知識證明（ZKP）</strong>，使每個節點的部分解密均附帶密碼學證明，任何惡意篡改均會被驗證者即時偵測並阻斷。</p>
+            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
+            <p>在基於 RLWE 的多方同態加密（如 BFV / CKKS）中，若存在惡意敵手蓄意發布錯誤或畸形的部分解密份額，不僅會毀損聯合解密結果，更能透過多次有目的之輸入發動「選擇明文解密問詢攻擊」（Chosen-Plaintext Attacks with Decryption oracles, \( \text{CPA}^D \)），進而精確推導出誠實節點的私鑰！</p>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">📋 建議操作步驟</div>
-            <div class="tutorial-steps-list">
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">1. Setup 初始化與承諾綁定</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，建立多方金鑰份額與晶格承諾參考矩陣。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">2. 密文輸入與 SIMD 模式</div>
-                <div class="tutorial-step-desc">PELTA 支援利用負循環 INTT 將多個明文槽打包進單一 RLWE 密文，可切換「⚡ CRT/NTT SIMD」體驗高吞吐平行運算。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">3. 執行同態運算與零知識防禦解密</div>
-                <div class="tutorial-step-desc">點擊「🛡️ 一鍵執行 PELTA」，系統將依序執行同態運算、部分解密、ZKP 證明生成與驗證，並在日誌中輸出各節點 ZKP 通過狀態。</div>
-              </div>
-            </div>
+            <div class="tutorial-section-title">💡 核心數學創新：格基承諾與零知識證明防護盾</div>
+            <p>EPFL 團隊提出以全套密碼學證明武裝多方同態加密：</p>
+            <ul>
+              <li><strong>晶格承諾（Lattice Commitments）</strong>：在註冊階段，各節點使用公開參考矩陣 \( \mathbf{A}_{zkp} \) 對個人私鑰 \( \mathbf{s}_i \) 進行嚴格綁定：\( \mathbf{C}_i = \mathbf{A}_{zkp} \mathbf{s}_i + \mathbf{e}_{zkp} \pmod Q \)。</li>
+              <li><strong>非交互式零知識證明（NIZK with Aborts）</strong>：節點在提交部分解密份額時，必須附帶基於 Fiat-Shamir 轉換之晶格 ZKP，證明其份額確係使用已承諾之私鑰忠實計算，且誤差小於安全界限。</li>
+              <li><strong>全主動安全防護（Active Malicious Shield）</strong>：任何試圖竄改份額或偽造金鑰的惡意行為均無法通過 ZKP 驗證，直接遭到剔除，徹底杜絕 \( \text{CPA}^D \) 私鑰洩漏攻擊。</li>
+            </ul>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🛡️ 惡意節點抗性測試</div>
-            <p>在上方惡意比例設為 20%~40%，PELTA 的 ZKP 驗證邏輯會立即標記並丟棄惡意節點偽造的份額，僅聚合誠實份額進行解密。</p>
-          </div>
-          <div class="tutorial-note">
-            💡 <strong>小提示</strong>：可點擊上方「📄 查看對應論文」查閱 IEEE S&P / CCS 刊載之 PELTA 完整零知識證明協議細節。
+            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
+            <p><strong>優勢</strong>：具備最高等級的惡意敵手防護、全面杜絕惡意節點份額偽造、支援不誠實多數（\( t < n \)）。<br>
+            <strong>理論代價</strong>：在大模數 \( Q \) 晶格多項式環上生成與驗證 ZKP 需要較高的計算複雜度與證明傳輸頻寬。</p>
           </div>
         `
       },
       hqfs: {
         badge: 'IEEE CSF • RNS-GLWE + HQ-FS ZKP',
-        title: 'HQ-FS (Our Work) 實驗室操作與評測教學',
+        title: 'HQ-FS 論文密碼學理論教學 (Our Work)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 演算法核心密碼學架構</div>
-            <p>HQ-FS 採用緊湊型 <strong>RNS-GLWE 架構</strong>，核心突破包括：<br>
-            1. <strong>同態商數 Fiat-Shamir 零知識證明（HQ-FS ZKP）</strong>：將零知識證明限制在小基線模數 \( K_Q = q_1 \) 上生成與驗證，避免傳統大模數 ZKP 的計算瓶頸，單節點證明僅需 1.176 ms！<br>
-            2. <strong>廣度優先搜尋佇列（BFS Queue Batch Filtering）</strong>：以對數複雜度批次篩選群組證明，實現毫秒級惡意節點精準定位與隔離。<br>
-            3. <strong>零密文疊加（Zero-Ciphertext Superposition）</strong>：在同態運算終端注入高變異數隨機零密文，截斷代數關聯與運算痕跡，全面防禦選擇明文解密問詢（CPA^D）攻擊，保證電路隱私（FuncCPA）。</p>
+            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
+            <p>既有主動安全門檻 FHE 面臨兩大根本困境：<br>
+            1. <strong>ZKP 效能瓶頸</strong>：傳統方案（如 PELTA）迫使 ZKP 運算在龐大的密文模數 \( Q \)（數百位元）上進行，計算與通訊開銷巨大。<br>
+            2. <strong>\( \text{CPA}^D \) 與代數追蹤威脅</strong>：同態運算與分散式重線性化（RLKGen）產生的殘餘代數特徵會洩漏電路內部狀態，違反函數隱私（FuncCPA），且常規清洗或自舉成本高昂。</p>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">📋 建議操作步驟</div>
-            <div class="tutorial-steps-list">
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">1. Setup 初始化與 RNS 基底構建</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」，生成 RNS 多質數基底、FHE 矩陣 \( \mathbf{A} \) 與 ZKP 參考矩陣 \( \mathbf{A}_{zkp} \)。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">2. 分散式金鑰與承諾產生 (KeyGen & ZKP Commitment)</div>
-                <div class="tutorial-step-desc">點擊「2. KeyGen & Commitment」，各節點產生私鑰份額 \( \mathbf{s}^{(i)} \) 並產生公開承諾 \( \mathbf{C}^{(i)} \) 綁定金鑰。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">3. 密文輸入與零密文疊加同態運算</div>
-                <div class="tutorial-step-desc">輸入明文後執行加密，再點擊「4. Homo Add」或「5. Homo Mul」，觀察控制台如何自動注入零密文疊加抹除代數特徵。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">4. BFS 佇列快篩與 CRT 還原解密</div>
-                <div class="tutorial-step-desc">點擊「🚀 一鍵完整執行 HQ-FS」，系統將以 BFS 佇列快篩檢驗各節點之 HQ-FS ZKP，自動精準剔除惡意節點並還原正確明文。</div>
-              </div>
-            </div>
+            <div class="tutorial-section-title">💡 核心數學創新：小基線商數證明與零密文疊加</div>
+            <p>本研究提出三位一體的嶄新密碼學架構：</p>
+            <ul>
+              <li><strong>同態商數 Fiat-Shamir 證明（HQ-FS ZKP）</strong>：巧妙利用 RNS 餘數系統特性——在 \( \mathbb{R}_Q \) 上成立的線性關係在任一 RNS 質數肢 \( q_1 \) 上必然成立。因此將 ZKP 嚴格限制於單一小基線模數 \( K_Q = q_1 \)（如 60 位元）上產生與驗證，使單節點證明時間劇降至 1.176 ms（降低 31.6%）！</li>
+              <li><strong>廣度優先搜尋批次快篩（BFS Queue Batch Verification）</strong>：利用同態聚合驗證將多節點證明合併檢驗，遇錯誤則二分入佇列，實現 \( O(\log N) \) 對數時間精準剔除惡意節點。</li>
+              <li><strong>零密文疊加（Zero-Ciphertext Superposition）</strong>：在同態加法與乘法末端，將帶有新鮮巨量淹沒雜訊的加密 0 疊加至結果密文（\( c_{\\text{final}} = c_{\\text{eval}} + c_{\\text{zero}} \)），以統計隱匿引理（Smudging Lemma）徹底抹除運算路徑之代數特徵，達到嚴格之 IND-FuncCPA 與電路隱私。</li>
+            </ul>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🛡️ 惡意節點抗性與 CPA^D 防護測試</div>
-            <p>在頂部選擇「雜訊淹沒污染攻擊」或「部分解密份額竄改攻擊」，點擊執行後觀察 BFS 佇列如何在數毫秒內將惡意節點降維分離，解密成功率維持 100%。</p>
-          </div>
-          <div class="tutorial-note">
-            💡 <strong>小提示</strong>：點擊上方「📄 查看對應論文」可直接開啟本論文（IEEE CSF）完整內嵌預覽，對照 Algorithm 1~8 進行深入研究！
+            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
+            <p><strong>優勢</strong>：同時兼顧緊湊型 RNS-GLWE 密文、小模數極速 ZKP、BFS 對數批次快篩與抗 \( \text{CPA}^D \) 攻擊，主動防禦延遲相較現有 SOTA 降低 72.1%！</p>
           </div>
         `
       },
       ot25: {
         badge: 'Asiacrypt 2025 • Noise Padding',
-        title: 'OT25 實驗室操作與評測教學',
+        title: 'OT25 論文密碼學理論教學 (Okada & Takagi, 2025)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 演算法核心密碼學架構</div>
-            <p>OT25 方案由岡田（Okada）與高木（Takagi）於 Asiacrypt 2025 發表。方案基於 LWE 體系，設計了<strong>雜訊填充（Noise Padding）與 PRF 遮罩技術</strong>，在多方門檻解密時對解密份額進行代數遮蔽，無須進行高成本自舉或大模數擴展，即可有效阻斷因雜訊殘餘導致的私鑰洩漏。</p>
+            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
+            <p>在門檻同態加密中，為了在解密階段保護各節點私鑰份額不被側通道或雜訊反推，傳統做法需要極大規模的雜訊淹沒。但若密文模數受限，是否有辦法在完全不擴張模數、亦不使用昂貴的零知識證明的前提下，達成嚴格的解密隱私？</p>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">📋 建議操作步驟</div>
-            <div class="tutorial-steps-list">
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">1. Setup 初始化與 PRF 種子金鑰協議</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，建立 LWE 金鑰與各參與方共享之 PRF 協商狀態。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">2. 密文輸入與 LWE 加密</div>
-                <div class="tutorial-step-desc">在輸入框設定數值後點擊「🔐 加密」，產生帶有誤差之 LWE 密文對 (a, b)。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">3. 執行同態運算與 PRF 雜訊填充解密</div>
-                <div class="tutorial-step-desc">點擊「🔐 一鍵完整執行 OT25」，系統將自動執行同態求值、注入 PRF 遮罩份額並進行多方門檻重構。</div>
-              </div>
-            </div>
+            <div class="tutorial-section-title">💡 核心數學創新：雜訊填充與 PRF 代數遮罩</div>
+            <p>Okada 與 Takagi 在 Asiacrypt 2025 提出了純代數的保護結構：</p>
+            <ul>
+              <li><strong>偽隨機函數（PRF）成對零和遮罩</strong>：參與方在 Setup 階段預先協商成對 PRF 種子金鑰。在解密時，節點 \( i \) 注入遮罩 \( \sum_{j \neq i} (\psi_{i,j} - \psi_{j,i}) \)。此遮罩在所有節點份額聚合時代數求和恆等於 0，自動抵銷消失！</li>
+              <li><strong>精確雜訊填充（Noise Padding）</strong>：每個節點僅需注入局部的有界高斯填充雜訊，搭配 PRF 遮罩即可切斷部分解密份額與真實私鑰雜訊之間的統計相關性。</li>
+              <li><strong>輕量級無自舉架構</strong>：完全運作於標準 LWE 參數體系，無須自舉亦無須大模數 Galois 環運算，大幅降低單機演算法運算開銷。</li>
+            </ul>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🛡️ 惡意節點抗性測試</div>
-            <p>在多方協作下，PRF 遮罩與雜訊填充可確保任何誠實節點發布的份額皆具備嚴格的統計盲化特性，防範被動分析與代數推導。</p>
-          </div>
-          <div class="tutorial-note">
-            💡 <strong>小提示</strong>：點擊上方「📄 查看對應論文」可閱覽 IACR ePrint 2025/409 原文與詳細之雜訊邊界分析。
+            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
+            <p><strong>優勢</strong>：演算法簡潔優雅、單機記憶體與計算開銷低、無須昂貴的密文擴增。<br>
+            <strong>理論代價</strong>：在主動惡意破壞模型下，PRF 遮罩無法單獨驗證份額內容是否遭到刻意惡意竄改，需仰賴額外的一致性檢查層。</p>
           </div>
         `
       },
       ajax: {
         badge: 'USENIX Security 2025 • Mask-Then-Open',
-        title: 'Ajax 實驗室操作與評測教學',
+        title: 'Ajax 論文密碼學理論教學 (Hu et al., USENIX Security 2025)',
         htmlContent: `
           <div class="tutorial-section">
-            <div class="tutorial-section-title">💡 演算法核心密碼學架構</div>
-            <p>Ajax 方案發表於 USENIX Security 2025，主打<strong>「先遮罩後公開」（Mask-Then-Open without Noise Flooding）</strong>。透過創新的雙環秘密分享（Double Ring Sharing）與代數遮罩協議，在完全不使用雜訊淹沒的前提下，達成了具備主動惡意安全性的門檻 FHE，解密延遲極低且通訊量大幅壓縮。</p>
+            <div class="tutorial-section-title">🎓 論文背景與核心問題意識</div>
+            <p>現有門檻 FHE 要抗惡意敵手，要麼使用雜訊淹沒（造成模數爆炸與環維度膨脹），要麼使用 MPC 協同多輪互動（導致線上延遲拉長）。如何在<strong>「無雜訊淹沒（No Noise Flooding）」</strong>且<strong>「單輪線上解密（Single-Round Online）」</strong>的極端約束下達成主動惡意安全，是學界長期未解的挑戰。</p>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">📋 建議操作步驟</div>
-            <div class="tutorial-steps-list">
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">1. Setup 初始化與雙環架構設定</div>
-                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，配置雙環結構與門檻金鑰份額。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">2. 離線前置遮罩準備 (Offline Prep)</div>
-                <div class="tutorial-step-desc">點擊「3. Offline Prep」，預先生成隨機雙環遮罩份額，為後續線上單輪解密做準備。</div>
-              </div>
-              <div class="tutorial-step-item">
-                <div class="tutorial-step-head">3. 執行同態運算與 Mask-Then-Open 線上解密</div>
-                <div class="tutorial-step-desc">點擊「⚡ 一鍵完整執行 Ajax」，系統將展示線上階段單輪完成門檻解密的超高吞吐與微秒級延遲。</div>
-              </div>
-            </div>
+            <div class="tutorial-section-title">💡 核心數學創新：先遮罩後公開 (Mask-Then-Open, MTO)</div>
+            <p>Hu 等人設計了革命性的「先遮罩後公開」架構：</p>
+            <ul>
+              <li><strong>雙環秘密分享（Double Ring Sharing）</strong>：將秘密資訊同時分享於密文環 \( R_q \) 與明文/遮罩環 \( R_t \) 上，在離線階段預先準備隨機關聯遮罩。</li>
+              <li><strong>Mask-Then-Open 線上單輪解密</strong>：線上階段，節點直接以預先準備好的遮罩份額對密文進行代數盲化，並廣播遮罩份額。所有節點只需 1 輪公開通訊即可重構盲化值，最後在本地去除遮罩還原明文。</li>
+              <li><strong>惡意檢驗代數自帶</strong>：透過雙環的代數相容性約束，任何節點嘗試提交無效份額均會破壞雙環投影關係而被即時識別中斷，不需在線上生成龐大的晶格 ZKP。</li>
+            </ul>
           </div>
           <div class="tutorial-section">
-            <div class="tutorial-section-title">🛡️ 惡意節點抗性測試</div>
-            <p>Ajax 透過雙環交互校驗，能夠在節點嘗試竄改遮罩或份額時即刻觸發中止或校正，確保主動攻擊無法破壞明文正確性。</p>
-          </div>
-          <div class="tutorial-note">
-            💡 <strong>小提示</strong>：點擊上方「📄 查看對應論文」可檢視 USENIX Security 2025 官方預印本全文。
+            <div class="tutorial-section-title">⚖️ 方案優勢與理論權衡</div>
+            <p><strong>優勢</strong>：線上解密延遲極致壓縮至數毫秒以內、通訊開銷極小、完全免除雜訊淹沒導致的模數膨脹。<br>
+            <strong>理論代價</strong>：高度依賴離線預處理階段（Offline Preparation）生成雙環關聯遮罩份額。</p>
           </div>
         `
       }
     };
 
-    function openLabTutorial(schemeKey) {
-      const tut = TUTORIALS_INFO[schemeKey];
+    // 2. Laboratory Operations Manuals (操作手冊：實驗室介面導覽、標準實測五步驟、惡意攻擊驗證流程)
+    const LAB_MANUALS_INFO = {
+      ccs25: {
+        badge: '操作手冊 • CCS 2025',
+        title: 'CCS 2025 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>本實驗室介面分為四大核心區域：<br>
+            1. <strong>頂部實驗室標題橫幅</strong>：提供論文原創資訊、論文查看、論文理論教學與本操作手冊。<br>
+            2. <strong>即時效能監控卡 (Stat Cards)</strong>：即時反饋 Setup 耗時、同態運算耗時、線上解密延遲與實測吞吐量。<br>
+            3. <strong>密文輸入與控制面板 (左側卡片)</strong>：支援雙密文輸入、純量/SIMD切換、操作選擇與階段按鈕。<br>
+            4. <strong>即時執行控制台日誌 (右側終端)</strong>：以高對比終端格式即時輸出演算法內部微秒級日誌與密碼學變數。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與金鑰生成</div>
+                <div class="tutorial-step-desc">點擊下方按鈕列的「1. Setup」與「2. KeyGen」，建立 LWE/BFV 系統公開金鑰與門檻私鑰份額。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：設定明文並加密生成密文</div>
+                <div class="tutorial-step-desc">在輸入框設定數值（預設 m₁=12, m₂=7）或點擊「🎲 隨機」，然後依序點擊「🔐 加密 m₁→c₁」與「🔐 加密 m₂→c₂」。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：選擇運算模式與目標同態運算</div>
+                <div class="tutorial-step-desc">可保持「🔢 單一純量」或切換至「⚡ SIMD 多槽平行」模式；並在下拉選單選擇「同態乘法」或「同態加法」。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：一鍵完整執行或分段求值</div>
+                <div class="tutorial-step-desc">點擊綠色顯眼的「⚡ 一鍵完整執行同態運算與解密驗證」，系統將自動調度同態求值、線上 MPC 捨入與門檻聚合。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：查閱日誌與統計數據</div>
+                <div class="tutorial-step-desc">在右側控制台中確認解密結果是否正確還原（如 12 × 7 = 84 mod T），並觀察上方狀態卡反饋之實測延遲。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
+            <p>1. 在頁面最頂部將「隨機惡意節點比例」調整為 <strong>20% 或 30%</strong>。<br>
+            2. 攻擊模式選擇「部分解密份額竄改」或「偽造非三元私鑰攻擊」。<br>
+            3. 再次執行「一鍵完整執行」，觀察右側控制台日誌中 MPC 一致性檢測如何辨識不合規節點份額並觸發校正或中止。</p>
+          </div>
+        `
+      },
+      noah: {
+        badge: "操作手冊 • Noah's Ark",
+        title: "Noah's Ark 實驗室操作手冊與實測指南",
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>本實驗室提供完整之 TFHE 模數擴展與雜訊淹沒模擬環境：<br>
+            - <strong>參與方分佈拓撲晶片</strong>：以高亮晶片直觀展示 10~1000 個節點的身份標籤與隨機分配之惡意節點。<br>
+            - <strong>階段按鈕面板 (Stage-by-Stage Buttons)</strong>：包含 Setup、KeyGen、Switch-n-Squash、Noise Flooding、RobustOpen 五大核心階段按鈕。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：系統初始化與秘密分享</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」完成 Galois 環參數初始化，並點擊「2. KeyGen」產生門檻金鑰份額。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：加密輸入訊息</div>
+                <div class="tutorial-step-desc">輸入 m₁ 與 m₂ 數值，點擊「🔐 加密」按鈕產出 TFHE LWE 密文。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：體驗 Switch-n-Squash 模數擴展</div>
+                <div class="tutorial-step-desc">點擊「3. Switch-n-Squash」，在控制台檢視密文維度由 \( \ell \) 升級為 \( L=4096 \) 且模數達到 \( 2^{128} \) 之過程。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：執行淹沒雜訊注入與解密重構</div>
+                <div class="tutorial-step-desc">點擊「4. Noise Flooding」與「5. RobustOpen」，系統將展示 Reed-Solomon 糾錯碼如何抵禦惡意節點。亦可直接點擊「🌊 一鍵完整執行」。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：驗證結果與雜訊裕度</div>
+                <div class="tutorial-step-desc">檢視右側控制台輸出的「雜訊間隙（Noise Gap）」與「最終還原明文」，確認運算正確無誤。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
+            <p>1. 於頂部將惡意比例設為 <strong>20% (符合 \( t < n/3 \) 條件)</strong>。<br>
+            2. 點擊「🎲 重新抽樣惡意節點」確認惡意節點已隨機散佈。<br>
+            3. 點擊「🌊 一鍵完整執行」，日誌將顯示 RobustOpen 如何在收到帶有錯誤之份額後，利用 Reed-Solomon 解碼成功糾錯並還原正確答案。</p>
+          </div>
+        `
+      },
+      pelta: {
+        badge: '操作手冊 • PELTA',
+        title: 'PELTA 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>PELTA 實驗室針對晶格 ZKP 主動防禦進行完整模擬：<br>
+            - <strong>SIMD 模式切換</strong>：支援 CRT/NTT 多槽 SIMD 打包，展現單密文多明文槽運算特性。<br>
+            - <strong>ZKP 驗證與聚合狀態列</strong>：即時標註通過與未通過 ZKP 檢查之節點數目。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與格基承諾產生</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，建立 RLWE 公開金鑰與晶格承諾參考矩陣 \( \mathbf{A}_{zkp} \)。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：明文加密與 NTT SIMD 向量填充</div>
+                <div class="tutorial-step-desc">填入欲計算之數值，或點擊「🎲 4-Slot SIMD」快速填入隨機測試向量並點擊加密。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：選擇同態運算模式</div>
+                <div class="tutorial-step-desc">選擇「RLWE 同態乘法並解密」或「RLWE 同態加法並解密」。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：執行 ZKP 防禦與門檻解密</div>
+                <div class="tutorial-step-desc">點擊「🛡️ 一鍵執行 PELTA」，各節點將生成晶格 ZKP 證明，驗證者逐一查核後聚合誠實份額進行解密。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：檢查 ZKP 驗證日誌</div>
+                <div class="tutorial-step-desc">在右側日誌中確認所有通過 ZKP 的節點份額，並檢視解密還原值。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
+            <p>1. 在頂部面板選擇「部分解密份額竄改攻擊」，惡意節點比例設為 30%。<br>
+            2. 執行解密，控制台將明確印出 <code>[ZKP 檢查失敗: 節點 #X 份額與承諾不符]</code>，並展示系統成功攔截惡意竄改、僅聚合誠實節點之過程。</p>
+          </div>
+        `
+      },
+      hqfs: {
+        badge: '操作手冊 • HQ-FS (Our Work)',
+        title: 'HQ-FS 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>HQ-FS 實驗室整合了本論文三項關鍵技術：<br>
+            - <strong>BFS 佇列自動攔截狀態指標</strong>：即時反饋 BFS 快篩批次驗證是否精準分離惡意節點。<br>
+            - <strong>零密文疊加防護指示</strong>：展示同態運算末端注入之 \( c_{\\text{zero}} \) 如何消除 \( \text{CPA}^D \) 痕跡。<br>
+            - <strong>RNS-iNTT 向量多槽 SIMD 切換</strong>：支援高維度緊湊多項式批次運算。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與 RNS 基底構建</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」，生成 RNS 多質數基底、FHE 矩陣 \( \mathbf{A} \) 與小基線驗證模數 \( K_Q = q_1 \)。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：金鑰與 HQ-FS 承諾產生</div>
+                <div class="tutorial-step-desc">點擊「2. KeyGen & Commitment」，產生個人金鑰份額與公開承諾 \( \mathbf{C} \)。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：輸入明文並加密</div>
+                <div class="tutorial-step-desc">輸入明文數值（如 12 與 7），點擊「🔐 加密」按鈕產出 RNS-GLWE 密文。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：同態運算與零密文疊加</div>
+                <div class="tutorial-step-desc">點擊「4. Homo Add」或「5. Homo Mul」，控制台將自動記錄零密文疊加（Superposition）抹除代數特徵之歷程。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：BFS 批次快篩與 CRT 還原解密</div>
+                <div class="tutorial-step-desc">點擊「🚀 一鍵完整執行 HQ-FS」，BFS 佇列將進行群組聚合檢驗並精確降維隔離惡意節點，成功率維持 100%！</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 惡意節點抗性與 CPA^D 實測方法</div>
+            <p>1. 於頂部選擇「雜訊淹沒污染攻擊」或「部分解密份額竄改攻擊」，將惡意比例設為 20%~40%。<br>
+            2. 點擊「一鍵完整執行」，觀察右側終端中 BFS 佇列之逐步分割（Split S into sub-groups）過程。<br>
+            3. 確認終端最終成功過濾出所有誠實節點集合 \( \mathcal{V} \) 並完成正確之 CRT 解密。</p>
+          </div>
+        `
+      },
+      ot25: {
+        badge: '操作手冊 • OT25',
+        title: 'OT25 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>OT25 實驗室展示了 Asiacrypt 2025 之 PRF 遮罩與雜訊填充流程：<br>
+            - <strong>明文空間標籤</strong>：預設明文空間 \( T=16 \)（0~15），亦可於頂部全域切換至 \( T=1024 \)。<br>
+            - <strong>PRF 遮罩與重線性化面板</strong>：清晰呈現 LWE 密文張量乘法與重線性化之密鑰交換過程。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與金鑰生成</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」與「2. KeyGen」，建立 LWE 金鑰與 PRF 協議種子。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：離線預處理準備 (Offline Prep)</div>
+                <div class="tutorial-step-desc">點擊「3. Offline Prep」，各節點預先計算 PRF 零和遮罩與雜訊填充界限。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：密文輸入與加密</div>
+                <div class="tutorial-step-desc">輸入 m₁ 與 m₂（如 12 與 7），點擊「🔐 加密」產生 LWE 密文對。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：執行同態求值與門檻解密</div>
+                <div class="tutorial-step-desc">點擊「🔐 一鍵完整執行 OT25」，系統執行 LWE 同態運算並注入 PRF 遮罩還原答案。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：檢視終端機記錄</div>
+                <div class="tutorial-step-desc">在控制台檢視 PRF 遮罩抵銷過程與最終解密值（12 × 7 = 84 = 4 mod 16）。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
+            <p>1. 調整上方惡意節點比例為 20%，攻擊模式選擇「雜訊淹沒污染攻擊」。<br>
+            2. 觀察 PRF 遮罩如何抵擋外部攻擊者對於個別節點解密雜訊的統計嗅探與私鑰推算。</p>
+          </div>
+        `
+      },
+      ajax: {
+        badge: '操作手冊 • Ajax',
+        title: 'Ajax 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>Ajax 實驗室展示了 USENIX Security 2025 之「先遮罩後公開（Mask-Then-Open）」無雜訊淹沒門檻解密：<br>
+            - <strong>雙環分享拓撲</strong>：顯示雙環參與方分佈情況。<br>
+            - <strong>超低延遲即時監控</strong>：呈現線上階段單輪解密的微秒級耗時。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與雙環建構</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」完成雙環秘密分享初始化，點擊「2. KeyGen」產生金鑰份額。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：離線關聯遮罩預處理</div>
+                <div class="tutorial-step-desc">點擊「3. Offline Prep」，預先生成隨機雙環遮罩份額。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：輸入訊息並加密</div>
+                <div class="tutorial-step-desc">輸入明文數值（如 12 與 7），點擊「🔐 加密」按鈕產出密文。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：執行 Mask-Then-Open 單輪解密</div>
+                <div class="tutorial-step-desc">點擊「⚡ 一鍵完整執行 Ajax」，系統將以單輪通訊完成盲化重構，並在本地消除遮罩還原明文。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：檢視延遲優勢</div>
+                <div class="tutorial-step-desc">在上方狀態卡中確認線上解密延遲（通常在 2 ms 以內），體驗極速解密優勢。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
+            <p>1. 在頂部設定惡意比例 20%，選擇「部分解密份額竄改攻擊」。<br>
+            2. 執行解密，雙環校驗機制將自動比對密文環與遮罩環之一致性，檢測出異常份額並即時報警校正。</p>
+          </div>
+        `
+      }
+    };
+
+    // 3. Modal Open/Close Handlers
+    function openPaperTutorial(schemeKey) {
+      const tut = PAPER_TUTORIALS_INFO[schemeKey];
       if (!tut) return;
 
       const modal = document.getElementById('tutorial-modal');
@@ -5539,37 +5834,91 @@
       modal.classList.add('active');
     }
 
-    function closeLabTutorial() {
+    function closePaperTutorial() {
       const modal = document.getElementById('tutorial-modal');
       if (modal) modal.classList.remove('active');
     }
 
     function onTutorialModalOverlayClick(e) {
       if (e.target && e.target.id === 'tutorial-modal') {
-        closeLabTutorial();
+        closePaperTutorial();
       }
+    }
+
+    function openLabManual(schemeKey) {
+      const man = LAB_MANUALS_INFO[schemeKey];
+      if (!man) return;
+
+      const modal = document.getElementById('manual-modal');
+      const badge = document.getElementById('manual-modal-badge');
+      const title = document.getElementById('manual-modal-title');
+      const body = document.getElementById('manual-modal-body');
+
+      if (!modal) return;
+
+      badge.innerText = man.badge;
+      title.innerText = man.title;
+      body.innerHTML = man.htmlContent;
+
+      modal.classList.add('active');
+    }
+
+    function closeLabManual() {
+      const modal = document.getElementById('manual-modal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function onLabManualOverlayClick(e) {
+      if (e.target && e.target.id === 'manual-modal') {
+        closeLabManual();
+      }
+    }
+
+    // Backwards compatibility alias
+    function openLabTutorial(schemeKey) {
+      openPaperTutorial(schemeKey);
+    }
+    function closeLabTutorial() {
+      closePaperTutorial();
     }
 
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closePaperViewer();
-        closeLabTutorial();
+        closePaperTutorial();
+        closeLabManual();
       }
     });
 
   </script>
-    <!-- Tutorial Modal -->
+    <!-- Paper Theory Tutorial Modal (論文教學) -->
   <div id="tutorial-modal" class="tutorial-modal-overlay" onclick="onTutorialModalOverlayClick(event)">
     <div class="tutorial-modal-container">
       <div class="tutorial-modal-header">
         <div class="tutorial-modal-title-group">
-          <span class="tutorial-modal-badge" id="tutorial-modal-badge">實驗室教學</span>
-          <h3 class="tutorial-modal-title" id="tutorial-modal-title">實驗室操作與評測教學</h3>
+          <span class="tutorial-modal-badge" id="tutorial-modal-badge">論文理論教學</span>
+          <h3 class="tutorial-modal-title" id="tutorial-modal-title">論文密碼學架構與理論教學</h3>
         </div>
-        <button type="button" class="paper-modal-close-btn" onclick="closeLabTutorial()" title="關閉 (Esc)">✕</button>
+        <button type="button" class="paper-modal-close-btn" onclick="closePaperTutorial()" title="關閉 (Esc)">✕</button>
       </div>
       <div class="tutorial-modal-body" id="tutorial-modal-body">
-        <!-- Injected dynamically by openLabTutorial(schemeKey) -->
+        <!-- Injected dynamically by openPaperTutorial(schemeKey) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Laboratory Operations Manual Modal (操作手冊) -->
+  <div id="manual-modal" class="manual-modal-overlay" onclick="onLabManualOverlayClick(event)">
+    <div class="manual-modal-container">
+      <div class="manual-modal-header">
+        <div class="manual-modal-title-group">
+          <span class="manual-modal-badge" id="manual-modal-badge">操作手冊</span>
+          <h3 class="manual-modal-title" id="manual-modal-title">實驗室操作手冊與實測指南</h3>
+        </div>
+        <button type="button" class="paper-modal-close-btn" onclick="closeLabManual()" title="關閉 (Esc)">✕</button>
+      </div>
+      <div class="manual-modal-body" id="manual-modal-body">
+        <!-- Injected dynamically by openLabManual(schemeKey) -->
       </div>
     </div>
   </div>

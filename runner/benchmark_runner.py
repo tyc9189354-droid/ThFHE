@@ -241,7 +241,9 @@ class BenchmarkRunner:
             "pelta": 14300,
             "hqfs": 14400,
             "ot25": 14500,
-            "ajax": 14600
+            "ajax": 14600,
+            "bs23": 14700,
+            "ps24": 14800
         }
         bp = base_port or port_offsets.get(scheme_name.lower(), 14500)
         return run_scheme_distributed(

@@ -46,7 +46,7 @@ from tool import (
     DecentralizedClientNode, HQFSVerifier, compute_committee_lagrange,
     HQFSSystem, uniform_poly, small_poly, encrypt, add, mul, decode_vec,
     centralized_gen_relin_rns,
-    OT25ThFHE, AjaxThFHE
+    OT25ThFHE, AjaxThFHE, BS23ThFHE, PS24ThFHE
 )
 
 # ----------------------------------------------------------------------
@@ -1579,6 +1579,318 @@ def run_ajax_distributed(
     )
 
 
+
+# ----------------------------------------------------------------------
+# 7. BS23 (Boudgoust & Scholl, ASIACRYPT 2023) Distributed Multi-Port Engine
+# ----------------------------------------------------------------------
+
+def run_bs23_distributed(
+    num_parties: int = 10,
+    k: int = 64,
+    m: int = 1,
+    base_port: int = 14700,
+    malicious_ratio: float = 0.0,
+    attack_type: str = "none",
+    **kwargs
+) -> BenchmarkResult:
+    r"""
+    BS23 (ASIACRYPT 2023: Boudgoust & Scholl) Distributed Multi-Port Socket Benchmark.
+      1. KeyGen   : LSS.Share(sk) -- every party receives its replicated / additive share elements over its own socket
+      2. PartDec  : each active party answers d_{i,j} = <ct, sk_{i,j}> + e_{i,j} (Renyi flooding noise sampled locally)
+      3. Combine  : coordinator selects ONE provider per sub-secret (0/1 reconstruction) and rounds
+    The committee that actually opens sockets is the *effective committee* n_eff (replicated sharing has
+    C(n-1, t) elements per party, so the requested committee is capped; see BS23ThFHE).
+    """
+    tracemalloc.start()
+    total_tx = 0
+    total_rx = 0
+
+    t_start_setup = time.perf_counter()
+    p_plain = int(kwargs.get("p_plain", min(1 << max(1, int(m)), 16)))
+    bs23 = BS23ThFHE(n_dim=16, p=p_plain, num_parties=num_parties, ell=64, renyi_order=16)
+    bs23.setup()
+    t_setup_ms = (time.perf_counter() - t_start_setup) * 1000.0
+    n_eff = bs23.n_eff
+
+    server_socks, ports = _bind_multi_ports(n_eff, base_port)
+    client_socks, conns = _connect_client_sockets(ports, server_socks)
+
+    t_start_keygen = time.perf_counter()
+    bs23.keygen()
+    party_local_state: Dict[int, Dict[str, Any]] = {}
+    for i in range(n_eff):
+        p_id = i + 1
+        pkg = {"cmd": "INIT_BS23", "shares": bs23.shares[p_id], "q": bs23.q, "sigma_flood": bs23.sigma_flood}
+        total_tx += _send_packet(conns[i], pkg)
+        rcv, rx_b = _recv_packet(client_socks[i])
+        total_rx += rx_b
+        party_local_state[p_id] = {"shares": rcv["shares"], "q": rcv["q"], "sigma_flood": rcv["sigma_flood"]}
+        del rcv
+    t_keygen_ms = (time.perf_counter() - t_start_keygen) * 1000.0
+
+    # Offline prep: pre-sampled flooding noise stays local to each party (no communication)
+    t_start_prep = time.perf_counter()
+    bs23.preprocess(count=2)
+    t_prep_ms = (time.perf_counter() - t_start_prep) * 1000.0
+
+    v1, v2 = 1, 1
+    ct1 = bs23.encrypt(v1)
+    ct0 = bs23.encrypt(0)
+    ct_bytes = len(pickle.dumps(ct1))
+
+    t0 = time.perf_counter()
+    ct_add = bs23.eval_add(ct1, ct0)
+    t_add_ms = (time.perf_counter() - t0) * 1000.0
+    t0 = time.perf_counter()
+    ct_mul = bs23.eval_mul(ct1, ct1)
+    t_mul_ms = (time.perf_counter() - t0) * 1000.0
+
+    active = list(range(1, bs23.threshold + 1))
+    mr = max(0, min(49, int(malicious_ratio or 0)))
+    at = attack_type or "none"
+    mal_count = (num_parties * mr) // 100 if (mr > 0 and at != "none") else 0
+    mal_set = set(secrets.SystemRandom().sample(active, min(mal_count, len(active)))) if mal_count > 0 else set()
+    if bs23._share_pos_stamp is not bs23.shares:
+        bs23._build_pos_index()
+        bs23._share_pos_stamp = bs23.shares
+    rng = secrets.SystemRandom()
+
+    pdec_times, agg_times = [], []
+    correctness = True
+    for target_ct, expected in [(ct_add, (v1 + 0) % p_plain), (ct_mul, (v1 * v2) % p_plain)]:
+        t0 = time.perf_counter()
+        d_map: Dict[int, List[int]] = {}
+        for p_id in active:
+            idx = p_id - 1
+            total_tx += _send_packet(conns[idx], {"cmd": "PART_DEC_REQ", "a": target_ct[0]})
+            req, rx_b = _recv_packet(client_socks[idx])
+            total_rx += rx_b
+
+            st = party_local_state[p_id]
+            q_loc = st["q"]
+            a_vec = np.asarray(req["a"], dtype=object)
+            noise = np.rint(np.random.default_rng(secrets.randbits(64)).normal(0.0, st["sigma_flood"], len(st["shares"]))).astype(np.int64)
+            d_list = []
+            for j, (key, vec) in enumerate(st["shares"]):
+                v = vec
+                if p_id in mal_set and at == "invalid_key_share":
+                    v = np.array([rng.randrange(q_loc) for _ in range(len(vec))], dtype=object)
+                d = (int(a_vec @ v) + int(noise[j])) % q_loc
+                if p_id in mal_set and at == "noise_flooding":
+                    d = (d + q_loc // 3 + rng.randint(1, 1000)) % q_loc
+                elif p_id in mal_set and at in ("share_tampering", "equivocation_eval"):
+                    d = (d + rng.randint(1, q_loc - 1)) % q_loc
+                d_list.append(d)
+
+            total_tx += _send_packet(client_socks[idx], {"cmd": "PART_DEC_RESP", "d": d_list})
+            resp, rx_b = _recv_packet(conns[idx])
+            total_rx += rx_b
+            d_map[p_id] = resp["d"]
+            del req, resp
+        pdec_times.append((time.perf_counter() - t0) * 1000.0)
+
+        t0 = time.perf_counter()
+        dec, _, _ = bs23.combine(target_ct, d_map, active)
+        agg_times.append((time.perf_counter() - t0) * 1000.0)
+        if dec != expected:
+            correctness = False
+
+    _cleanup_sockets(server_socks, client_socks, conns)
+    current_mem, peak_mem = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    mean_pdec = sum(pdec_times) / len(pdec_times)
+    mean_agg = sum(agg_times) / len(agg_times)
+    mean_lat = mean_pdec + mean_agg
+
+    return BenchmarkResult(
+        scheme_name="BS23 (ASIACRYPT 2023: Renyi Noise Flooding + LSSS)",
+        k=k,
+        m=m,
+        mode="distributed",
+        timestamp=datetime.datetime.now().isoformat(),
+        num_parties=num_parties,
+        offline=OfflineMetric(
+            setup_time_ms=round(t_setup_ms, 3),
+            keygen_time_ms=round(t_keygen_ms, 3),
+            prep_time_ms=round(t_prep_ms, 3),
+            gate_storage_bits=int(n_eff * bs23.L * bs23.n_dim * bs23.q.bit_length()),
+        ),
+        online=OnlineMetric(
+            eval_add_time_ms=round(t_add_ms, 4),
+            eval_mul_time_ms=round(t_mul_ms, 4),
+            partial_dec_time_ms=round(mean_pdec, 3),
+            agg_time_ms=round(mean_agg, 3),
+            latency_ms=round(mean_lat, 3),
+            throughput_dec_per_sec=round(1000.0 / mean_lat if mean_lat > 0 else 0, 1),
+            num_rounds=1,
+            comm_sent_bytes=total_tx,
+            comm_recv_bytes=total_rx,
+            details={"peak_mem_mb": round(peak_mem / (1024 * 1024), 2)},
+        ),
+        ciphertext_size_bytes=ct_bytes,
+        correctness_verified=correctness,
+        metadata={
+            "ports_range": f"{base_port}..{base_port + n_eff - 1}",
+            "sockets_count": n_eff,
+            "effective_parties": n_eff,
+            "requested_parties": num_parties,
+            "rns_primes_count": 1,
+            "share_elements_per_party": bs23.L,
+            "malicious_injected": len(mal_set),
+            "aborted": False,
+        },
+    )
+
+
+# ----------------------------------------------------------------------
+# 8. PS24 (Passelegue & Stehle, ePrint 2024/1984) Distributed Multi-Port Engine
+# ----------------------------------------------------------------------
+
+def run_ps24_distributed(
+    num_parties: int = 10,
+    k: int = 64,
+    m: int = 1,
+    base_port: int = 14800,
+    malicious_ratio: float = 0.0,
+    attack_type: str = "none",
+    **kwargs
+) -> BenchmarkResult:
+    r"""
+    PS24 (ePrint 2024/1984: Passelegue & Stehle) Distributed Multi-Port Socket Benchmark.
+      1. KeyGen   : additive shares sk_i (mod q_dec) are delivered over each party's own socket
+      2. ServerDec: the (trusted) server floods with E and rescales Z_Q -> Z_qdec, then broadcasts the SMALL ct_dec
+      3. PartDec  : each of the N parties answers p_i = <ct_dec,0, sk_i> + d_i  (one q_dec-sized integer)
+      4. FinDec   : z = sum_i p_i + ct_dec,1, decode
+    """
+    tracemalloc.start()
+    total_tx = 0
+    total_rx = 0
+
+    server_socks, ports = _bind_multi_ports(num_parties, base_port)
+    client_socks, conns = _connect_client_sockets(ports, server_socks)
+
+    t_start_setup = time.perf_counter()
+    p_plain = int(kwargs.get("p_plain", min(1 << max(1, int(m)), 16)))
+    ps24 = PS24ThFHE(n_dim=16, p=p_plain, num_parties=num_parties, lambda_flood=20)
+    ps24.setup()
+    t_setup_ms = (time.perf_counter() - t_start_setup) * 1000.0
+
+    t_start_keygen = time.perf_counter()
+    ps24.keygen()
+    party_local_state: Dict[int, Dict[str, Any]] = {}
+    for i in range(num_parties):
+        pkg = {"cmd": "INIT_PS24", "s_i": ps24.sk_shares[i], "q_dec": ps24.q_dec, "eta": ps24.eta}
+        total_tx += _send_packet(conns[i], pkg)
+        rcv, rx_b = _recv_packet(client_socks[i])
+        total_rx += rx_b
+        party_local_state[i] = {"s_i": np.asarray(rcv["s_i"], dtype=np.int64), "q_dec": rcv["q_dec"], "eta": rcv["eta"]}
+        del rcv
+    t_keygen_ms = (time.perf_counter() - t_start_keygen) * 1000.0
+
+    t_start_prep = time.perf_counter()
+    ps24.preprocess(count=2)
+    t_prep_ms = (time.perf_counter() - t_start_prep) * 1000.0
+
+    v1, v2 = 1, 1
+    ct1 = ps24.encrypt(v1)
+    ct0 = ps24.encrypt(0)
+    ct_bytes = len(pickle.dumps(ct1))
+
+    t0 = time.perf_counter()
+    ct_add = ps24.eval_add(ct1, ct0)
+    t_add_ms = (time.perf_counter() - t0) * 1000.0
+    t0 = time.perf_counter()
+    ct_mul = ps24.eval_mul(ct1, ct1)
+    t_mul_ms = (time.perf_counter() - t0) * 1000.0
+
+    mr = max(0, min(49, int(malicious_ratio or 0)))
+    at = attack_type or "none"
+    mal_count = (num_parties * mr) // 100 if (mr > 0 and at != "none") else 0
+    mal_set = set(secrets.SystemRandom().sample(range(num_parties), min(mal_count, num_parties))) if mal_count > 0 else set()
+    rng = secrets.SystemRandom()
+
+    pdec_times, agg_times = [], []
+    correctness = True
+    for target_ct, expected in [(ct_add, (v1 + 0) % p_plain), (ct_mul, (v1 * v2) % p_plain)]:
+        t0 = time.perf_counter()
+        a_dec, b_dec = ps24.server_dec(target_ct)
+        shares = []
+        for i in range(num_parties):
+            total_tx += _send_packet(conns[i], {"cmd": "PART_DEC_REQ", "a": [int(x) for x in a_dec]})
+            req, rx_b = _recv_packet(client_socks[i])
+            total_rx += rx_b
+
+            st = party_local_state[i]
+            qd = st["q_dec"]
+            d_i = int(round(rng.gauss(0.0, st["eta"])))
+            s_i = st["s_i"]
+            if i in mal_set and at == "invalid_key_share":
+                s_i = np.array([rng.randrange(qd) for _ in range(len(s_i))], dtype=np.int64)
+            val = (sum(int(x) * int(y) for x, y in zip(req["a"], s_i)) + d_i) % qd
+            if i in mal_set and at == "noise_flooding":
+                val = (val + qd // 3 + rng.randint(1, 1000)) % qd
+            elif i in mal_set and at in ("share_tampering", "equivocation_eval"):
+                val = (val + rng.randint(1, qd - 1)) % qd
+
+            total_tx += _send_packet(client_socks[i], {"cmd": "PART_DEC_RESP", "p_i": int(val)})
+            resp, rx_b = _recv_packet(conns[i])
+            total_rx += rx_b
+            shares.append(resp["p_i"])
+            del req, resp
+        pdec_times.append((time.perf_counter() - t0) * 1000.0)
+
+        t0 = time.perf_counter()
+        dec = ps24.fin_dec(b_dec, shares)
+        agg_times.append((time.perf_counter() - t0) * 1000.0)
+        if dec != expected:
+            correctness = False
+
+    _cleanup_sockets(server_socks, client_socks, conns)
+    current_mem, peak_mem = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    mean_pdec = sum(pdec_times) / len(pdec_times)
+    mean_agg = sum(agg_times) / len(agg_times)
+    mean_lat = mean_pdec + mean_agg
+
+    return BenchmarkResult(
+        scheme_name="PS24 (ePrint 2024/1984: Double-Flood-and-Round)",
+        k=k,
+        m=m,
+        mode="distributed",
+        timestamp=datetime.datetime.now().isoformat(),
+        num_parties=num_parties,
+        offline=OfflineMetric(
+            setup_time_ms=round(t_setup_ms, 3),
+            keygen_time_ms=round(t_keygen_ms, 3),
+            prep_time_ms=round(t_prep_ms, 3),
+            gate_storage_bits=int(ps24.q_dec.bit_length() * ps24.n_dim * num_parties),
+        ),
+        online=OnlineMetric(
+            eval_add_time_ms=round(t_add_ms, 4),
+            eval_mul_time_ms=round(t_mul_ms, 4),
+            partial_dec_time_ms=round(mean_pdec, 3),
+            agg_time_ms=round(mean_agg, 3),
+            latency_ms=round(mean_lat, 3),
+            throughput_dec_per_sec=round(1000.0 / mean_lat if mean_lat > 0 else 0, 1),
+            num_rounds=1,
+            comm_sent_bytes=total_tx,
+            comm_recv_bytes=total_rx,
+            details={"peak_mem_mb": round(peak_mem / (1024 * 1024), 2)},
+        ),
+        ciphertext_size_bytes=ct_bytes,
+        correctness_verified=correctness,
+        metadata={
+            "ports_range": f"{base_port}..{base_port + num_parties - 1}",
+            "sockets_count": num_parties,
+            "rns_primes_count": 1,
+            "malicious_injected": len(mal_set),
+            "aborted": False,
+        },
+    )
+
+
 # ----------------------------------------------------------------------
 # Dispatcher
 # ----------------------------------------------------------------------
@@ -1590,7 +1902,9 @@ DISTRIBUTED_RUNNERS = {
     "pelta": run_pelta_distributed,
     "hqfs": run_hqfs_distributed,
     "ot25": run_ot25_distributed,
-    "ajax": run_ajax_distributed
+    "ajax": run_ajax_distributed,
+    "bs23": run_bs23_distributed,
+    "ps24": run_ps24_distributed,
 }
 
 def run_scheme_distributed(scheme_name: str, num_parties: int = 10, **kwargs) -> BenchmarkResult:

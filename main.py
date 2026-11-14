@@ -30,6 +30,8 @@ from schemes.pelta_scheme import PeltaThFHEScheme
 from schemes.hqfs_scheme import HQFSThFHEScheme
 from schemes.ot25_scheme import OT25ThFHEScheme
 from schemes.ajax_scheme import AjaxThFHEScheme
+from schemes.bs23_scheme import BS23ThFHEScheme
+from schemes.ps24_scheme import PS24ThFHEScheme
 from analysis.exporter import ResultExporter
 from analysis.plotter import ResultPlotter
 from CCS25 import server
@@ -40,7 +42,9 @@ SCHEME_REGISTRY = {
     "pelta": PeltaThFHEScheme,
     "hqfs": HQFSThFHEScheme,
     "ot25": OT25ThFHEScheme,
-    "ajax": AjaxThFHEScheme
+    "ajax": AjaxThFHEScheme,
+    "bs23": BS23ThFHEScheme,
+    "ps24": PS24ThFHEScheme
 }
 
 def load_yaml_config(path: str) -> Dict[str, Any]:
@@ -66,8 +70,8 @@ def run_benchmark_cmd(args):
         {"k": 16, "m": 1, "b": 4},
         {"k": 64, "m": 1, "b": 8}
     ])
-    scheme_names = cfg.get("schemes", ["ccs25", "baseline_noise_flooding", "pelta", "hqfs", "ot25", "ajax"])
-    for s_target in ["pelta", "hqfs", "ot25", "ajax"]:
+    scheme_names = cfg.get("schemes", ["ccs25", "baseline_noise_flooding", "pelta", "hqfs", "ot25", "ajax", "bs23", "ps24"])
+    for s_target in ["pelta", "hqfs", "ot25", "ajax", "bs23", "ps24"]:
         if s_target not in scheme_names:
             scheme_names.append(s_target)
     server_url = args.server_url or cfg.get("remote_server", {}).get("url", "http://127.0.0.1:8000")

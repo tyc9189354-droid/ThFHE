@@ -4681,7 +4681,626 @@ class AjaxThFHE:
 
 
 # ==============================================================================
-# Self-Test for All Six Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS + OT25 + Ajax)
+# SECTION G: Shared textbook public-key LWE / BFV core (paper convention  phase = b + <a, s>)
+#            Used by BS23 (Boudgoust-Scholl, ASIACRYPT 2023) and PS24 (Passelegue-Stehle, ePrint 2024/1984)
+# ==============================================================================
+
+class _PaperLWECore:
+    """
+    Public-key LWE / BFV scheme with the decryption equation of both threshold papers:
+
+        sk = (1, s),   ct = (a, b),   phase = <sk, ct> = b + <a, s>  (mod M)
+                                            = Delta * mu + e_eval
+
+    - KeyGen : pk = (A, b_pk = -A s + e)          (A uniform, s ternary, e Gaussian)
+    - Enc    : a = A^T r + f1,  b = <r, b_pk> + f0 + Delta * mu      (r binary)
+    - Eval   : addition and BFV tensor product + gadget relinearisation using ONLY public data (evk)
+    All big-integer arithmetic is done with Python integers (numpy object arrays), so the
+    modulus may exceed 64 bits of intermediate products.
+    """
+
+    def _init_core(self, n_dim: int, modulus: int, p_plain: int, sigma_e: float = 3.2, gadget_base: int = 16):
+        self.n_dim = int(n_dim)
+        self.M = int(modulus)
+        self.p_plain = int(p_plain)
+        if self.M % self.p_plain != 0:
+            raise ValueError("modulus must be a multiple of the plaintext modulus")
+        self.Delta = self.M // self.p_plain
+        self.sigma_e = float(sigma_e)
+        self.gadget_base = int(gadget_base)
+        self.s = None
+        self.A_pk = None
+        self.b_pk = None
+        self.evk: List[Tuple[Any, Any]] = []
+
+    # ---- sampling helpers (numpy PCG64 seeded from the OS CSPRNG; demonstration-grade sampler) ----
+    @staticmethod
+    def _new_gen():
+        import numpy as np
+        return np.random.Generator(np.random.PCG64(secrets.randbits(128)))
+
+    @staticmethod
+    def _gauss_vec(gen, sigma: float, size):
+        import numpy as np
+        return np.rint(gen.normal(0.0, max(1e-9, float(sigma)), size)).astype(np.int64).astype(object)
+
+    def _uniform_mod(self, gen, mod: int, size):
+        import numpy as np
+        return gen.integers(0, mod, size=size, dtype=np.int64).astype(object)
+
+    def _center(self, x: int, mod: Optional[int] = None) -> int:
+        mod = self.M if mod is None else mod
+        v = int(x) % mod
+        return v - mod if v > mod // 2 else v
+
+    # ---- KeyGen core -------------------------------------------------------------------------------
+    def core_keygen(self, gen=None):
+        import numpy as np
+        gen = gen or self._new_gen()
+        M, n = self.M, self.n_dim
+        self.s = gen.integers(-1, 2, size=n).astype(np.int64)
+        s_obj = self.s.astype(object)
+        self.m_pk = 2 * n
+        self.A_pk = self._uniform_mod(gen, M, (self.m_pk, n))
+        e_pk = self._gauss_vec(gen, self.sigma_e, self.m_pk)
+        self.b_pk = ((-(self.A_pk @ s_obj)) + e_pk) % M
+
+        # Gadget relinearisation key for s (x) s :  B_l = -A_l s + e_l + g^l (s (x) s)
+        self.s_tensor = np.outer(self.s, self.s).flatten().astype(object)
+        dim_t = n * n
+        self.evk = []
+        base_pow = 1
+        while base_pow < M:
+            A_l = self._uniform_mod(gen, M, (dim_t, n))
+            e_l = self._gauss_vec(gen, self.sigma_e, dim_t)
+            B_l = ((-(A_l @ s_obj)) + e_l + base_pow * self.s_tensor) % M
+            self.evk.append((A_l, B_l))
+            base_pow *= self.gadget_base
+
+    # ---- Enc / Dec / Eval --------------------------------------------------------------------------
+    def encrypt(self, mu: int) -> Tuple[Any, int]:
+        import numpy as np
+        if self.A_pk is None:
+            self.keygen()
+        gen = self._new_gen()
+        M, n = self.M, self.n_dim
+        r = gen.integers(0, 2, size=self.m_pk).astype(object)
+        f1 = self._gauss_vec(gen, self.sigma_e, n)
+        f0 = int(self._gauss_vec(gen, self.sigma_e, 1)[0])
+        a = ((r @ self.A_pk) + f1) % M
+        b = (int(r @ self.b_pk) + f0 + self.Delta * (int(mu) % self.p_plain)) % M
+        return (a, int(b))
+
+    def phase(self, ct: Tuple[Any, int]) -> int:
+        a, b = ct
+        return (int(b) + int(np_dot_obj(a, self.s))) % self.M
+
+    def decrypt_direct(self, ct: Tuple[Any, int]) -> int:
+        ph = self._center(self.phase(ct))
+        return ((ph * self.p_plain + self.M // 2) // self.M) % self.p_plain
+
+    def noise_of(self, ct: Tuple[Any, int], mu: int) -> int:
+        return self._center(self.phase(ct) - self.Delta * (int(mu) % self.p_plain))
+
+    def eval_add(self, ct1, ct2):
+        import numpy as np
+        M = self.M
+        a = (np.asarray(ct1[0], dtype=object) + np.asarray(ct2[0], dtype=object)) % M
+        return (a, (int(ct1[1]) + int(ct2[1])) % M)
+
+    def eval_mul(self, ct1, ct2):
+        """BFV tensor product (scale by t/M) + gadget relinearisation; never touches the secret key."""
+        import numpy as np
+        M, n, t = self.M, self.n_dim, self.p_plain
+        half = M // 2
+
+        def cen(x):
+            v = int(x) % M
+            return v - M if v > half else v
+
+        def sc(v):
+            return ((int(v) * t + half) // M) % M
+
+        a1 = [cen(x) for x in ct1[0]]
+        a2 = [cen(x) for x in ct2[0]]
+        b1, b2 = cen(ct1[1]), cen(ct2[1])
+        d0 = sc(b1 * b2)
+        d1 = [sc(b1 * a2[j] + b2 * a1[j]) for j in range(n)]
+        d2 = [sc(a1[i] * a2[j]) for i in range(n) for j in range(n)]
+
+        b_acc = d0
+        a_acc = np.array(d1, dtype=object)
+        rem = [cen(v) for v in d2]
+        bg = self.gadget_base
+        half_bg = bg // 2
+        for A_l, B_l in self.evk:
+            digits = [0] * (n * n)
+            nonzero = False
+            for k, rv in enumerate(rem):
+                if rv != 0:
+                    d = rv % bg
+                    if d > half_bg:
+                        d -= bg
+                    digits[k] = d
+                    rem[k] = (rv - d) // bg
+                    if d != 0:
+                        nonzero = True
+            if nonzero:
+                d_arr = np.array(digits, dtype=object)
+                b_acc = (b_acc + int(d_arr @ B_l)) % M
+                a_acc = (a_acc + (d_arr @ A_l)) % M
+        return (a_acc % M, int(b_acc % M))
+
+
+def np_dot_obj(a, s) -> int:
+    """Exact integer dot product <a, s> for object / int arrays."""
+    return sum(int(x) * int(y) for x, y in zip(a, s))
+
+
+def _binom(n: int, k: int) -> int:
+    return math.comb(n, k) if 0 <= k <= n else 0
+
+
+# ==============================================================================
+# SECTION H: BS23 (Boudgoust & Scholl, ASIACRYPT 2023)
+#            "Simple Threshold (Fully Homomorphic) Encryption From LWE With Polynomial Modulus"
+# ==============================================================================
+
+class BS23ThFHE(_PaperLWECore):
+    """
+    t-out-of-n threshold FHE with RENYI-divergence noise flooding (Fig. 7 of the paper).
+
+      Setup  : (pp, pk, sk) <- FHE.Setup ;  (sk_1..sk_n) <- LSS.Share(sk)   [strong {0,1}-reconstruction]
+      PartDec: d_{i,j} = <ct, sk_{i,j}> + e_{i,j},  e_{i,j} <- D_flood   (j = 1..L)
+      Combine: y = Rec_S((d_i)_{i in S}) = sum of a 0/1 selection of the d_{i,j};  mu = round(p/q * y)
+
+    Parameters follow Thm. 4 / Sec. 5.4:
+      sigma_flood = beta_fhe * sqrt( ell * d * (n*L - tau_max) * (a - 1) )     (polynomial ratio, NOT 2^lambda)
+      q           >= 2p * ( beta_fhe + 12 * sigma_flood * sqrt(tau_min) )       (tau_min flooding terms are summed)
+      security    : lambda_ThFHE >= (a-1)/a * ( lambda_FHE - ell*d*(nL - tau_max)*log2(eps_RD) )
+
+    The linear secret sharing is replicated (CNF) sharing for t < n-1 (L = C(n-1,t), tau_max = nL-(n-t),
+    tau_min = C(n,t)) and plain additive sharing for the full-threshold case t = n-1 (L = 1).
+    Because |shares| = C(n-1,t) grows exponentially, huge committees are executed on an *effective
+    committee* (n_eff <= ~12) while the analytical share size of the requested n is reported.
+    """
+
+    def __init__(
+        self,
+        n_dim: int = 16,
+        p: int = 4,
+        num_parties: int = 10,
+        threshold: Optional[int] = None,
+        ell: int = 64,
+        renyi_order: int = 16,
+        sigma_pke: float = 3.2,
+        max_subsets: int = 800,
+    ):
+        self.p = max(2, int(p))
+        self.num_parties = max(3, int(num_parties))
+        self.ell = max(1, int(ell))
+        self.renyi_order = max(2, int(renyi_order))
+        self.sigma_pke = float(sigma_pke)
+        self.max_subsets = int(max_subsets)
+        self.n_dim = int(n_dim)
+        t_req = (int(threshold) - 1) if threshold is not None else max(0, (self.num_parties - 1) // 2)
+        self.t_requested = max(1, min(self.num_parties - 1, t_req))
+        self.queries = 0
+        self.flood_pool: List[Any] = []
+        self.shares: Dict[int, Any] = {}
+        self.subsets: List[Tuple[int, ...]] = []
+        self._share_pos: Dict[int, Any] = {}
+        self._share_pos_stamp = None
+        self._derive_params()
+
+    # ---- parameter derivation (Thm. 4, Sec. 5.4) ---------------------------------------------------
+    def _choose_committee(self, n: int, t: int) -> Tuple[int, int]:
+        if t == n - 1 or _binom(n, t) <= self.max_subsets:
+            return n, t
+        for n_e in range(n - 1, 2, -1):
+            t_e = max(1, min(t, (n_e - 1) // 2))
+            if _binom(n_e, t_e) <= self.max_subsets:
+                return n_e, t_e
+        return 3, 1
+
+    def _derive_params(self):
+        n, t = self._choose_committee(self.num_parties, self.t_requested)
+        self.n_eff, self.t_eff = n, t
+        self.threshold = t + 1
+        self.t_corrupt = t
+        if t == n - 1:
+            self.sharing = "additive"
+            self.L, self.tau_max, self.tau_min = 1, n - 1, n
+        else:
+            self.sharing = "replicated"
+            self.L = _binom(n - 1, t)
+            self.tau_max = n * self.L - (n - t)
+            self.tau_min = _binom(n, t)
+        # analytical share size for the *requested* committee (exponential in n)
+        tr = self.t_requested
+        self.L_requested = 1 if tr == self.num_parties - 1 else _binom(self.num_parties - 1, tr)
+        self.share_bits_requested = int(self.L_requested.bit_length())
+
+        # ciphertext decryption-noise bound of the underlying FHE after one multiplication
+        self.beta_fhe = int(2 ** 14 * max(1, self.p // 2))
+        d = 1
+        self.nL_minus_tau = n * self.L - self.tau_max
+        self.sigma_flood = int(math.ceil(
+            self.beta_fhe * math.sqrt(self.ell * d * self.nL_minus_tau * (self.renyi_order - 1))
+        ))
+        noise_bound = self.beta_fhe + int(math.ceil(12.0 * self.sigma_flood * math.sqrt(self.tau_min)))
+        q = 4 * self.p * noise_bound
+        q = ((q + self.p - 1) // self.p) * self.p
+        self._init_core(self.n_dim, q, self.p, sigma_e=self.sigma_pke, gadget_base=16)
+        self.q = self.M
+        # Renyi accounting
+        a = self.renyi_order
+        self.eps_rd = math.exp(a * (self.beta_fhe ** 2) / (2.0 * (self.sigma_flood ** 2)))
+        self.security_loss_bits = (a - 1) / a * (self.ell * d * self.nL_minus_tau * math.log2(self.eps_rd))
+
+    def setup(self) -> Dict[str, Any]:
+        self._derive_params()
+        return {
+            "n_dim": self.n_dim,
+            "q": self.q,
+            "q_bits": self.q.bit_length(),
+            "p": self.p,
+            "Delta": self.Delta,
+            "num_parties": self.num_parties,
+            "effective_parties": self.n_eff,
+            "t": self.t_eff,
+            "threshold": self.threshold,
+            "sharing": self.sharing,
+            "L": self.L,
+            "tau_max": self.tau_max,
+            "tau_min": self.tau_min,
+            "ell": self.ell,
+            "renyi_order": self.renyi_order,
+            "beta_fhe": self.beta_fhe,
+            "sigma_flood": self.sigma_flood,
+            "eps_rd": round(self.eps_rd, 6),
+            "L_requested_bits": self.share_bits_requested,
+        }
+
+    # ---- KeyGen : LSS.Share(sk) -----------------------------------------------------------------------
+    def keygen(self) -> Dict[str, Any]:
+        import numpy as np
+        gen = self._new_gen()
+        self.core_keygen(gen)
+        n, t, q = self.n_eff, self.t_eff, self.q
+        s_obj = self.s.astype(object)
+        self.queries = 0
+        self.flood_pool = []
+        self.shares = {i: [] for i in range(1, n + 1)}       # party -> list of (subset-key, vector)
+        if self.sharing == "additive":
+            self.subsets = [(i,) for i in range(1, n + 1)]
+            acc = np.zeros(self.n_dim, dtype=object)
+            vecs = []
+            for i in range(1, n):
+                v = self._uniform_mod(gen, q, self.n_dim)
+                vecs.append(v)
+                acc = (acc + v) % q
+            vecs.append((s_obj - acc) % q)
+            for i in range(1, n + 1):
+                self.shares[i].append(((i,), vecs[i - 1]))
+        else:
+            import itertools
+            self.subsets = list(itertools.combinations(range(1, n + 1), t))
+            acc = np.zeros(self.n_dim, dtype=object)
+            vecs = []
+            for _ in range(len(self.subsets) - 1):
+                v = self._uniform_mod(gen, q, self.n_dim)
+                vecs.append(v)
+                acc = (acc + v) % q
+            vecs.append((s_obj - acc) % q)
+            for A, v in zip(self.subsets, vecs):
+                setA = set(A)
+                for i in range(1, n + 1):
+                    if i not in setA:
+                        self.shares[i].append((A, v))
+        self.preprocess(count=2)
+        return {
+            "num_parties": self.num_parties,
+            "effective_parties": n,
+            "t": t,
+            "threshold": self.threshold,
+            "sharing": self.sharing,
+            "num_subsets": len(self.subsets),
+            "L": self.L,
+            "tau_min": self.tau_min,
+            "evk_levels": len(self.evk),
+            "q_bits": q.bit_length(),
+        }
+
+    # ---- Offline: pre-sample flooding noise ------------------------------------------------------------
+    def preprocess(self, count: int = 2) -> int:
+        gen = self._new_gen()
+        for _ in range(int(count)):
+            pool = {}
+            for i in range(1, self.n_eff + 1):
+                pool[i] = self._gauss_vec(gen, self.sigma_flood, len(self.shares.get(i, [])))
+            self.flood_pool.append(pool)
+        return len(self.flood_pool)
+
+    # ---- PartDec / Combine -----------------------------------------------------------------------------
+    def part_dec(self, party_id: int, ct, noise_vec=None, attack_type: str = "none") -> List[int]:
+        """d_{i,j} = <ct_a, sk_{i,j}> + e_{i,j}   (j = 1..L)   [Fig. 7]"""
+        import numpy as np
+        a = np.asarray(ct[0], dtype=object)
+        q = self.q
+        sh = self.shares[party_id]
+        if noise_vec is None:
+            noise_vec = self._gauss_vec(self._new_gen(), self.sigma_flood, len(sh))
+        out = []
+        rng = secrets.SystemRandom()
+        for idx, (key, vec) in enumerate(sh):
+            v = vec
+            if attack_type == "invalid_key_share":
+                v = np.array([rng.randrange(q) for _ in range(self.n_dim)], dtype=object)
+            d = (int(a @ v) + int(noise_vec[idx])) % q
+            if attack_type == "noise_flooding":
+                d = (d + q // 3 + rng.randint(1, 1000)) % q
+            elif attack_type in ("share_tampering", "equivocation_eval"):
+                d = (d + rng.randint(1, q - 1)) % q
+            out.append(d)
+        return out
+
+    def combine(self, ct, d_map: Dict[int, List[int]], active: List[int]) -> Tuple[int, int, int]:
+        """Rec_S: select one provider per sub-secret (0/1 coefficients), y = sum d_{i,j};  mu = round(p/q y')."""
+        q = self.q
+        act = sorted(active)
+        y = 0
+        used = 0
+        for key_idx, A in enumerate(self.subsets):
+            setA = set(A)
+            if self.sharing == "additive":
+                prov = A[0]
+                if prov not in d_map:
+                    raise ValueError("additive sharing requires every party")
+            else:
+                prov = next((i for i in act if i not in setA), None)
+                if prov is None:
+                    raise ValueError("insufficient active parties for BS23 reconstruction")
+            # position of subset A inside party prov's share list
+            pos = self._share_pos[prov][A]
+            y = (y + d_map[prov][pos]) % q
+            used += 1
+        phase = self._center((int(ct[1]) + y) % q)
+        mu = ((phase * self.p + q // 2) // q) % self.p
+        return mu, phase, used
+
+    def _build_pos_index(self):
+        self._share_pos = {i: {key: idx for idx, (key, _) in enumerate(self.shares[i])} for i in self.shares}
+
+    def decrypt_full(
+        self,
+        ct,
+        active_parties: Optional[List[int]] = None,
+        malicious_set: Optional[set] = None,
+        attack_type: str = "none",
+    ) -> Tuple[int, float, float]:
+        if self.s is None:
+            self.keygen()
+        if self.queries >= self.ell:
+            self.keygen()                 # query bound ell exhausted -> fresh key (Thm. 4 holds for <= ell queries)
+        self.queries += 1
+        if self._share_pos_stamp is not self.shares:
+            self._build_pos_index()
+            self._share_pos_stamp = self.shares
+        if active_parties is None:
+            active_parties = list(range(1, self.threshold + 1))
+        mal = malicious_set or set()
+        if not self.flood_pool:
+            self.preprocess(1)
+        pool = self.flood_pool.pop(0)
+
+        t0 = time.perf_counter()
+        d_map = {}
+        for i in active_parties:
+            d_map[i] = self.part_dec(i, ct, pool[i], attack_type if i in mal else "none")
+        pdec_ms = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        mu, phase, used = self.combine(ct, d_map, active_parties)
+        agg_ms = (time.perf_counter() - t1) * 1000.0
+        self.last_trace = {"phase_after_combine": phase, "terms_summed": used}
+        return mu, pdec_ms, agg_ms
+
+
+# ==============================================================================
+# SECTION I: PS24 (Passelegue & Stehle, ePrint 2024/1984)
+#            "Low Communication Threshold Fully Homomorphic Encryption"  -- Double-Flood-and-Round
+# ==============================================================================
+
+class PS24ThFHE(_PaperLWECore):
+    """
+    N-out-of-N threshold FHE with a ServerDec algorithm (Figures 2 and 3 of the paper).
+
+      KeyGen    : Q = p * q_dec ;  (sk, pk) <- FHE.KeyGen over Z_Q ;  sk = sk_1 + ... + sk_N  (mod q_dec)
+      ServerDec : ct_in = ct + Enc(pk, 0) ;  E <- D_{sigma_flood} ;  ct_in,1 += E
+                  ct_dec,0 = round_{sigma_0}(ct_in,0 / p) mod q_dec ;  ct_dec,1 = round_{sigma_1}(ct_in,1 / p)
+                  (1st flood : exponential flooding on the server, 2nd step: rescale Z_Q -> Z_{q_dec})
+      PartDec   : p_i = <ct_dec,0, sk_i> + d_i  mod q_dec ,   d_i <- D_{Z, eta}   (2nd flood: tiny noise)
+      FinDec    : z = sum_i p_i + ct_dec,1 mod q_dec ;  mu = Decode_{q_dec}(z)
+
+    Parameters (Thm. 5.1):  sigma_flood = 2^lambda * B_eval,  p = 2^lambda,
+      sigma_dec^2 = (sigma_0 ||s||)^2 + (sigma_flood/p)^2 + sigma_1^2 + N eta^2,   q_dec >= 2t * 12 * sigma_dec.
+    """
+
+    def __init__(
+        self,
+        n_dim: int = 16,
+        p: int = 4,
+        num_parties: int = 10,
+        lambda_flood: int = 20,
+        sigma_0: float = 3.0,
+        sigma_1: float = 3.0,
+        eta: float = 6.4,
+        sigma_pke: float = 3.2,
+        pool_size: int = 4,
+    ):
+        self.p_plain = max(2, int(p))
+        self.p = self.p_plain
+        self.num_parties = max(2, int(num_parties))
+        self.threshold = self.num_parties          # N-out-of-N
+        self.lambda_flood = int(lambda_flood)
+        self.sigma_0 = float(sigma_0)
+        self.sigma_1 = float(sigma_1)
+        self.eta = float(eta)
+        self.sigma_pke = float(sigma_pke)
+        self.pool_size = int(pool_size)
+        self.n_dim = int(n_dim)
+        self.fresh_pool: List[Tuple[Any, int]] = []
+        self.sk_shares = None
+        self._derive_params()
+
+    def _derive_params(self):
+        t = self.p_plain
+        self.p_round = 1 << self.lambda_flood                       # p ~ 2^lambda
+        self.B_eval = int(2 ** 14 * max(1, t // 2))                 # evaluation-noise bound (one multiplication)
+        self.sigma_flood = float(self.p_round * self.B_eval)        # sigma_flood = 2^lambda * B_eval
+        s_norm = math.sqrt(2.0 * self.n_dim / 3.0)                  # expected ||s|| of a ternary key
+        self.s_norm_pp = s_norm * 1.25                               # public bound on ||s|| (pp contains it)
+        self.sigma_dec = math.sqrt(
+            (self.sigma_0 * self.s_norm_pp) ** 2
+            + (self.sigma_flood / self.p_round) ** 2
+            + self.sigma_1 ** 2
+            + self.num_parties * (self.eta ** 2)
+        )
+        q_dec = int(math.ceil(2.0 * t * 12.0 * self.sigma_dec))
+        self.q_dec = ((q_dec + t - 1) // t) * t
+        self.Q = self.p_round * self.q_dec
+        self._init_core(self.n_dim, self.Q, t, sigma_e=self.sigma_pke, gadget_base=16)
+        self.Delta_dec = self.q_dec // t
+        self.q = self.q_dec
+
+    def setup(self) -> Dict[str, Any]:
+        self._derive_params()
+        return {
+            "n_dim": self.n_dim,
+            "p": self.p_plain,
+            "num_parties": self.num_parties,
+            "threshold": self.threshold,
+            "Q": self.Q,
+            "Q_bits": self.Q.bit_length(),
+            "p_round": self.p_round,
+            "q_dec": self.q_dec,
+            "q_dec_bits": self.q_dec.bit_length(),
+            "lambda_flood": self.lambda_flood,
+            "B_eval": self.B_eval,
+            "sigma_flood": self.sigma_flood,
+            "sigma_0": self.sigma_0,
+            "sigma_1": self.sigma_1,
+            "eta": self.eta,
+            "sigma_dec": round(self.sigma_dec, 3),
+        }
+
+    # ---- KeyGen -------------------------------------------------------------------------------------
+    def keygen(self) -> Dict[str, Any]:
+        import numpy as np
+        gen = self._new_gen()
+        self.core_keygen(gen)
+        N, qd = self.num_parties, self.q_dec
+        s64 = self.s.astype(np.int64)
+        sh = gen.integers(0, qd, size=(N, self.n_dim), dtype=np.int64)
+        sh[-1] = (s64 - sh[:-1].sum(axis=0)) % qd
+        self.sk_shares = sh % qd
+        self.s_norm = float(np.linalg.norm(self.s))
+        self.fresh_pool = []
+        self.preprocess(count=self.pool_size)
+        return {
+            "num_parties": N,
+            "threshold": N,
+            "s_norm": round(self.s_norm, 4),
+            "Q_bits": self.Q.bit_length(),
+            "q_dec_bits": qd.bit_length(),
+            "evk_levels": len(self.evk),
+        }
+
+    # ---- Offline: ciphertexts Enc(pk, 0) used by ServerDec ---------------------------------------------
+    def preprocess(self, count: int = 4) -> int:
+        for _ in range(int(count)):
+            self.fresh_pool.append(self.encrypt(0))
+        return len(self.fresh_pool)
+
+    # ---- ServerDec (double flood-and-round, server side) ------------------------------------------------
+    def _gauss_round_frac(self, x: int, divisor: int, sigma: float, rng) -> int:
+        """Randomised Gaussian rounding  y <- D_{Z, sigma, x/divisor}  (exact integer / fractional split)."""
+        base = x // divisor
+        frac = (x % divisor) / float(divisor)
+        centre = frac                              # centre relative to `base`
+        half_w = max(8, int(math.ceil(7.0 * sigma)))
+        two_var = 2.0 * sigma * sigma
+        k0 = int(round(centre))
+        while True:
+            k = k0 + rng.randint(-half_w, half_w)
+            if rng.random() < math.exp(-((k - centre) ** 2) / two_var):
+                return base + k
+
+    def server_dec(self, ct) -> Tuple[Any, int]:
+        import numpy as np
+        rng = secrets.SystemRandom()
+        Q, qd, p = self.Q, self.q_dec, self.p_round
+        if not self.fresh_pool:
+            self.preprocess(1)
+        fa, fb = self.fresh_pool.pop(0)                                    # ct_fresh = Enc(pk, 0)
+        a_in = [(int(x) + int(y)) % Q for x, y in zip(ct[0], fa)]
+        b_in = (int(ct[1]) + int(fb)) % Q
+        E = int(round(rng.gauss(0.0, self.sigma_flood)))                    # E <- D_{sigma_flood}
+        b_in = b_in + E
+        a_dec = np.array([self._gauss_round_frac(x, p, self.sigma_0, rng) % qd for x in a_in], dtype=object)
+        b_dec = self._gauss_round_frac(b_in, p, self.sigma_1, rng) % qd
+        return a_dec, int(b_dec)
+
+    def part_dec(self, party_id: int, a_dec, d_i: Optional[int] = None, attack_type: str = "none") -> int:
+        """p_i = <ct_dec,0, sk_i> + d_i mod q_dec,  d_i <- D_{Z, eta}."""
+        qd = self.q_dec
+        rng = secrets.SystemRandom()
+        s_i = self.sk_shares[party_id - 1]
+        if attack_type == "invalid_key_share":
+            s_i = [rng.randrange(qd) for _ in range(self.n_dim)]
+        if d_i is None:
+            d_i = int(round(rng.gauss(0.0, self.eta)))
+        val = (sum(int(x) * int(y) for x, y in zip(a_dec, s_i)) + int(d_i)) % qd
+        if attack_type == "noise_flooding":
+            val = (val + qd // 3 + rng.randint(1, 1000)) % qd
+        elif attack_type in ("share_tampering", "equivocation_eval"):
+            val = (val + rng.randint(1, qd - 1)) % qd
+        return int(val)
+
+    def fin_dec(self, b_dec: int, shares: List[int]) -> int:
+        qd, t = self.q_dec, self.p_plain
+        z = (sum(int(x) for x in shares) + int(b_dec)) % qd
+        zc = z - qd if z > qd // 2 else z
+        return ((zc * t + qd // 2) // qd) % t
+
+    def decrypt_full(
+        self,
+        ct,
+        active_parties: Optional[List[int]] = None,
+        malicious_set: Optional[set] = None,
+        attack_type: str = "none",
+    ) -> Tuple[int, float, float]:
+        import numpy as np
+        if self.s is None:
+            self.keygen()
+        mal = malicious_set or set()
+        t0 = time.perf_counter()
+        a_dec, b_dec = self.server_dec(ct)
+        d_vec = np.rint(self._new_gen().normal(0.0, self.eta, self.num_parties)).astype(np.int64)
+        shares = [
+            self.part_dec(i, a_dec, int(d_vec[i - 1]), attack_type if i in mal else "none")
+            for i in range(1, self.num_parties + 1)
+        ]
+        pdec_ms = (time.perf_counter() - t0) * 1000.0
+        t1 = time.perf_counter()
+        mu = self.fin_dec(b_dec, shares)
+        agg_ms = (time.perf_counter() - t1) * 1000.0
+        return mu, pdec_ms, agg_ms
+
+
+# ==============================================================================
+# Self-Test for All Eight Architectures (CCS 2025 + PELTA + HQ-FS + Decentralized HQ-FS + OT25 + Ajax + BS23 + PS24)
 # ==============================================================================
 
 if __name__ == "__main__":
@@ -4864,6 +5483,32 @@ if __name__ == "__main__":
     assert dec_aj_add == 3, f"Ajax Add failed: {dec_aj_add}"
     assert dec_aj_mul == 2, f"Ajax Mul failed: {dec_aj_mul}"
     print(f"  [✓] Ajax Double Ring Mask-Then-Open verified: Add={dec_aj_add}, Mul={dec_aj_mul}")
+
+    # 7. Verify BS23 (ASIACRYPT 2023: Boudgoust & Scholl) Renyi-flooded threshold FHE
+    print("\n[7] Verifying BS23 (ASIACRYPT 2023: Renyi Noise Flooding + replicated LSSS)...")
+    bs23 = BS23ThFHE(n_dim=16, p=4, num_parties=5)
+    bs23.setup()
+    bs23.keygen()
+    ct_b1, ct_b2 = bs23.encrypt(1), bs23.encrypt(2)
+    dec_b_add, _, _ = bs23.decrypt_full(bs23.eval_add(ct_b1, ct_b2))
+    dec_b_mul, _, _ = bs23.decrypt_full(bs23.eval_mul(ct_b1, ct_b2))
+    assert dec_b_add == 3, f"BS23 Add failed: {dec_b_add}"
+    assert dec_b_mul == 2, f"BS23 Mul failed: {dec_b_mul}"
+    print(f"  [✓] BS23 Renyi flooding + 0/1 reconstruction verified: Add={dec_b_add}, Mul={dec_b_mul} "
+          f"(L={bs23.L}, tau_min={bs23.tau_min}, sigma_flood={bs23.sigma_flood})")
+
+    # 8. Verify PS24 (ePrint 2024/1984: Passelegue & Stehle) Double-Flood-and-Round threshold FHE
+    print("\n[8] Verifying PS24 (ePrint 2024/1984: Double-Flood-and-Round)...")
+    ps24 = PS24ThFHE(n_dim=16, p=4, num_parties=5)
+    ps24.setup()
+    ps24.keygen()
+    ct_p1, ct_p2 = ps24.encrypt(1), ps24.encrypt(2)
+    dec_p_add, _, _ = ps24.decrypt_full(ps24.eval_add(ct_p1, ct_p2))
+    dec_p_mul, _, _ = ps24.decrypt_full(ps24.eval_mul(ct_p1, ct_p2))
+    assert dec_p_add == 3, f"PS24 Add failed: {dec_p_add}"
+    assert dec_p_mul == 2, f"PS24 Mul failed: {dec_p_mul}"
+    print(f"  [✓] PS24 ServerDec + PartDec + FinDec verified: Add={dec_p_add}, Mul={dec_p_mul} "
+          f"(Q={ps24.Q.bit_length()} bits -> q_dec={ps24.q_dec.bit_length()} bits)")
 
     print("\n" + "=" * 78)
     print("  [SUCCESS] All Paper Fidelity, Homomorphic Mul, and SIMD Tests Passed!")

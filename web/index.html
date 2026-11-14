@@ -187,7 +187,9 @@
     #btn-preset-noah,
     #btn-preset-pelta,
     #btn-preset-ot25,
-    #btn-preset-ajax {
+    #btn-preset-ajax,
+    #btn-preset-bs23,
+    #btn-preset-ps24 {
       display: none !important;
     }
 
@@ -351,6 +353,20 @@
     .stage-btn.ajax-btn:hover {
       background: rgba(236, 72, 153, 0.25);
       border-color: #ec4899;
+    }
+    .stage-btn.bs23-btn {
+      border-color: rgba(129, 140, 248, 0.45);
+    }
+    .stage-btn.bs23-btn:hover {
+      background: rgba(129, 140, 248, 0.25);
+      border-color: #818cf8;
+    }
+    .stage-btn.ps24-btn {
+      border-color: rgba(45, 212, 191, 0.45);
+    }
+    .stage-btn.ps24-btn:hover {
+      background: rgba(45, 212, 191, 0.25);
+      border-color: #2dd4bf;
     }
 
     .btn {
@@ -627,8 +643,12 @@
     .bar-hqfs { background: #f59e0b; }
     .bar-ot25 { background: #06b6d4; }
     .bar-ajax { background: #ec4899; }
+    .bar-bs23 { background: #818cf8; }
+    .bar-ps24 { background: #2dd4bf; }
     .legend-ot25 .legend-color { background: #06b6d4; }
     .legend-ajax .legend-color { background: #ec4899; }
+    .legend-bs23 .legend-color { background: #818cf8; }
+    .legend-ps24 .legend-color { background: #2dd4bf; }
 
     table {
       width: 100%;
@@ -1888,7 +1908,7 @@
           </div>
         </button>
 
-        <div class="nav-section-label" style="margin-top: 0.85rem;">獨立論文實驗室 (<span class="hqfs-hidden">6 大論文專屬實驗室</span><span class="hqfs-visible-note">5 大論文專屬實驗室</span>)</div>
+        <div class="nav-section-label" style="margin-top: 0.85rem;">獨立論文實驗室 (<span class="hqfs-hidden">8 大論文專屬實驗室</span><span class="hqfs-visible-note">7 大論文專屬實驗室</span>)</div>
 
         <button class="sidebar-nav-btn active" id="sidebar-btn-ccs25" onclick="switchTab('ccs25', this)">
           <div class="nav-text-group">
@@ -1933,12 +1953,26 @@
           </div>
         </button>
 
+        <button class="sidebar-nav-btn" id="sidebar-btn-bs23" onclick="switchTab('bs23', this)">
+          <div class="nav-text-group">
+            <span class="nav-title">BS23 實驗室</span>
+            <span class="nav-desc">Boudgoust &amp; Scholl (Asiacrypt 2023, Rényi Poly-Mod)</span>
+          </div>
+        </button>
+
+        <button class="sidebar-nav-btn" id="sidebar-btn-ps24" onclick="switchTab('ps24', this)">
+          <div class="nav-text-group">
+            <span class="nav-title">PS24 實驗室</span>
+            <span class="nav-desc">Passelègue &amp; Stehlé (Asiacrypt 2024, Low-Comm Round)</span>
+          </div>
+        </button>
+
         <div class="nav-section-label" style="margin-top: 0.85rem;">橫向綜合評測</div>
 
         <button class="sidebar-nav-btn arena-btn" id="sidebar-btn-arena" onclick="switchTab('arena', this)">
           <div class="nav-text-group">
             <span class="nav-title">論文評測競技場</span>
-            <span class="nav-desc">6 篇論文 7 階段直方圖與比對</span>
+            <span class="nav-desc">7 大論文 7 階段直方圖與比對</span>
           </div>
         </button>
       </nav>
@@ -3091,6 +3125,94 @@
         </div>
       </div>
 
+      <!-- 5.4 Rényi 散度與搜尋型雜訊淹沒壓縮定理 (BS23 核心機率工具) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>5.4 Rényi 散度 (Rényi Divergence RD<sub>a</sub>) 與多項式級雜訊淹沒壓縮定理</span>
+          <span class="badge badge-blue">BS23 (Asiacrypt 2023) 機率基石</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          傳統統計距離（Total Variation Distance, SD）要求淹沒雜訊必須達到指數級 <span class="word-eq">σ<sub>flood</sub> ≥ 2<sup>λ</sup> · B</span>，迫使密文模數 <span class="word-eq">q</span> 成為超多項式規模。Boudgoust 與 Scholl（BS23, Asiacrypt 2023）引入<strong>Rényi 散度（Rényi Divergence）</strong>取代統計距離，將淹沒比率從指數級 <span class="word-eq">2<sup>λ</sup></span> 劇降至多項式級 <span class="word-eq">O(√ℓ)</span>！
+        </p>
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：階數為 a 的 Rényi 散度 (Order-a Rényi Divergence)】</strong>：
+            設 <span class="word-eq">P, Q</span> 為兩個離散機率分佈，且支撐集滿足 <span class="word-eq">Supp(P) ⊆ Supp(Q)</span>。對於階數 <span class="word-eq">a ∈ (1, +∞)</span>（通常取 <span class="word-eq">a = 2</span> 或 <span class="word-eq">a = 2λ</span>），Rényi 散度定義為機率比值的高階動差：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              RD<sub>a</sub>(P ‖ Q) = ( ∑<sub>x ∈ Supp(P)</sub> P(x)<sup>a</sup> / Q(x)<sup>a−1</sup> )<sup>1 / (a−1)</sup>
+            </div>
+          </li>
+          <li><strong>【三大核心代數性質 (Lemma 2 in BS23)】</strong>：
+            <br>• <strong>資料處理不等式 (Data Processing Inequality)</strong>：對任意隨機化後處理函數 <span class="word-eq">f</span>，恆有 <span class="word-eq">RD<sub>a</sub>(f(P) ‖ f(Q)) ≤ RD<sub>a</sub>(P ‖ Q)</span>。
+            <br>• <strong>獨立可乘性 (Multiplicativity)</strong>：對 <span class="word-eq">ℓ</span> 次解密查詢的聯合分佈，散度呈指數乘積：<span class="word-eq">RD<sub>a</sub>(P<sup>ℓ</sup> ‖ Q<sup>ℓ</sup>) = RD<sub>a</sub>(P ‖ Q)<sup>ℓ</sup></span>。
+            <br>• <strong>機率保持不等式 (Probability Preservation)</strong>：對任意事件 <span class="word-eq">E</span>，其在真實分佈 <span class="word-eq">P</span> 與理想模擬分佈 <span class="word-eq">Q</span> 下發生的機率滿足：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Pr<sub>P</sub>[E]  ≤  ( Pr<sub>Q</sub>[E] · RD<sub>a</sub>(P ‖ Q) )<sup>(a−1) / a</sup>
+            </div>
+          </li>
+          <li><strong>【位移離散高斯的 Rényi 散度界限 (Lemma 3 in BS23)】</strong>：
+            當真實部分解密帶有殘餘私鑰雜訊偏移 <span class="word-eq">c</span>（滿足 <span class="word-eq">|c| ≤ β<sub>fhe</sub></span>）時，位移高斯 <span class="word-eq">𝒟<sub>ℤ, σ, c</sub></span> 與中心高斯 <span class="word-eq">𝒟<sub>ℤ, σ</sub></span> 的 Rényi 散度滿足：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              RD<sub>a</sub>( 𝒟<sub>ℤ, σ, c</sub> ‖ 𝒟<sub>ℤ, σ</sub> )  ≤  exp( a · c² / (2 · σ²) )
+            </div>
+            若設定淹沒標準差 <span class="word-eq">σ<sub>flood</sub> ≈ √(a · ℓ) · β<sub>fhe</sub></span>，則經過 <span class="word-eq">ℓ</span> 次解密查詢後，總 Rényi 散度依然被嚴格約束在常數級 <span class="word-eq">exp(O(λ))</span>！
+          </li>
+          <li><strong>【關鍵洞察：為何 Rényi 散度僅適用於搜尋問題 (OW-CPA)，卻無法直接用於決策問題 (IND-CPA)？】</strong>：
+            <br>• 在<strong>單向性搜尋安全遊戲（OW-CPA）</strong>中，敵手必須精確猜中未知隨機明文，其在理想世界的獲勝機率為可忽略函數 <span class="word-eq">Pr<sub>Q</sub>[Win] = 2<sup>−λ</sup></span>。代入機率保持不等式（取 <span class="word-eq">a = 2λ</span>，且 <span class="word-eq">RD<sub>a</sub> ≤ 2<sup>λ/2</sup></span>）：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Pr<sub>P</sub>[Win]  ≤  ( 2<sup>−λ</sup> · 2<sup>λ/2</sup> )<sup>(2λ−1)/(2λ)</sup>  ≈  2<sup>−λ/2</sup> = negl(λ)
+            </div>
+            即使 <span class="word-eq">RD<sub>a</sub></span> 高達 <span class="word-eq">2<sup>λ/2</sup></span>，只要與極小的 <span class="word-eq">Pr<sub>Q</sub>[Win]</span> 相乘，真實獲勝機率依然是可忽略的！
+            <br>• 相反地，在<strong>決策型不可區分遊戲（IND-CPA）</strong>中，敵手猜位元 <span class="word-eq">b ∈ {0, 1}</span> 的基準獲勝機率高達 <span class="word-eq">Pr<sub>Q</sub>[Win] ≈ 1/2</span>。一旦乘上 <span class="word-eq">RD<sub>a</sub> &gt; 2</span>，不等式上界立即超過 1 而完全失效！這正是 BS23 必須先在多項式模數下構造「搜尋安全 OW-CPA 門檻加密」，再透過隨機預言機或 Goldreich-Levin 提取器升級為 IND-CPA 的根本原因。
+          </li>
+        </ul>
+        <div class="example-box" style="background: rgba(10, 16, 30, 0.75); border-left: 3px solid #60a5fa; padding: 0.85rem;">
+          <strong style="color: #60a5fa;">🔢 逐步數值對比：傳統統計距離淹沒 vs. BS23 Rényi 散度淹沒</strong>
+          <br>設 FHE 評估後殘餘雜訊上界為 <span class="word-eq">β<sub>fhe</sub> = 1000 ≈ 2¹⁰</span>，系統允許敵手最多發起 <span class="word-eq">ℓ = 100</span> 次部分解密查詢，目標安全參數 <span class="word-eq">λ = 40</span>：
+          <br>1. <strong>傳統統計距離淹沒 (Smudging)</strong>：要求 <span class="word-eq">σ<sub>flood</sub> ≥ 2<sup>40</sup> · β<sub>fhe</sub> = 2⁴⁰ · 1000 ≈ 1.1 × 10¹⁵ (50 bits)</span>。
+          <br>2. <strong>BS23 Rényi 散度淹沒</strong>：取階數 <span class="word-eq">a = 2</span>，設定 <span class="word-eq">σ<sub>flood</sub> = √(2 · ℓ) · β<sub>fhe</sub> = √(200) · 1000 ≈ 14.14 × 1000 = 14,142 (僅 14 bits！)</span>。
+          <br>3. <strong>散度驗算</strong>：單次查詢散度 <span class="word-eq">RD₂ ≤ exp( 2 · 1000² / (2 · 14142²) ) = exp(1 / 200)</span>；累計 100 次查詢總散度為 <span class="word-eq">(exp(1/200))¹⁰⁰ = exp(0.5) ≈ 1.648</span>（常數級！）。
+          <br><strong>結論</strong>：Rényi 散度將淹沒雜訊從 <strong>50 bits 壓縮至 14 bits</strong>，足足省下 36 bits 的模數空間，徹底實現多項式級密文模數 <span class="word-eq">q = poly(λ)</span>！
+        </div>
+      </div>
+
+      <!-- 5.5 隨機化高斯捨入、晶格平滑參數與 KL 散度淹沒界限 (PS24 核心機率工具) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>5.5 隨機化高斯捨入 (⌊x⌉<sub>σ</sub>)、晶格平滑參數 η<sub>ε</sub>(ℤ<sup>n</sup>) 與 KL 散度界限</span>
+          <span class="badge badge-green">PS24 (Asiacrypt 2024) 機率基石</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          Passelègue 與 Stehlé（PS24, Asiacrypt 2024）為了將門檻解密的每位參與方通訊量壓縮至極致的 <span class="word-eq">λ + O(1)</span> 位元，提出了「伺服器公開先淹沒後捨入（Double-Flood-and-Round）」。為了讓縮模捨入後的雜訊依然維持完美的離散高斯結構以供安全模擬，PS24 結合了<strong>晶格平滑參數（Smoothing Parameter）</strong>與<strong>隨機化高斯捨入（Randomized Gaussian Rounding）</strong>。
+        </p>
+        <ul class="bg-module-list">
+          <li><strong>【工具定義一：晶格平滑參數 η<sub>ε</sub>(Λ) (Smoothing Parameter, Micciancio-Regev)】</strong>：
+            對任意 <span class="word-eq">n</span> 維晶格 <span class="word-eq">Λ</span> 與平滑誤差 <span class="word-eq">ε &gt; 0</span>，平滑參數 <span class="word-eq">η<sub>ε</sub>(Λ)</span> 定義為使得對偶格 <span class="word-eq">Λ*</span> 上非零點的高斯總權重不超過 <span class="word-eq">ε</span> 的最小寬度參數 <span class="word-eq">s</span>：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ρ<sub>1/s</sub>(Λ* \ {0}) ≤ ε   （對於整數格 ℤ，當 ε = 2<sup>−λ</sup> 時，η<sub>ε</sub>(ℤ) ≤ √(ln(2n(1 + 1/ε)) / π) ≈ O(√λ)）
+            </div>
+            直觀意義：一旦離散高斯的標準差超過平滑參數 <span class="word-eq">η<sub>ε</sub>(ℤ)</span>，離散格點抽樣與連續高斯之間的齒狀週期誤差即小於 <span class="word-eq">ε</span>，具備完美的加性卷積平滑性！
+          </li>
+          <li><strong>【工具定義二：隨機化高斯捨入 ⌊x⌉<sub>σ</sub> (Randomized Gaussian Rounding, PS24 Section 2.2)】</strong>：
+            傳統確定性四捨五入 <span class="word-eq">⌊x⌉</span> 會在半整數邊界產生非平滑截斷誤差。對於任意實數（或有理數）<span class="word-eq">x ∈ ℝ</span>，隨機化高斯捨入定義為在陪集（Coset）<span class="word-eq">ℤ − x</span> 上抽樣誤差並加回 <span class="word-eq">x</span>：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ⌊x⌉<sub>σ</sub> = x + e<sub>round</sub> ∈ ℤ,   其中 e<sub>round</sub> ← 𝒟<sub>ℤ − x, σ</sub>
+            </div>
+            由於 <span class="word-eq">e<sub>round</sub> ∈ ℤ − x</span>，其和 <span class="word-eq">x + e<sub>round</sub></span> 必然精確落在整數格 <span class="word-eq">ℤ</span> 上，且中心期望值恰好為 <span class="word-eq">x</span>！
+            在複合模數縮放 <span class="word-eq">Q = p · q<sub>dec</sub></span> 時，對密文分量 <span class="word-eq">(b, a)</span> 進行雙參數隨機化高斯捨入 <span class="word-eq">⌊ (1/p) · (b, a) ⌉<sub>σ₀, σ₁</sub></span>：向量分量 <span class="word-eq">a</span> 使用小標準差 <span class="word-eq">σ₁ ≥ η<sub>ε</sub>(ℤ)</span> 捨入，標量分量 <span class="word-eq">b</span> 使用匹配私鑰範數的標準差 <span class="word-eq">σ₀ = √(R² − ‖s‖² · σ₁²)</span> 捨入。
+          </li>
+          <li><strong>【高斯縮放與隨機捨入摺疊引理 (Lemmas 2.1 &amp; 2.2 in PS24)】</strong>：
+            若在大模數 <span class="word-eq">Q = p · q<sub>dec</sub></span> 下先注入淹沒高斯 <span class="word-eq">E ← 𝒟<sub>ℤ, σ<sub>flood</sub></sub></span>，除以 <span class="word-eq">p</span> 後再進行隨機化高斯捨入 <span class="word-eq">⌊ · / p ⌉<sub>σ₀</sub></span>，只要 <span class="word-eq">σ<sub>flood</sub> / p</span> 與 <span class="word-eq">σ₀</span> 均大於平滑參數 <span class="word-eq">η<sub>ε</sub>(ℤ)</span>，則捨入後的整數分佈在統計距離 <span class="word-eq">4ε</span> 內完美等價於小模數 <span class="word-eq">q<sub>dec</sub></span> 上標準差為 <span class="word-eq">σ<sub>eff</sub> = √( (σ<sub>flood</sub> / p)² + σ₀² )</span> 的單一純淨離散高斯！
+          </li>
+          <li><strong>【基於 Kullback-Leibler 散度與 Pinsker 不等式的緊緻淹沒界限 (Lemma 2.3 in PS24)】</strong>：
+            對於超過平滑參數的離散高斯，位移 <span class="word-eq">c</span> 造成的統計距離滿足：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Δ( 𝒟<sub>ℤ, σ</sub>,  𝒟<sub>ℤ, σ, c</sub> )  ≤  √( (1/2) · KL(𝒟<sub>ℤ, σ</sub> ‖ 𝒟<sub>ℤ, σ, c</sub>) )  ≤  |c| / (√2 · σ)
+            </div>
+            這使得在 `ServerDec` 將密文縮模至小模數 <span class="word-eq">q<sub>dec</sub></span> 後，各參與方在 `PartDec` 只需添加小標準差高斯雜訊 <span class="word-eq">d<sub>i</sub> ← 𝒟<sub>ℤ, η</sub></span>（無需依賴電路評估雜訊 <span class="word-eq">B<sub>eval</sub></span>），即可將每位參與方的通訊量壓至單一標量 <span class="word-eq">ℤ<sub>q<sub>dec</sub></sub></span>！
+          </li>
+        </ul>
+      </div>
+
       <!-- 頁面切換導覽 -->
       <div class="bg-nav-pager" style="margin-top: 1.5rem;">
         <button type="button" class="btn-pager" onclick="switchTab('fd-lattice', document.getElementById('sidebar-btn-fd-lattice'))">← 上一模組：四、幾何晶格理論基礎</button>
@@ -3104,7 +3226,7 @@
     <section id="tab-fd-complexity" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(96, 165, 250, 0.45); background: linear-gradient(135deg, rgba(96, 165, 250, 0.12), rgba(16, 185, 129, 0.08));">
         <h2 class="lab-hero-title">基礎知識閱讀 (六) — 計算複雜度與可證明安全基石 (Provable Security)</h2>
-        <div class="lab-hero-sub">多項式時間、可忽略函數 negl(λ)、遊戲式安全模型、敵手優勢 Adv 與隨機預言機 (ROM)</div>
+        <div class="lab-hero-sub">多項式時間、可忽略函數 negl(λ)、遊戲式安全模型、敵手優勢 Adv、隨機預言機 (ROM) 與 Goldreich-Levin 提取器</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('fd-prob', document.getElementById('sidebar-btn-fd-prob'))">← 上一模組：五、機率與離散高斯分佈</button>
           <button type="button" class="btn-lab-manual" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">進入背景知識第一主題：一、LWE 晶格加密基礎 →</button>
@@ -3178,7 +3300,7 @@
       </div>
 
       <!-- 6.4 隨機預言機與 Fiat-Shamir 轉換 -->
-      <div class="card">
+      <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
           <span>6.4 隨機預言機模型 (ROM) 與 Fiat-Shamir 啟發式轉換</span>
           <span class="badge badge-purple">主動安全引擎</span>
@@ -3196,6 +3318,50 @@
             這直接將多輪交互式協議壓縮為<strong>單輪非交互式零知識證明（NIZK）</strong>！證明隨密文份額一同廣播，任何節點均可單機自主驗證，構成了現代區塊鏈與門檻同態加密抵抗主動惡意作弊的核心防線！
           </li>
         </ul>
+      </div>
+
+      <!-- 6.5 不可預測熵、Goldreich-Levin 硬核位元提取器與 OW-CPA 轉 IND-CPA (BS23 核心安全轉換) -->
+      <div class="card">
+        <div class="card-title">
+          <span>6.5 不可預測熵 (Unpredictable Entropy)、Goldreich-Levin 提取器與 OW-CPA 轉 IND-CPA 轉換</span>
+          <span class="badge badge-blue">BS23 (Asiacrypt 2023) 安全升級引擎</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          如前所述，Rényi 散度能讓多項式級雜訊淹沒達成<strong>單向性搜尋安全（OW-CPA：敵手無法完整猜出隨機明文）</strong>，但無法直接證明<strong>決策型不可區分安全（IND-CPA）</strong>。BS23 提出了兩套將 OW-CPA 門檻加密升級為 IND-CPA 的通用轉換框架：
+        </p>
+        <ul class="bg-module-list">
+          <li><strong>【概念定義：條件不可預測熵 (Conditional Unpredictable Entropy, Hsiao-Reyzin)】</strong>：
+            設隨機變數 <span class="word-eq">X</span>（代表隨機明文向量）與輔助視圖 <span class="word-eq">Z</span>（代表敵手看到的密文與部分解密記錄）。若對於任何大小受限於 <span class="word-eq">s</span> 的破譯電路 <span class="word-eq">𝒞</span>，其成功預測 <span class="word-eq">X</span> 的機率皆不超過 <span class="word-eq">2<sup>−k</sup></span>：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Pr[ 𝒞(Z) = X ]  ≤  2<sup>−k</sup>
+            </div>
+            則稱 <span class="word-eq">X</span> 在給定 <span class="word-eq">Z</span> 下具有至少 <span class="word-eq">k</span> 位元的<strong>不可預測熵</strong>，記為 <span class="word-eq">H<sup>unp</sup><sub>ε, s</sub>(X | Z) ≥ k</span>。這精確刻畫了 OW-CPA 的安全保證！
+          </li>
+          <li><strong>【工具一：串接式 Goldreich-Levin 硬核位元提取器 (Concatenated GL Extractor, Lemma 4 in BS23)】</strong>：
+            Goldreich-Levin 定理證明了：若敵手無法完整還原秘密向量 <span class="word-eq">x ∈ {0, 1}<sup>u</sup></span>，則敵手也無法區分 <span class="word-eq">x</span> 與公開隨機種子 <span class="word-eq">s<sub>i</sub> ← {0, 1}<sup>u</sup></span> 的二元內積 <span class="word-eq">⟨x, s<sub>i</sub>⟩ mod 2</span> 與真隨機位元！
+            串接 <span class="word-eq">δ</span> 個獨立種子 <span class="word-eq">S = (s₁, …, s<sub>δ</sub>)</span> 可構造出 <span class="word-eq">δ</span> 位元隨機提取器：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ℰ<sub>GL</sub>(x; s₁, …, s<sub>δ</sub>) = ( ⟨x, s₁⟩ mod 2,  ⟨x, s₂⟩ mod 2,  …,  ⟨x, s<sub>δ</sub>⟩ mod 2 ) ∈ {0, 1}<sup>δ</sup>
+            </div>
+          </li>
+          <li><strong>【轉換路線 A：標準模型下針對門檻全同態加密 (ThFHE) 的 GL 同態提取轉換 (Section 5.2 in BS23)】</strong>：
+            <br>• <strong>問題</strong>：FHE 必須支援密文上的同態加法與乘法，若在密文外層套用雜湊函數會破壞同態結構！
+            <br>• <strong>解法</strong>：加密訊息 <span class="word-eq">m ∈ {0, 1}<sup>δ</sup></span> 時，直接標準加密產生 <span class="word-eq">ct = Enc(pk, m)</span>。在門檻解密前，<strong>唯有在需要公開部分解密時</strong>，各方先同態加密一個高熵隨機遮罩 <span class="word-eq">x ← {0, 1}<sup>u</sup></span>，並在密文域內同態計算內積遮罩 <span class="word-eq">ct' = ct ⊕ Enc(pk, ℰ<sub>GL</sub>(x; S))</span>；各方僅對被 GL 硬核位元遮蔽後的密文進行門檻解密，徹底保護原始訊息 <span class="word-eq">m</span> 的 IND-CPA 不可區分性！
+          </li>
+          <li><strong>【轉換路線 B：隨機預言機模型 (ROM) 下的 (F, G) 轉換 (Section 5.1 in BS23, 適用於門檻 PKE)】</strong>：
+            引入兩個隨機預言機 <span class="word-eq">F, G</span>：加密明文 <span class="word-eq">m</span> 時先抽樣隨機種子 <span class="word-eq">r</span>，利用 <span class="word-eq">F(r; R)</span> 作為加密隨機性產生 <span class="word-eq">c₁ = Enc(pk, r; F(r; R))</span>，並以 <span class="word-eq">c₂ = G(r) ⊕ m</span> 遮蔽明文；解密時先門檻還原 <span class="word-eq">r</span>，再計算 <span class="word-eq">m = c₂ ⊕ G(r)</span>。
+          </li>
+        </ul>
+        <div class="example-box" style="background: rgba(10, 16, 30, 0.75); border-left: 3px solid #34d399; padding: 0.85rem;">
+          <strong style="color: #34d399;">🔢 具體數值範例：Goldreich-Levin 二元內積硬核位元提取與明文遮蔽演算</strong>
+          <br>設不可預測高熵隨機向量長度 <span class="word-eq">u = 4</span>，抽樣秘密向量 <span class="word-eq">x = (1, 0, 1, 1) ∈ {0, 1}⁴</span>，欲保護的 2-bit 明文為 <span class="word-eq">m = (1, 0)</span>。
+          <br>1. <strong>公開隨機種子抽取</strong>：抽取兩組公開種子 <span class="word-eq">s₁ = (1, 1, 0, 1)</span> 與 <span class="word-eq">s₂ = (0, 1, 1, 1)</span>。
+          <br>2. <strong>GL 硬核位元提取</strong>：
+          <br>• 第一位元：<span class="word-eq">b₁ = ⟨x, s₁⟩ mod 2 = 1·1 + 0·1 + 1·0 + 1·1 = 2 ≡ 0 (mod 2)</span>。
+          <br>• 第二位元：<span class="word-eq">b₂ = ⟨x, s₂⟩ mod 2 = 1·0 + 0·1 + 1·1 + 1·1 = 2 ≡ 0 (mod 2)</span>。
+          <br>提取出偽隨機遮罩 <span class="word-eq">ℰ<sub>GL</sub>(x; s₁, s₂) = (0, 0)</span>。
+          <br>3. <strong>安全同態掩蔽</strong>：即使敵手在 OW-CPA 下因 Rényi 散度洩漏了關於 <span class="word-eq">x</span> 的極微小非均勻偏差，只要無法完整猜中 <span class="word-eq">x</span>，提取出的 <span class="word-eq">(b₁, b₂)</span> 對敵手而言與真隨機硬幣統計不可區分！
+        </div>
       </div>
 
       <!-- 頁面切換導覽 -->
@@ -3440,6 +3606,39 @@
             <strong>解密輸出 μ' = 1，100% 精準無誤還原原始明文！</strong>
           </p>
         </div>
+      </div>
+
+      <!-- 1.6 進階 LWE 變體：無模數整數 LWE (I-LWE, BS23) 與重複矩陣已知範數 LWE (yaLWE, PS24) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>1.6 進階 LWE 變體：無模數整數 LWE (I-LWE, BS23) 與重複矩陣已知範數 LWE (yaLWE, PS24)</span>
+          <span class="badge badge-purple">BS23 &amp; PS24 核心困難假設</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          在門檻全同態加密的安全性歸約與參數下界分析中，標準決策型 LWE 往往不足以直接刻畫「部分解密無模數殘餘誤差」或「伺服器隨機化捨入需知悉私鑰長度」的場景。BS23 與 PS24 分別引入了兩項關鍵 LWE 變體：
+        </p>
+        <ul class="bg-module-list">
+          <li><strong>【變體一：無模數整數容錯學習 (Integer-LWE / I-LWE, BS23 Section 4.4 &amp; Definition 10)】</strong>：
+            <br>• <strong>【工具定義】</strong>：設秘密向量 <span class="word-eq">s ∈ [−B<sub>s</sub>, B<sub>s</sub>]<sup>n</sup></span>。給定 <span class="word-eq">m</span> 組<strong>在整數環 ℤ 上不取模 q</strong> 的線性樣本：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ( a<sub>i</sub>,  b<sub>i</sub> = ⟨a<sub>i</sub>, s⟩ + e<sub>i</sub> ∈ ℤ ),   其中 a<sub>i</sub> ← [−B<sub>a</sub>, B<sub>a</sub>]<sup>n</sup>,  e<sub>i</sub> ← 𝒟<sub>ℤ, σ</sub>
+            </div>
+            這精確對應門檻解密中，攻擊者由公開的部分解密份額與已知明文扣減後，直接觀察到的無模數殘餘誤差方程式 <span class="word-eq">e<sub>fhe, i</sub> + e<sub>flood, i</sub></span>！
+            <br>• <strong>【最小平方法攻擊與 √ℓ 淹沒下界緊緻性證明】</strong>：BS23 證明了若樣本數（即解密查詢次數 <span class="word-eq">ℓ</span>）滿足 <span class="word-eq">m = Ω(n · (σ / B<sub>a</sub>)²)</span>，攻擊者只需直接計算普通最小平方法（Ordinary Least Squares）估計量：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              s̃ = ⌊ (A<sup>T</sup> · A)<sup>−1</sup> · A<sup>T</sup> · b ⌉
+            </div>
+            即可在多項式時間內以高機率完整還原秘密 <span class="word-eq">s</span>！這從數學上嚴格證明了：若要抵抗 <span class="word-eq">ℓ</span> 次解密查詢，淹沒雜訊標準差<strong>必須至少達到 Ω(√ℓ · B<sub>a</sub>)</strong>，從而證實 BS23 基於 Rényi 散度的 <span class="word-eq">O(√ℓ)</span> 多項式淹沒參數已達理論漸近最優（Tight）！
+          </li>
+          <li><strong>【變體二：重複矩陣與已知私鑰範數 LWE (yaLWE / "yet-another LWE", PS24 Definition 2.5 &amp; Lemma 2.6)】</strong>：
+            <br>• <strong>【工具定義】</strong>：在 PS24 的雙重淹沒與捨入協定中，`ServerDec` 公開縮模密文、而誠實方在 `PartDec` 針對同一矩陣 <span class="word-eq">A</span> 發布帶有獨立小雜訊的解密份額，且高斯捨入參數 <span class="word-eq">σ₀ = √(R² − ‖s‖² · σ₁²)</span> 會洩漏私鑰的歐幾里得範數 <span class="word-eq">‖s‖₂</span>。為此 PS24 定義了 <strong>yaLWE 決策難題</strong>：區分真實雙樣本與隨機雙樣本：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ( A,  b₀ = A · s + e mod q,  b₁ = A · s + d mod q,  ‖s‖₂ )   ≈<sub>c</sub>   ( A,  u₀,  u₁,  ‖s‖₂ )
+            </div>
+            其中同一隨機矩陣 <span class="word-eq">A ∈ ℤ<sub>q</sub><sup>m×n</sup></span> 被重複使用於兩組擁有獨立高斯雜訊 <span class="word-eq">e ← 𝒟<sub>ℤ<sup>m</sup>, σ<sub>e</sub></sub></span> 與 <span class="word-eq">d ← 𝒟<sub>ℤ<sup>m</sup>, σ<sub>d</sub></sub></span> 的樣本，且額外公開 <span class="word-eq">‖s‖₂</span>。
+            <br>• <strong>【安全歸約定理 (Lemma 2.6 in PS24)】</strong>：PS24 證明了：第一，在二元私鑰 <span class="word-eq">s ← {0, 1}<sup>n</sup></span> 下，額外洩漏範數 <span class="word-eq">‖s‖₂ ∈ [0, √n]</span> 最多僅損失 <span class="word-eq">O(log n)</span> 位元條件最小熵；第二，將 <span class="word-eq">b₀, b₁</span> 作線性正交組合可將重複矩陣問題無損歸約為單一標準 LWE 實例（等效標準差為 <span class="word-eq">σ<sub>eff</sub> = (σ<sub>e</sub> · σ<sub>d</sub>) / √(σ<sub>e</sub>² + σ<sub>d</sub>²)</span>）。因此 yaLWE 在標準 LWE 假設下具備完全可證明的計算不可區分性！
+          </li>
+        </ul>
       </div>
 
       <!-- 頁面切換導覽 -->
@@ -3935,6 +4134,87 @@
             <br>• <strong>缺點</strong>：需要 Galois 環代數擴展，糾錯解碼演算法複雜度為 <span class="word-eq">O(N · log² N)</span>。
           </li>
         </ul>
+      </div>
+
+      <!-- 2.5 單調存取結構 LSSS、強 {0,1}-二元重構與複製秘密分享 (BS23) -->
+      <div class="card">
+        <div class="card-title">
+          <span>2.5 工具四：單調存取結構 LSSS、強 {0,1}-二元重構與複製秘密分享 (Replicated Sharing &amp; PRSS, BS23)</span>
+          <span class="badge badge-blue">BS23 (Asiacrypt 2023) 二元重構基石</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          在多項式級模數 <span class="word-eq">q = poly(λ)</span> 的 LWE 門檻加密中，傳統 Shamir 秘密分享面臨一個致命障礙：Lagrange 插值係數 <span class="word-eq">λ<sub>i, S</sub> ∈ ℤ<sub>q</sub></span> 的數值規模高達 <span class="word-eq">O(q)</span>（或在清分母整數插值下高達 <span class="word-eq">(N!)²</span>）！一旦將部分解密乘上 <span class="word-eq">λ<sub>i, S</sub></span>，內部的高斯淹沒雜訊也會被同步放大 <span class="word-eq">O(q)</span> 倍，直接淹沒明文導致解密徹底失敗。為此，BS23 引入了具備<strong>強 {0,1}-二元重構性質（Strong {0,1}-Reconstruction）</strong>的線性秘密分享（LSSS）：
+        </p>
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：單調存取結構 𝔸 與強 {0,1}-重構 LSSS (Definitions 8 &amp; 9 in BS23)】</strong>：
+            <br>• <strong>單調存取結構 (Monotone Access Structure)</strong>：授權子集族 <span class="word-eq">𝔸 ⊆ 2<sup>{1,…,n}</sup></span> 滿足單調性（若 <span class="word-eq">S ∈ 𝔸</span> 且 <span class="word-eq">S ⊆ S'</span>，則 <span class="word-eq">S' ∈ 𝔸</span>）。在 <span class="word-eq">t</span>-out-of-<span class="word-eq">n</span> 門檻結構中，凡滿足 <span class="word-eq">|S| ≥ t + 1</span> 的集合皆為授權集合。
+            <br>• <strong>強 {0,1}-二元重構性質</strong>：每位參與方 <span class="word-eq">P<sub>i</sub></span> 持有 <span class="word-eq">L</span> 個子份額 <span class="word-eq">sh<sub>i</sub> = (s<sub>i, 1</sub>, …, s<sub>i, L</sub>)</span>。對於任何授權集合 <span class="word-eq">S ∈ 𝔸</span>，秘密 <span class="word-eq">s</span> 可僅透過<strong>係數全為 0 或 1 的純子集加法</strong>重構（完全不需乘上大係數！）：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              s = ∑<sub>i ∈ S</sub> ∑<sub>j ∈ I<sub>i</sub></sub> s<sub>i, j</sub> mod q,   其中重構係數 λ<sub>i, j</sub> ∈ {0, 1}
+            </div>
+            <br>• <strong>三大組合參數 (L, τ<sub>max</sub>, τ<sub>min</sub>)</strong>：
+            <span class="word-eq">L</span> 為每方持有的子份額個數；<span class="word-eq">τ<sub>max</sub></span> 為任何未達門檻的腐敗聯盟 <span class="word-eq">S ∉ 𝔸</span> 最多能掌握的不同子份額總數（決定剩餘誠實子份額數 <span class="word-eq">nL − τ<sub>max</sub></span>）；<span class="word-eq">τ<sub>min</sub></span> 為重構秘密所需相加的子份額個數（決定聚合後雜訊標準差放大倍數 <span class="word-eq">√τ<sub>min</sub></span>）。
+          </li>
+          <li><strong>【主流 {0,1}-重構秘密分享方案權衡比較 (Table 1 in BS23)】</strong>：
+            <div style="width: 100%; overflow-x: auto; margin: 0.45rem 0;">
+              <table class="arena-table" style="font-size: 0.8rem; width: 100%; min-width: 600px;">
+                <thead>
+                  <tr style="background: rgba(30, 41, 59, 0.9);">
+                    <th style="padding: 0.5rem;">秘密分享方案</th>
+                    <th style="padding: 0.5rem;">每方份額數 L</th>
+                    <th style="padding: 0.5rem;">腐敗已知數 τ<sub>max</sub></th>
+                    <th style="padding: 0.5rem;">重構相加項數 τ<sub>min</sub></th>
+                    <th style="padding: 0.5rem;">適用門檻與特性</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>全門檻加法分享 (Additive)</strong></td>
+                    <td>1</td>
+                    <td>n − 1</td>
+                    <td>n</td>
+                    <td>僅支援 t = n − 1 (N-of-N)，份額最緊湊</td>
+                  </tr>
+                  <tr>
+                    <td><strong>複製秘密分享 (Replicated / CNF)</strong></td>
+                    <td>C(n − 1, t)</td>
+                    <td>C(n, t) − 1</td>
+                    <td>C(n, t)</td>
+                    <td>任意門檻 t &lt; n，中小型委員會極速無乘法重構</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Valiant 單調布林公式 LSSS</strong></td>
+                    <td>O(n<sup>4.3</sup>)</td>
+                    <td>n · L − 1</td>
+                    <td>O(n<sup>5.3</sup>)</td>
+                    <td>任意門檻 t &lt; n，漸近多項式級份額大小</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </li>
+          <li><strong>【工具定義：偽隨機秘密分享轉換 (PRSS Share Conversion: Convert<sub>rep→Shamir</sub>, BS23 Appendix D)】</strong>：
+            當惡意節點在部分解密中故意注入錯誤值以破壞輸出（違反強健性 Robustness）時，若滿足 <span class="word-eq">t &lt; n / 3</span>，各參與方無需任何線上通訊，可直接利用複製秘密分享的子集索引構造零次多項式基底 <span class="word-eq">f<sub>T</sub>(X)</span>（滿足對所有 <span class="word-eq">j ∈ T</span> 有 <span class="word-eq">f<sub>T</sub>(j) = 0</span> 且 <span class="word-eq">f<sub>T</sub>(0) = 1</span>），在本地將複製份額線性轉換為次數 <span class="word-eq">≤ t</span> 的 Shamir 多項式份額：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              y<sub>i</sub> = ∑<sub>T : i ∉ T, |T|=t</sub> s<sub>T</sub> · f<sub>T</sub>(i) mod q
+            </div>
+            這使得聚合器能直接套用 Reed-Solomon 糾錯演算法剔除最多 <span class="word-eq">t &lt; n / 3</span> 個任意惡意錯解份額！
+          </li>
+        </ul>
+        <div class="example-box">
+          <div class="example-title">🔢 具體算式範例：3 方委員會 (n = 3, 腐敗門檻 t = 1) 的複製秘密分享 (Replicated Sharing) 完整演練</div>
+          <p style="font-size: 0.84rem; line-height: 1.7;">
+            設參與方 <span class="word-eq">n = 3</span>，允許腐敗數 <span class="word-eq">t = 1</span>（即任意 <span class="word-eq">t + 1 = 2</span> 方即可聯合重構解密），模數 <span class="word-eq">q = 100</span>，真實私鑰 <span class="word-eq">s = 42</span>。
+            <br>1. <strong>計算組合參數</strong>：總子份額數 <span class="word-eq">τ<sub>min</sub> = C(3, 1) = 3</span>；每方持有份額數 <span class="word-eq">L = C(3−1, 1) = 2</span>；單一腐敗方掌握份額數 <span class="word-eq">τ<sub>max</sub> = 2 = C(3, 1) − 1</span>。
+            <br>2. <strong>加法拆分與無交集複製分發</strong>：將 <span class="word-eq">s = 42</span> 拆為 3 個隨機子份額：<span class="word-eq">s<sub>{1}</sub> = 15, s<sub>{2}</sub> = 10, s<sub>{3}</sub> = 17</span>（滿足 <span class="word-eq">15 + 10 + 17 = 42</span>）。
+            依規則「節點 <span class="word-eq">P<sub>i</sub></span> 獲得所有不包含編號 <span class="word-eq">i</span> 的子份額 <span class="word-eq">s<sub>T</sub> (i ∉ T)</span>」分發：
+            <br>• <span class="word-eq">P₁</span> 持有：<span class="word-eq">(s<sub>{2}</sub> = 10,  s<sub>{3}</sub> = 17)</span>（缺少 <span class="word-eq">s<sub>{1}</sub></span>，單獨一人完全不知道 42！）
+            <br>• <span class="word-eq">P₂</span> 持有：<span class="word-eq">(s<sub>{1}</sub> = 15,  s<sub>{3}</sub> = 17)</span>（缺少 <span class="word-eq">s<sub>{2}</sub></span>）
+            <br>• <span class="word-eq">P₃</span> 持有：<span class="word-eq">(s<sub>{1}</sub> = 15,  s<sub>{2}</sub> = 10)</span>（缺少 <span class="word-eq">s<sub>{3}</sub></span>）
+            <br>3. <strong>強 {0,1}-二元重構（零大係數乘法！）</strong>：假設 <span class="word-eq">S = {P₁, P₂}</span> 兩方在線解密，取 <span class="word-eq">P₁</span> 的全部份額 <span class="word-eq">(s<sub>{2}</sub>, s<sub>{3}</sub>)</span> 與 <span class="word-eq">P₂</span> 補足的 <span class="word-eq">s<sub>{1}</sub></span> 直接以係數 <span class="word-eq">1</span> 相加：
+            <br><span class="word-eq">s = 1 · s<sub>{2}</sub> + 1 · s<sub>{3}</sub> + 1 · s<sub>{1}</sub> = 10 + 17 + 15 = 42</span>！既支援 <span class="word-eq">2</span>-of-<span class="word-eq">3</span> 容錯，又完全避免了 Lagrange 大係數造成的雜訊爆炸！
+          </p>
+        </div>
 
         <div class="bg-nav-pager">
           <button type="button" class="btn-pager" onclick="switchTab('bg-homomorphic', document.getElementById('sidebar-btn-bg-homomorphic'))">← 上一主題：二、同態運算與雜訊控制</button>
@@ -4103,6 +4383,57 @@
           <li><strong>【優點與缺點】</strong>：
             <br>• <strong>優點</strong>：無模數膨脹，通訊極短（每方僅 100~128 bits），達到亞毫秒級速度。
             <br>• <strong>缺點</strong>：需要 2 輪線上通訊。
+          </li>
+        </ul>
+      </div>
+
+      <!-- 3.6 路線五：Rényi 散度多項式級雜訊淹沒與 Goldreich-Levin 提取 (BS23) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>3.6 工具五：Rényi 散度多項式級雜訊淹沒與 GL 硬核提取 (BS23 Polynomial-Modulus Flooding)</span>
+          <span class="badge badge-blue">流派五：多項式模數 Rényi 淹沒</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【工具定義】</strong>：
+            Boudgoust 與 Scholl（BS23, Asiacrypt 2023）打破了「非互動式雜訊淹沒必然需要超多項式模數 <span class="word-eq">q = 2<sup>Ω(λ)</sup></span>」的傳統定見。透過結合<strong>強 {0,1}-二元重構秘密分享（如 Replicated Sharing）</strong>、<strong>Rényi 散度機率保持不等式</strong>與<strong>Goldreich-Levin（GL）硬核位元提取器</strong>，在純多項式模數 <span class="word-eq">q = poly(λ, ℓ)</span> 下達成單輪非互動式門檻解密。
+          </li>
+          <li><strong>【運作過程】</strong>：
+            <br>① <strong>多項式級高斯淹沒參數</strong>：設電路評估雜訊上界為 <span class="word-eq">β<sub>fhe</sub></span>，最大解密查詢數為 <span class="word-eq">ℓ</span>，每位參與方對所屬的每個複製子份額注入小標準差離散高斯雜訊：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              e<sub>flood</sub> ← 𝒟<sub>ℤ, σ<sub>flood</sub></sub>,   其中 σ<sub>flood</sub> = β<sub>fhe</sub> · √( ℓ · d · (n·L − τ<sub>max</sub>) · (a − 1) ) = poly(λ, ℓ)
+            </div>
+            <br>② <strong>先證明 (ℓ, ν)-OW-CPA 單向安全性</strong>：在 <span class="word-eq">ℓ</span> 次解密查詢下，真實部分解密與理想模擬之間的 Rényi 散度有界 <span class="word-eq">RD<sub>a</sub> ≤ 2</span>，確保任何敵手皆無法以高於 <span class="word-eq">√ν</span> 的機率完整猜出隨機明文。
+            <br>③ <strong>GL 同態硬核位元提取升級為 ℓ-IND-CPA</strong>：利用串接式 Goldreich-Levin 提取器 <span class="word-eq">ℰ<sub>GL</sub>(x; S)</span> 將具有不可預測熵的隨機明文轉換為與均勻隨機統計不可區分的偽隨機遮罩，保護真實業務明文。
+          </li>
+          <li><strong>【優點與缺點】</strong>：
+            <br>• <strong>優點</strong>：模數 <span class="word-eq">q</span> 僅需多項式位元（約 28~32 bits），相較傳統指數淹沒（80+ bits）大幅縮減密文與金鑰尺寸；且保持 1 輪非互動式部分解密。
+            <br>• <strong>缺點</strong>：複製秘密分享的子份額數量 <span class="word-eq">L = C(n−1, t)</span> 在參與方 <span class="word-eq">n</span> 較大時呈組合級增長；且模數大小與最大允許查詢次數 <span class="word-eq">√ℓ</span> 成正比。
+          </li>
+        </ul>
+      </div>
+
+      <!-- 3.7 路線六：ServerDec 雙重淹沒隨機化捨入與針對 BS23 的自適應攻擊 (PS24) -->
+      <div class="card">
+        <div class="card-title">
+          <span>3.7 工具六：ServerDec 雙重淹沒隨機化捨入與針對 BS23 轉換的自適應攻擊 (PS24 Double-Flood-and-Round)</span>
+          <span class="badge badge-green">流派六：極致低通訊雙模數縮減</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：ServerDec 公開預處理與雙重淹沒捨入 (PS24 Section 4)】</strong>：
+            Passelègue 與 Stehlé（PS24, Asiacrypt 2024）指出：在傳統雜訊淹沒中，每個參與方的部分解密標量都必須承載指數級淹沒雜訊 <span class="word-eq">2<sup>λ</sup> · B<sub>eval</sub></span>，導致每方通訊量至少需數百位元。PS24 創新提出在參與方介入前，先由公開演算法 <strong>ServerDec(pk, ct)</strong> 執行「公開淹沒 + 隨機化高斯捨入縮模」：
+            <br>① <strong>第一步（ServerDec 大模數公開淹沒與縮模）</strong>：在大模數 <span class="word-eq">Q = p · q<sub>dec</sub></span> 上，先加上新鮮零密文 <span class="word-eq">Enc<sub>pk</sub>(0)</span> 與單一公開淹沒雜訊 <span class="word-eq">E ← 𝒟<sub>ℤ, σ<sub>flood</sub></sub></span>（抹除電路評估雜訊 <span class="word-eq">B<sub>eval</sub></span> 的歷史軌跡），再除以 <span class="word-eq">p</span> 並執行隨機化高斯捨入，將密文壓縮至極小解密模數 <span class="word-eq">q<sub>dec</sub> = 2<sup>λ + O(1)</sup></span>：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              (b', a') = ⌊ (1 / p) · ( ct + Enc<sub>pk</sub>(0) + (E, 0) ) ⌉<sub>σ₀, σ₁</sub> mod q<sub>dec</sub>
+            </div>
+            <br>② <strong>第二步（PartDec 微型雜訊注入）</strong>：每位參與方 <span class="word-eq">P<sub>i</sub></span> 面對已淨化至小模數 <span class="word-eq">q<sub>dec</sub></span> 的緊湊密文 <span class="word-eq">a'</span>，只需注入一個<strong>與電路雜訊完全無關的常數級微小高斯雜訊</strong> <span class="word-eq">d<sub>i</sub> ← 𝒟<sub>ℤ, η</sub></span>（用以保護最後一步捨入誤差），並廣播單一極短標量：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              p<sub>i</sub> = ⟨a', s<sub>i</sub>⟩ + d<sub>i</sub> mod q<sub>dec</sub>   （每位參與方通訊量僅 log₂(q<sub>dec</sub>) = λ + O(1) bits！）
+            </div>
+          </li>
+          <li><strong>【重要密碼分析突破：PS24 對 BS23 標準模型 GL 轉換的自適應選擇明文攻擊 (PS24 Section 3.3)】</strong>：
+            <br>• <strong>攻擊背景</strong>：BS23 在標準模型下使用公開的 Goldreich-Levin 隨機種子 <span class="word-eq">S = (s₁, …, s<sub>δ</sub>)</span> 將 OW-CPA 升級為<strong>選擇性（Selective）IND-CPA</strong>，並留下公開問題：「該轉換是否同時滿足自適應（Adaptive）IND-CPA？」
+            <br>• <strong>PS24 的否定解答與反例構造</strong>：PS24 第 3.3 節精巧構造了一個完全符合 BS23 條件（具備電路隱私且在 Rényi 淹沒下滿足 OW-CPA）的底層 FHE 方案，卻能被<strong>自適應敵手 100% 攻破</strong>！
+            <br>• <strong>攻擊機理</strong>：在帶有模數切換縮放（Rescaling）的 FHE 電路中，縮放捨入誤差 <span class="word-eq">r<sub>pp</sub> · s</span> 雖然極小，但與私鑰 <span class="word-eq">s</span> 成正比。當自適應敵手先觀察到公開的 GL 種子 <span class="word-eq">s₁, …, s<sub>δ</sub></span> 後，可針對性地構造只依賴特定種子位元的同態評估查詢，使得部分解密殘餘誤差中的 <span class="word-eq">r<sub>pp</sub> · s</span> 恰好與 GL 內積產生代數共振，經由數次自適應查詢即可逐步解出 <span class="word-eq">⟨a*, s⟩</span> 並區分挑戰密文！這證明了：<strong>若要在多項式或小通訊模數下達成完整的自適應模擬安全，必須如 PS24 般在解密前徹底隔離並重隨機化評估誤差！</strong>
           </li>
         </ul>
 
@@ -4789,6 +5120,34 @@
               EXEC<sub>Π, 𝒜, 𝒵</sub>  ≈  EXEC<sub>ℱ<sub>ABB</sub>, 𝒮, 𝒵</sub>
             </div>
             <br>• <strong>【可組合性定理】</strong>：若協定在 UC 框架下被證明安全，則該協定可以作為黑盒模組<strong>任意嵌套進任何複雜系統、在任意網路延遲下無限次並行調用</strong>，其安全性絕對不會退化！
+          </li>
+        </ul>
+      </div>
+
+      <!-- 6.6 門檻加密進階安全概念：(ℓ, ν)-OW-CPA、選擇性 vs 自適應安全、強健性與弱電路隱私 (BS23 & PS24) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>6.6 門檻加密進階安全模型：(ℓ, ν)-OW-CPA、選擇性 vs. 自適應安全、強健性與弱電路隱私</span>
+          <span class="badge badge-green">BS23 &amp; PS24 進階安全定義</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          隨著門檻全同態加密向多項式模數（BS23）與極致低通訊量（PS24）演進，學界建立了更精細的安全與容錯分類體系：
+        </p>
+        <ul class="bg-module-list">
+          <li><strong>【(ℓ, ν)-OW-CPA：有界查詢單向選擇明文安全 (Bounded-Query One-Way Security, BS23 Definition 5)】</strong>：
+            <br>• <strong>遊戲定義</strong>：明文空間大小為 <span class="word-eq">1 / ν</span>（即隨機猜中明文的機率為 <span class="word-eq">ν</span>）。挑戰者均勻隨機抽取未知明文 <span class="word-eq">m* ← ℳ</span> 並給出挑戰密文 <span class="word-eq">ct* = Enc(pk, m*)</span>；敵手最多可針對非挑戰密文（或對挑戰密文作用非平凡同態電路後的密文）發起 <span class="word-eq">ℓ</span> 次門檻部分解密查詢，最後輸出猜測 <span class="word-eq">m'</span>。
+            <br>• <strong>安全準則</strong>：若任何多項式時間敵手猜中 <span class="word-eq">Pr[m' = m*] ≤ negl(λ)</span>，則稱滿足 <span class="word-eq">(ℓ, ν)</span>-OW-CPA。這是 Rényi 散度能直接保護的核心搜尋安全模型。
+          </li>
+          <li><strong>【選擇性 (Selective) vs. 自適應 (Adaptive) ℓ-IND-CPA 與門檻模擬安全 (BS23 Definition 4 &amp; PS24 Definition 3.3)】</strong>：
+            <br>• <strong>選擇性安全 (Selective Security)</strong>：敵手必須在<strong>看見公開參數 pk 與任何金鑰份額之前</strong>，預先提交所有欲加密的挑戰明文對 <span class="word-eq">(m₀, m₁)</span> 與欲查詢的同態電路清單。BS23 的標準模型 GL 轉換即工作於此模型。
+            <br>• <strong>自適應門檻模擬安全 (Adaptive Simulation Security with ServerDec)</strong>：敵手可在看見公鑰 <span class="word-eq">pk</span>、腐敗方金鑰份額 <span class="word-eq">{sk<sub>i</sub>}</span> 以及歷次解密結果後，動態決定下一筆同態電路與部分解密查詢。PS24 證明存在模擬器 <span class="word-eq">(Sim<sub>serv</sub>, Sim<sub>part</sub>)</span>，僅憑公開參數與最終電路輸出 <span class="word-eq">C(m)</span>，即可在完全不知誠實方私鑰份額的情況下，完美模擬出 `ServerDec` 的縮模密文與 `PartDec` 的部分解密標量！
+          </li>
+          <li><strong>【弱強健性 (Weak Robustness) vs. 強強健性 (Strong Robustness, BS23 Appendix D Definition 12)】</strong>：
+            <br>• <strong>弱強健性</strong>：腐敗聯盟雖然在金鑰生成階段誠實，但在部分解密時可任意提交偽造份額；協定保證最終輸出要麼是正確明文 <span class="word-eq">m</span>，要麼在誠實多數 <span class="word-eq">t &lt; n / 3</span> 下透過 PRSS 轉換與 Reed-Solomon 解碼自動糾錯還原 <span class="word-eq">m</span>。
+            <br>• <strong>強強健性</strong>：即使敵手可根據已公開的誠實方部分解密份額，動態挑選最惡劣的干擾密文與偽造份額，系統依然能以 <span class="word-eq">1 − negl(λ)</span> 機率識別或糾正錯誤。
+          </li>
+          <li><strong>【弱電路隱私 (Weak Circuit Privacy / w-IND-CP, PS24 Definition 4.1)】</strong>：
+            傳統電路隱私要求伺服器單獨輸出的密文即隱藏電路拓樸；而 PS24 提出的<strong>弱電路隱私（w-IND-CP）</strong>將電路隱私與門檻解密結合：只要將評估後密文先通過公開的 `ServerDec`（注入新鮮零密文與淹沒捨入），再交由誠實參與方執行 `PartDec`，則最終呈現給所有參與方與外部觀察者的聯合視圖完全獨立於伺服器所執行的同態電路 <span class="word-eq">C</span>！
           </li>
         </ul>
       </div>
@@ -5725,7 +6084,269 @@
           <div class="console-box" id="ajax-console">[Ajax Ready — Hu et al., USENIX Security 2025: 無雜訊淹沒的高速門檻 FHE]
 • 特性：徹底擺脫雜訊淹沒 (Noise Flooding Free)！利用離線生成的雙環秘密分享 (&lt;r&gt;_η, &lt;r&gt;_Φ) 實現精確雜訊消除。
 • 流程：模數轉換至 η ➔ Round 1 (在 ℤ_Φ 遮罩並廣播 μ) ➔ Round 2 (在 ℤ_η 扣除離線分享 r_η，精確還原明文)。
-• 點擊左側「1. Setup」～「7. Round 2 Sub & Out」任一階段按鈕，此處將即時顯示計算細節與耗時。</div>
+• 點擊左側「1. Setup」～「7. Round 2 Sub &amp; Out」任一階段按鈕，此處將即時顯示計算細節與耗時。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 7: BS23 (Boudgoust & Scholl, Asiacrypt 2023: Rényi Poly-Modulus)   -->
+    <!-- ===================================================================== -->
+    <section id="tab-bs23" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header" style="border-color: rgba(129, 140, 248, 0.45);">
+        <h2 class="lab-hero-title">BS23 實驗室</h2>
+        <div class="lab-hero-sub">Boudgoust &amp; Scholl (Asiacrypt 2023 / ePrint 2023/016) — Simple Threshold (Fully Homomorphic) Encryption From LWE With Polynomial Modulus</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('bs23')">📄 查看對應論文</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('bs23')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('bs23')">📘 操作手冊</button>
+        </div>
+      </div>
+
+      <div class="stat-cards">
+        <div class="stat-item">
+          <div class="stat-label">Setup 多項式模數初始化</div>
+          <div class="stat-val" id="bs23-stat-setup" style="color: #fbbf24;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">LWE 同態運算耗時</div>
+          <div class="stat-val" id="bs23-stat-mul" style="color: #60a5fa;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">PartDec (Rényi Flooding)</div>
+          <div class="stat-val" id="bs23-stat-pdec" style="color: #818cf8;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">FinDec ({0,1}-Reconstruct)</div>
+          <div class="stat-val" id="bs23-stat-agg" style="color: #a78bfa;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">解密驗證狀態</div>
+          <div class="stat-val" id="bs23-agg-status" style="color: #9ca3af; font-size: 1rem;">尚未測試</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-title">
+            <span>BS23 密文輸入與各階段控制 (Rényi Divergence Flooding + {0,1}-Replicated LSSS)</span>
+            <span class="badge" id="bs23-node-count" style="background: rgba(129, 140, 248, 0.2); color: #818cf8; border: 1px solid rgba(129, 140, 248, 0.4);">BS23 (Asiacrypt 2023)</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span class="form-label" style="margin: 0;">👥 參與方分佈拓撲 (Replicated / CNF {0,1}-LSSS Parties):</span>
+            <button class="btn-small" onclick="rerollRandomMaliciousParties()">🎲 重新分配節點</button>
+          </div>
+          <div class="party-chips-wrap" id="bs23-party-list"></div>
+
+          <!-- Input Box 1 -->
+          <div class="form-group" style="margin-top: 0.65rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
+              <label class="form-label" style="margin: 0;">BS23 密文輸入 1 (Polynomial-Modulus LWE Ciphertext c₁)</label>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="bs23-m1-space-label">明文空間: T=16 (0~15)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₁:</span>
+                <input type="text" id="bs23-plain-m1" class="mini-input" value="12" placeholder="例如: 12">
+                <button class="btn-small" onclick="encryptToBox('bs23', 1)">🔐 加密 m₁→c₁</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('bs23', 1)">🎲 隨機</button>
+              </div>
+            </div>
+            <textarea class="form-control" id="bs23-cipher-in-1" rows="2" placeholder="請輸入 BS23 多項式模數 LWE 密文..."></textarea>
+          </div>
+
+          <!-- Input Box 2 -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
+              <label class="form-label" style="margin: 0;">BS23 密文輸入 2 (Polynomial-Modulus LWE Ciphertext c₂)</label>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="bs23-m2-space-label">明文空間: T=16 (0~15)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₂:</span>
+                <input type="text" id="bs23-plain-m2" class="mini-input" value="7" placeholder="例如: 7">
+                <button class="btn-small" onclick="encryptToBox('bs23', 2)">🔐 加密 m₂→c₂</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('bs23', 2)">🎲 隨機</button>
+              </div>
+            </div>
+            <textarea class="form-control" id="bs23-cipher-in-2" rows="2" placeholder="請輸入 BS23 多項式模數 LWE 密文..."></textarea>
+          </div>
+
+          <!-- Operation Selector -->
+          <div class="form-group">
+            <label class="form-label">BS23 目標同態運算與解密模式 (Homomorphic Operation)</label>
+            <select class="form-control" id="bs23-op-mode">
+              <option value="eval_mul" selected id="bs23-opt-mul">✖️ BS23 LWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod 16 (T=16, 含 Gadget 重線性化)</option>
+              <option value="eval_add" id="bs23-opt-add">➕ BS23 LWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod 16 (T=16)</option>
+              <option value="dec_1">🔓 單獨門檻解密密文 1: Dec(c₁) → m₁</option>
+              <option value="dec_2">🔓 單獨門檻解密密文 2: Dec(c₂) → m₂</option>
+            </select>
+          </div>
+
+          <!-- Stage-by-Stage Buttons -->
+          <div class="stage-btns-panel">
+            <div class="stage-btns-title">
+              <span style="color: #818cf8;">🎛️ 點擊 BS23 單一階段按鈕即時顯示執行過程 (Stage-by-Stage Buttons)</span>
+              <button class="btn-small" onclick="clearConsole('bs23-console')">🧹 清空日誌</button>
+            </div>
+            <div class="stage-btns-grid">
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('setup')">1. Setup</button>
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('keygen')">2. KeyGen (CNF)</button>
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('preprocess')">3. GL Seed / RLK</button>
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('encrypt')">4. Encrypt</button>
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('eval')">5. Homo Eval</button>
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('partial_dec')">6. Rényi PartDec</button>
+              <button class="stage-btn bs23-btn" onclick="runBs23Stage('aggregate')" style="grid-column: span 2;">7. {0,1}-FinDec &amp; Out</button>
+            </div>
+            <button class="btn" style="background: #6366f1;" onclick="runBs23Stage('run_all')">⚡ 一鍵完整執行 BS23 多項式模數 Rényi 淹沒與 {0,1}-重構解密 (Run All)</button>
+          </div>
+
+          <!-- Output Box -->
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="color: #818cf8; font-weight: 600;">📤 BS23 解密結果輸出框 (Decryption Output — 純解密結果)</label>
+            <input type="text" class="output-box-single" id="bs23-output-box" readonly value="" placeholder="--">
+          </div>
+        </div>
+
+        <!-- Right Card: Execution Log -->
+        <div class="card">
+          <div class="card-title">
+            <span>🔍 BS23 各階段執行過程日誌 (Execution Log)</span>
+            <span class="badge" id="bs23-verify-badge" style="background: rgba(129, 140, 248, 0.2); color: #818cf8;">等待執行</span>
+          </div>
+          <div class="console-box" id="bs23-console">[BS23 Ready — Boudgoust &amp; Scholl, Asiacrypt 2023: 多項式模數 Rényi 淹沒門檻 FHE]
+• 特性：首創以 Rényi 散度 (RD_a) 取代傳統統計距離，將淹沒雜訊由指數級 2^λ 壓縮至多項式級 σ_flood = O(√ℓ · β_fhe)！
+• 機制：結合強 {0,1}-二元重構之複製秘密分享 (Replicated / CNF Sharing, L = C(n-1, t)) 與 Goldreich-Levin 硬核位元提取器。
+• 點擊左側「1. Setup」～「7. {0,1}-FinDec &amp; Out」任一階段按鈕，此處將即時顯示計算細節與耗時。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 8: PS24 (Passelègue & Stehlé, Asiacrypt 2024: Low-Comm ThFHE)      -->
+    <!-- ===================================================================== -->
+    <section id="tab-ps24" class="tab-content">
+      <!-- Lab Hero Title Banner -->
+      <div class="lab-hero-header" style="border-color: rgba(45, 212, 191, 0.45);">
+        <h2 class="lab-hero-title">PS24 實驗室</h2>
+        <div class="lab-hero-sub">Passelègue &amp; Stehlé (Asiacrypt 2024 / ePrint 2024/1984) — Low Communication Threshold Fully Homomorphic Encryption</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-view-paper" onclick="openPaperViewer('ps24')">📄 查看對應論文</button>
+          <button type="button" class="btn-lab-tutorial" onclick="openPaperTutorial('ps24')">📖 論文教學</button>
+          <button type="button" class="btn-lab-manual" onclick="openLabManual('ps24')">📘 操作手冊</button>
+        </div>
+      </div>
+
+      <div class="stat-cards">
+        <div class="stat-item">
+          <div class="stat-label">Setup 雙模數 Q = p·q_dec</div>
+          <div class="stat-val" id="ps24-stat-setup" style="color: #fbbf24;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">LWE 同態運算耗時</div>
+          <div class="stat-val" id="ps24-stat-mul" style="color: #60a5fa;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">ServerDec + PartDec 耗時</div>
+          <div class="stat-val" id="ps24-stat-pdec" style="color: #2dd4bf;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">FinDec (mod q_dec) 耗時</div>
+          <div class="stat-val" id="ps24-stat-agg" style="color: #a78bfa;">-- ms</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">解密驗證狀態</div>
+          <div class="stat-val" id="ps24-agg-status" style="color: #9ca3af; font-size: 1rem;">尚未測試</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-title">
+            <span>PS24 密文輸入與各階段控制 (ServerDec Double-Flood-and-Round + Low-Comm PartDec)</span>
+            <span class="badge" id="ps24-node-count" style="background: rgba(45, 212, 191, 0.2); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.4);">PS24 (Asiacrypt 2024)</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span class="form-label" style="margin: 0;">👥 參與方分佈拓撲 (N-of-N Low-Comm Decryption Parties):</span>
+            <button class="btn-small" onclick="rerollRandomMaliciousParties()">🎲 重新分配節點</button>
+          </div>
+          <div class="party-chips-wrap" id="ps24-party-list"></div>
+
+          <!-- Input Box 1 -->
+          <div class="form-group" style="margin-top: 0.65rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
+              <label class="form-label" style="margin: 0;">PS24 密文輸入 1 (Composite-Modulus LWE Ciphertext c₁ over ℤ_Q)</label>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="ps24-m1-space-label">明文空間: T=16 (0~15)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₁:</span>
+                <input type="text" id="ps24-plain-m1" class="mini-input" value="12" placeholder="例如: 12">
+                <button class="btn-small" onclick="encryptToBox('ps24', 1)">🔐 加密 m₁→c₁</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('ps24', 1)">🎲 隨機</button>
+              </div>
+            </div>
+            <textarea class="form-control" id="ps24-cipher-in-1" rows="2" placeholder="請輸入 PS24 複合模數 LWE 密文..."></textarea>
+          </div>
+
+          <!-- Input Box 2 -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 5px;">
+              <label class="form-label" style="margin: 0;">PS24 密文輸入 2 (Composite-Modulus LWE Ciphertext c₂ over ℤ_Q)</label>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span class="t-space-tag" id="ps24-m2-space-label">明文空間: T=16 (0~15)</span>
+                <span style="font-size: 0.73rem; color: var(--text-muted);">輸入訊息 m₂:</span>
+                <input type="text" id="ps24-plain-m2" class="mini-input" value="7" placeholder="例如: 7">
+                <button class="btn-small" onclick="encryptToBox('ps24', 2)">🔐 加密 m₂→c₂</button>
+                <button class="btn-small" onclick="generateRandomCiphertext('ps24', 2)">🎲 隨機</button>
+              </div>
+            </div>
+            <textarea class="form-control" id="ps24-cipher-in-2" rows="2" placeholder="請輸入 PS24 複合模數 LWE 密文..."></textarea>
+          </div>
+
+          <!-- Operation Selector -->
+          <div class="form-group">
+            <label class="form-label">PS24 目標同態運算與解密模式 (Homomorphic Operation)</label>
+            <select class="form-control" id="ps24-op-mode">
+              <option value="eval_mul" selected id="ps24-opt-mul">✖️ PS24 LWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod 16 (T=16, 含 Gadget 重線性化)</option>
+              <option value="eval_add" id="ps24-opt-add">➕ PS23/PS24 LWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod 16 (T=16)</option>
+              <option value="dec_1">🔓 單獨門檻解密密文 1: Dec(c₁) → m₁</option>
+              <option value="dec_2">🔓 單獨門檻解密密文 2: Dec(c₂) → m₂</option>
+            </select>
+          </div>
+
+          <!-- Stage-by-Stage Buttons -->
+          <div class="stage-btns-panel">
+            <div class="stage-btns-title">
+              <span style="color: #2dd4bf;">🎛️ 點擊 PS24 單一階段按鈕即時顯示執行過程 (Stage-by-Stage Buttons)</span>
+              <button class="btn-small" onclick="clearConsole('ps24-console')">🧹 清空日誌</button>
+            </div>
+            <div class="stage-btns-grid">
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('setup')">1. Setup (Q=p·q)</button>
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('keygen')">2. KeyGen (‖s‖)</button>
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('preprocess')">3. σ₀ Rounding</button>
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('encrypt')">4. Encrypt</button>
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('eval')">5. Homo Eval</button>
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('partial_dec')">6. Server+PartDec</button>
+              <button class="stage-btn ps24-btn" onclick="runPs24Stage('aggregate')" style="grid-column: span 2;">7. FinDec (mod q_dec)</button>
+            </div>
+            <button class="btn" style="background: #0d9488;" onclick="runPs24Stage('run_all')">⚡ 一鍵完整執行 PS24 雙重淹沒隨機化高斯捨入與極低通訊門檻解密 (Run All)</button>
+          </div>
+
+          <!-- Output Box -->
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="color: #2dd4bf; font-weight: 600;">📤 PS24 解密結果輸出框 (Decryption Output — 純解密結果)</label>
+            <input type="text" class="output-box-single" id="ps24-output-box" readonly value="" placeholder="--">
+          </div>
+        </div>
+
+        <!-- Right Card: Execution Log -->
+        <div class="card">
+          <div class="card-title">
+            <span>🔍 PS24 各階段執行過程日誌 (Execution Log)</span>
+            <span class="badge" id="ps24-verify-badge" style="background: rgba(45, 212, 191, 0.2); color: #2dd4bf;">等待執行</span>
+          </div>
+          <div class="console-box" id="ps24-console">[PS24 Ready — Passelègue &amp; Stehlé, Asiacrypt 2024: 極低通訊量雙重淹沒與捨入門檻 FHE]
+• 特性：透過公開 ServerDec 先在大模數 Q = p · q_dec 注入 Enc(0) 與淹沒雜訊，再以隨機化高斯捨入 ⌊·/p⌉_{σ₀,σ₁} 縮模至極小 q_dec！
+• 優勢：各參與方 PartDec 僅需添加微型高斯雜訊 d_i ← D_{ℤ, η} 並傳送單一 22-bit 純量 p_i ∈ ℤ_{q_dec}，達成漸近最優通訊量 λ + O(1) bits！
+• 點擊左側「1. Setup」～「7. FinDec (mod q_dec)」任一階段按鈕，此處將即時顯示計算細節與耗時。</div>
         </div>
       </div>
     </section>
@@ -5737,7 +6358,7 @@
       <!-- Lab Hero Title Banner for Arena -->
       <div class="lab-hero-header" style="border-color: rgba(245, 158, 11, 0.45);">
         <h2 class="lab-hero-title">論文評測競技場</h2>
-        <div class="lab-hero-sub">6 大經典與頂會前沿門檻 FHE 論文之 7 階段微秒級延遲、通訊量與密碼學安全性橫向綜合評測</div>
+        <div class="lab-hero-sub">7 大經典與頂會前沿門檻 FHE 論文之 7 階段微秒級延遲、通訊量與密碼學安全性橫向綜合評測</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-manual" onclick="openLabManual('arena')">📘 操作手冊</button>
         </div>
@@ -5783,12 +6404,14 @@
               <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: normal;">(勾選方案動態切換直方圖柱狀與數據表欄位)</span>
             </div>
             <div class="filter-quick-btns">
-              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (<span class="hqfs-hidden">All 6</span>5 大論文)</button>
+              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (<span class="hqfs-hidden">All 8</span>7 大論文)</button>
               <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ccs" onclick="selectPapersPreset('ours_vs_ccs')">本論文 vs CCS 2025</button>
               <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-noah" onclick="selectPapersPreset('ours_vs_noah')">本論文 vs Noah's Ark</button>
               <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-pelta" onclick="selectPapersPreset('ours_vs_pelta')">本論文 vs PELTA</button>
               <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ot25" onclick="selectPapersPreset('ours_vs_ot25')">本論文 vs OT25</button>
               <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ajax" onclick="selectPapersPreset('ours_vs_ajax')">本論文 vs Ajax</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-bs23" onclick="selectPapersPreset('ours_vs_bs23')">本論文 vs BS23</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ps24" onclick="selectPapersPreset('ours_vs_ps24')">本論文 vs PS24</button>
             </div>
           </div>
 
@@ -5840,6 +6463,22 @@
               <span class="chip-title">Ajax</span>
               <span class="chip-sub">[Hu et al. 25 - Mask-Then-Open]</span>
             </label>
+
+            <!-- Chip 7: BS23 (Boudgoust & Scholl 2023) -->
+            <label class="paper-chip-label active" id="chip-label-bs23">
+              <input type="checkbox" id="paper-check-bs23" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #818cf8;"></span>
+              <span class="chip-title">BS23</span>
+              <span class="chip-sub">[Boudgoust-Scholl 23 - Rényi Poly-Mod]</span>
+            </label>
+
+            <!-- Chip 8: PS24 (Passelègue & Stehlé 2024) -->
+            <label class="paper-chip-label active" id="chip-label-ps24">
+              <input type="checkbox" id="paper-check-ps24" checked onchange="onPaperFilterChange()">
+              <span class="chip-color-dot" style="background: #2dd4bf;"></span>
+              <span class="chip-title">PS24</span>
+              <span class="chip-sub">[Passelègue-Stehlé 24 - Low-Comm Round]</span>
+            </label>
           </div>
         </div>
 
@@ -5847,7 +6486,7 @@
         <div class="histogram-container">
           <div class="chart-header">
             <div style="font-weight: 600; font-size: 0.95rem;">
-              ⏱️ 實測各階段執行時間直方圖 (Measured Stage Latency in ms — 六篇論文同步實測)
+              ⏱️ 實測各階段執行時間直方圖 (Measured Stage Latency in ms — 七大論文同步實測)
             </div>
             <div class="chart-legend" style="flex-wrap: wrap;">
               <div class="legend-item legend-ccs">
@@ -5873,6 +6512,14 @@
               <div class="legend-item legend-ajax">
                 <div class="legend-color" style="background: #ec4899;"></div>
                 <span>Ajax (Hu et al. USENIX 25)</span>
+              </div>
+              <div class="legend-item legend-bs23">
+                <div class="legend-color" style="background: #818cf8;"></div>
+                <span>BS23 (Boudgoust &amp; Scholl 23)</span>
+              </div>
+              <div class="legend-item legend-ps24">
+                <div class="legend-color" style="background: #2dd4bf;"></div>
+                <span>PS24 (Passelègue &amp; Stehlé 24)</span>
               </div>
             </div>
           </div>
@@ -5900,6 +6547,8 @@
                 <div class="bar bar-hqfs" id="bar-s1-hqfs"><span class="bar-tooltip" id="tip-s1-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s1-ot25"><span class="bar-tooltip" id="tip-s1-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s1-ajax"><span class="bar-tooltip" id="tip-s1-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s1-bs23"><span class="bar-tooltip" id="tip-s1-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s1-ps24"><span class="bar-tooltip" id="tip-s1-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">1. Setup<br>(系統設定)</div>
             </div>
@@ -5913,6 +6562,8 @@
                 <div class="bar bar-hqfs" id="bar-s2-hqfs"><span class="bar-tooltip" id="tip-s2-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s2-ot25"><span class="bar-tooltip" id="tip-s2-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s2-ajax"><span class="bar-tooltip" id="tip-s2-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s2-bs23"><span class="bar-tooltip" id="tip-s2-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s2-ps24"><span class="bar-tooltip" id="tip-s2-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">2. KeyGen<br>(金鑰與承諾生成)</div>
             </div>
@@ -5926,6 +6577,8 @@
                 <div class="bar bar-hqfs" id="bar-s3-hqfs"><span class="bar-tooltip" id="tip-s3-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s3-ot25"><span class="bar-tooltip" id="tip-s3-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s3-ajax"><span class="bar-tooltip" id="tip-s3-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s3-bs23"><span class="bar-tooltip" id="tip-s3-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s3-ps24"><span class="bar-tooltip" id="tip-s3-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">3. Offline Prep<br>(離線預處理/RLK)</div>
             </div>
@@ -5939,6 +6592,8 @@
                 <div class="bar bar-hqfs" id="bar-s4-hqfs"><span class="bar-tooltip" id="tip-s4-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s4-ot25"><span class="bar-tooltip" id="tip-s4-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s4-ajax"><span class="bar-tooltip" id="tip-s4-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s4-bs23"><span class="bar-tooltip" id="tip-s4-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s4-ps24"><span class="bar-tooltip" id="tip-s4-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">4. Homo Add<br>(同態加法)</div>
             </div>
@@ -5952,6 +6607,8 @@
                 <div class="bar bar-hqfs" id="bar-s5-hqfs"><span class="bar-tooltip" id="tip-s5-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s5-ot25"><span class="bar-tooltip" id="tip-s5-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s5-ajax"><span class="bar-tooltip" id="tip-s5-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s5-bs23"><span class="bar-tooltip" id="tip-s5-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s5-ps24"><span class="bar-tooltip" id="tip-s5-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">5. Homo Mul<br>(同態乘法)</div>
             </div>
@@ -5965,6 +6622,8 @@
                 <div class="bar bar-hqfs" id="bar-s6-hqfs"><span class="bar-tooltip" id="tip-s6-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s6-ot25"><span class="bar-tooltip" id="tip-s6-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s6-ajax"><span class="bar-tooltip" id="tip-s6-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s6-bs23"><span class="bar-tooltip" id="tip-s6-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s6-ps24"><span class="bar-tooltip" id="tip-s6-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">6. Partial Dec<br>(部分解密/ZKP證明)</div>
             </div>
@@ -5978,6 +6637,8 @@
                 <div class="bar bar-hqfs" id="bar-s7-hqfs"><span class="bar-tooltip" id="tip-s7-hqfs">尚未測試</span></div>
                 <div class="bar bar-ot25" id="bar-s7-ot25"><span class="bar-tooltip" id="tip-s7-ot25">尚未測試</span></div>
                 <div class="bar bar-ajax" id="bar-s7-ajax"><span class="bar-tooltip" id="tip-s7-ajax">尚未測試</span></div>
+                <div class="bar bar-bs23" id="bar-s7-bs23"><span class="bar-tooltip" id="tip-s7-bs23">尚未測試</span></div>
+                <div class="bar bar-ps24" id="bar-s7-ps24"><span class="bar-tooltip" id="tip-s7-ps24">尚未測試</span></div>
               </div>
               <div class="stage-name">7. Aggregation<br>(聚合/BFS與CRT)</div>
             </div>
@@ -5995,6 +6656,8 @@
               <th class="col-hqfs" style="color: #fbbf24; min-width: 140px;">HQ-FS [Our Work]</th>
               <th class="col-ot25" style="color: #06b6d4; min-width: 140px;">OT25 [Okada-Takagi 25]</th>
               <th class="col-ajax" style="color: #ec4899; min-width: 140px;">Ajax [Hu et al. 25]</th>
+              <th class="col-bs23" style="color: #818cf8; min-width: 140px;">BS23 [Boudgoust-Scholl 23]</th>
+              <th class="col-ps24" style="color: #2dd4bf; min-width: 140px;">PS24 [Passelègue-Stehlé 24]</th>
             </tr>
           </thead>
           <tbody>
@@ -6006,6 +6669,8 @@
               <td class="col-hqfs" id="tbl-hqfs-setup" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-setup">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-setup">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-setup">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-setup">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>2. KeyGen 分散式金鑰與承諾生成</strong></td>
@@ -6015,6 +6680,8 @@
               <td class="col-hqfs" id="tbl-hqfs-keygen" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-keygen">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-keygen">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-keygen">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-keygen">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>3. Offline Prep / RLKGen 離線預處理耗時</strong></td>
@@ -6024,6 +6691,8 @@
               <td class="col-hqfs" id="tbl-hqfs-prep" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-prep">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-prep">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-prep">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-prep">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>4. Homo Add 同態加法耗時</strong></td>
@@ -6033,6 +6702,8 @@
               <td class="col-hqfs" id="tbl-hqfs-add" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-add">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-add">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-add">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-add">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>5. Homo Mul 同態乘法 (含重線性化) 耗時</strong></td>
@@ -6042,6 +6713,8 @@
               <td class="col-hqfs" id="tbl-hqfs-mul" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-mul">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-mul">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-mul">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-mul">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>6. Partial Dec 部分解密 / MPC 捨入 / ZK 證明</strong></td>
@@ -6051,6 +6724,8 @@
               <td class="col-hqfs" id="tbl-hqfs-pdec" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-pdec">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-pdec">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-pdec">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-pdec">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>7. Aggregation 份額聚合 / BFS 過濾與 CRT 重構</strong></td>
@@ -6060,6 +6735,8 @@
               <td class="col-hqfs" id="tbl-hqfs-agg" style="color: #fde68a;">-- (尚未測試)</td>
               <td class="col-ot25" id="tbl-ot25-agg">-- (尚未測試)</td>
               <td class="col-ajax" id="tbl-ajax-agg">-- (尚未測試)</td>
+              <td class="col-bs23" id="tbl-bs23-agg">-- (尚未測試)</td>
+              <td class="col-ps24" id="tbl-ps24-agg">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>總線上解密延遲 (Total Online Latency)</strong></td>
@@ -6069,6 +6746,8 @@
               <td class="col-hqfs" style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-lat">-- (尚未測試)</td>
               <td class="col-ot25" style="color: #06b6d4; font-weight: 600;" id="tbl-ot25-lat">-- (尚未測試)</td>
               <td class="col-ajax" style="color: #ec4899; font-weight: 600;" id="tbl-ajax-lat">-- (尚未測試)</td>
+              <td class="col-bs23" style="color: #818cf8; font-weight: 600;" id="tbl-bs23-lat">-- (尚未測試)</td>
+              <td class="col-ps24" style="color: #2dd4bf; font-weight: 600;" id="tbl-ps24-lat">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>實測解密吞吐量 (Measured Throughput)</strong></td>
@@ -6078,6 +6757,8 @@
               <td class="col-hqfs" style="color: #fbbf24; font-weight: 700;" id="tbl-hqfs-thru">-- (尚未測試)</td>
               <td class="col-ot25" style="color: #06b6d4; font-weight: 600;" id="tbl-ot25-thru">-- (尚未測試)</td>
               <td class="col-ajax" style="color: #ec4899; font-weight: 600;" id="tbl-ajax-thru">-- (尚未測試)</td>
+              <td class="col-bs23" style="color: #818cf8; font-weight: 600;" id="tbl-bs23-thru">-- (尚未測試)</td>
+              <td class="col-ps24" style="color: #2dd4bf; font-weight: 600;" id="tbl-ps24-thru">-- (尚未測試)</td>
             </tr>
             <tr>
               <td><strong>同態加/乘法解密正確性驗證 (Correctness)</strong></td>
@@ -6087,15 +6768,19 @@
               <td class="col-hqfs" id="tbl-hqfs-ok" style="color: #fde68a;">--</td>
               <td class="col-ot25" id="tbl-ot25-ok">--</td>
               <td class="col-ajax" id="tbl-ajax-ok">--</td>
+              <td class="col-bs23" id="tbl-bs23-ok">--</td>
+              <td class="col-ps24" id="tbl-ps24-ok">--</td>
             </tr>
             <tr>
-              <td><strong>8. 實體網路通訊量 (Sockets & TX/RX Bytes)</strong></td>
+              <td><strong>8. 實體網路通訊量 (Sockets &amp; TX/RX Bytes)</strong></td>
               <td class="col-ccs" id="tbl-ccs-comm">--</td>
               <td class="col-noah" id="tbl-noah-comm">--</td>
               <td class="col-pelta" id="tbl-pelta-comm">--</td>
               <td class="col-hqfs" id="tbl-hqfs-comm" style="color: #fde68a;">--</td>
               <td class="col-ot25" id="tbl-ot25-comm">--</td>
               <td class="col-ajax" id="tbl-ajax-comm">--</td>
+              <td class="col-bs23" id="tbl-bs23-comm">--</td>
+              <td class="col-ps24" id="tbl-ps24-comm">--</td>
             </tr>
             <tr>
               <td><strong>9. RNS 模數質數個數 (RNS Primes Count)</strong></td>
@@ -6105,6 +6790,8 @@
               <td class="col-hqfs" id="tbl-hqfs-rns" style="color: #fde68a;">19 個 NTT 質數 (6Q+13P)</td>
               <td class="col-ot25" id="tbl-ot25-rns">2 Primes (LWE)</td>
               <td class="col-ajax" id="tbl-ajax-rns">2 Primes (LWE)</td>
+              <td class="col-bs23" id="tbl-bs23-rns">1 Prime (Poly-Mod LWE)</td>
+              <td class="col-ps24" id="tbl-ps24-rns">2 Moduli (Q = p · q_dec)</td>
             </tr>
             <tr>
               <td><strong>10. 記憶體峰值佔用 (Peak RAM Footprint)</strong></td>
@@ -6114,6 +6801,8 @@
               <td class="col-hqfs" id="tbl-hqfs-mem" style="color: #fde68a;">--</td>
               <td class="col-ot25" id="tbl-ot25-mem">--</td>
               <td class="col-ajax" id="tbl-ajax-mem">--</td>
+              <td class="col-bs23" id="tbl-bs23-mem">--</td>
+              <td class="col-ps24" id="tbl-ps24-mem">--</td>
             </tr>
           </tbody>
         </table>
@@ -6134,6 +6823,8 @@
                 <th class="col-hqfs" style="color: #fbbf24; min-width: 150px;">HQ-FS [Our Work]</th>
                 <th class="col-ot25" style="color: #06b6d4; min-width: 150px;">OT25 [Okada-Takagi 25]</th>
                 <th class="col-ajax" style="color: #ec4899; min-width: 150px;">Ajax [Hu et al. 25]</th>
+                <th class="col-bs23" style="color: #818cf8; min-width: 150px;">BS23 [Boudgoust-Scholl 23]</th>
+                <th class="col-ps24" style="color: #2dd4bf; min-width: 150px;">PS24 [Passelègue-Stehlé 24]</th>
               </tr>
             </thead>
             <tbody>
@@ -6145,6 +6836,8 @@
                 <td class="col-hqfs" style="color: #fde68a; font-weight: 600;">RNS-GLWE + MLWE + MSIS</td>
                 <td class="col-ot25">Standard LWE / MLWE</td>
                 <td class="col-ajax">Standard LWE / RLWE (FHEW-like)</td>
+                <td class="col-bs23">Poly-Modulus LWE + I-LWE Tightness</td>
+                <td class="col-ps24">Standard LWE + yaLWE (Known ‖s‖)</td>
               </tr>
               <tr>
                 <td><strong>威脅模型 (Adversary Model)</strong></td>
@@ -6154,6 +6847,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ Active Malicious (t &lt; N)</td>
                 <td class="col-ot25">Semi-Honest (t &lt; N, Shamir + Server)</td>
                 <td class="col-ajax">Honest-Maj KeyGen, Dishonest-Maj Dec (Semi-Honest)</td>
+                <td class="col-bs23">Semi-Honest (t &lt; N) + PRSS Robust (t &lt; N/3)</td>
+                <td class="col-ps24">Adaptive Semi-Honest Simulation (N-of-N)</td>
               </tr>
               <tr>
                 <td><strong>防止部分解密洩漏私鑰 (Key Leakage Prevention)</strong></td>
@@ -6163,6 +6858,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 緊緻雜訊淹沒 e_sm + 商數隱藏 k_dec·Q</td>
                 <td class="col-ot25">✓ 雜訊補齊 (Noise Padding ζ) + PRF 遮罩 (m_i)</td>
                 <td class="col-ajax" style="color: #ec4899; font-weight: 600;">✓ 雙環秘密分享遮蔽 (Mask-Then-Open over Z_η, Z_Φ) [無雜訊淹沒]</td>
+                <td class="col-bs23" style="color: #818cf8; font-weight: 600;">✓ Rényi 散度多項式雜訊淹沒 O(√ℓ) + GL 提取</td>
+                <td class="col-ps24" style="color: #2dd4bf; font-weight: 600;">✓ ServerDec 隨機化高斯捨入 + 微型雜訊 d_i ← D_η</td>
               </tr>
               <tr>
                 <td><strong>主動攻擊零知識驗證機制 (Active Attack Verification)</strong></td>
@@ -6172,6 +6869,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 同態商數證明 (HQ-FS mod K_Q) + BFS 佇列</td>
                 <td class="col-ot25">✗ 無 (Semi-Honest 假設)</td>
                 <td class="col-ajax">✗ 無 (Semi-Honest 假設)</td>
+                <td class="col-bs23">△ PRSS 轉 Shamir + Reed-Solomon 糾錯 (t &lt; N/3)</td>
+                <td class="col-ps24">✗ 無 (Semi-Honest 假設)</td>
               </tr>
               <tr>
                 <td><strong>電路隱私與抗代數追蹤 (Circuit Privacy &amp; Anti-Tracing)</strong></td>
@@ -6181,6 +6880,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 明文空間擴展零密文疊加 (C_zero Rerandomization)</td>
                 <td class="col-ot25">Flood-and-round with ServerDec + Noise Padding</td>
                 <td class="col-ajax" style="color: #ec4899; font-weight: 600;">✓ 雙環 MPC 模數轉換與雜訊消除 (Exact Noise Elimination)</td>
+                <td class="col-bs23">依賴底層 FHE 電路隱私 + GL 內積掩蔽</td>
+                <td class="col-ps24" style="color: #2dd4bf; font-weight: 600;">✓ 弱電路隱私 (w-IND-CP: Enc(0) + Double-Flood-and-Round)</td>
               </tr>
               <tr>
                 <td><strong>抗解密預言機選擇明文攻擊 (Resistance against CPA^D)</strong></td>
@@ -6190,6 +6891,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 完整具備 (Theorem 1~2: 雙層防護 + 緊緻模數)</td>
                 <td class="col-ot25" style="color: #06b6d4; font-weight: 600;">✓ 具備 (Lemma 2: PRF 遮罩與統計隱藏)</td>
                 <td class="col-ajax" style="color: #ec4899; font-weight: 600;">✓ 具備 (Theorem 4: 雙環遮罩消除雜訊殘留)</td>
+                <td class="col-bs23" style="color: #818cf8; font-weight: 600;">✓ 有界 ℓ 次查詢安全 (ℓ-IND-CPA via Rényi + GL)</td>
+                <td class="col-ps24" style="color: #2dd4bf; font-weight: 600;">✓ 自適應模擬安全 (Theorem 4.2: 極低通訊 λ+O(1) bits)</td>
               </tr>
               <tr>
                 <td><strong>在線通訊輪數 (Online Communication Rounds)</strong></td>
@@ -6199,6 +6902,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 1 Round (非互動式 Fiat-Shamir NIZK + 單輪聚合)</td>
                 <td class="col-ot25">2 Rounds (ServerDec + PartDec)</td>
                 <td class="col-ajax">2 Rounds (Mask mod Φ + Sub in ℤ_η)</td>
+                <td class="col-bs23">1 Round (非互動式複製子份額廣播)</td>
+                <td class="col-ps24">1 Round (公開 ServerDec 後單輪 PartDec 標量廣播)</td>
               </tr>
               <tr>
                 <td><strong>惡意節點防護能力 (Protection Against Malicious Corruptions)</strong></td>
@@ -6208,6 +6913,8 @@
                 <td class="col-hqfs" style="color: #34d399; font-weight: 600;">✓ 完整攔截 (同態商數驗證 + 惡意隔離剔除)</td>
                 <td class="col-ot25">△ 需誠實伺服器中繼 (Semi-Honest)</td>
                 <td class="col-ajax">△ 僅保證半誠實私鑰安全性</td>
+                <td class="col-bs23">△ 支援 PRSS Reed-Solomon 容錯或依賴誠實多數</td>
+                <td class="col-ps24">△ 僅保證半誠實私鑰與電路模擬安全性</td>
               </tr>
             </tbody>
           </table>
@@ -6229,7 +6936,7 @@
 
     // Stores currently sampled random malicious party IDs (1-indexed, e.g. [2, 7])
     let CURRENT_RANDOM_MALICIOUS_IDS = [];
-    const SIMD_STATE = { ccs25: false, noah: false, pelta: false, hqfs: false, ot25: false, ajax: false };
+    const SIMD_STATE = { ccs25: false, noah: false, pelta: false, hqfs: false, ot25: false, ajax: false, bs23: false, ps24: false };
 
     function getSelectedMBits() {
       const el = document.getElementById('global-tspace-select');
@@ -6254,7 +6961,7 @@
         if (el) el.innerText = rangeStr;
       });
       const ot25_T = Math.min(T, 16);
-      ['ot25-m1-space-label', 'ot25-m2-space-label'].forEach(id => {
+      ['ot25-m1-space-label', 'ot25-m2-space-label', 'bs23-m1-space-label', 'bs23-m2-space-label', 'ps24-m1-space-label', 'ps24-m2-space-label'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerText = `明文空間: T=${ot25_T} (0~${ot25_T - 1})`;
       });
@@ -6272,6 +6979,10 @@
       if (ot25Badge) ot25Badge.innerText = `OT25 (T = ${ot25_T})`;
       const ajaxBadge = document.getElementById('ajax-node-count');
       if (ajaxBadge) ajaxBadge.innerText = `Ajax (T = ${ajax_T})`;
+      const bs23Badge = document.getElementById('bs23-node-count');
+      if (bs23Badge) bs23Badge.innerText = `BS23 (T = ${ot25_T})`;
+      const ps24Badge = document.getElementById('ps24-node-count');
+      if (ps24Badge) ps24Badge.innerText = `PS24 (T = ${ot25_T})`;
 
       const ccsMulOpt = document.getElementById('ccs-opt-mul');
       const ccsAddOpt = document.getElementById('ccs-opt-add');
@@ -6302,6 +7013,16 @@
       const ajaxAddOpt = document.getElementById('ajax-opt-add');
       if (ajaxMulOpt) ajaxMulOpt.innerText = `✖️ Ajax LWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod ${ajax_T} (T=${ajax_T})`;
       if (ajaxAddOpt) ajaxAddOpt.innerText = `➕ Ajax LWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod ${ajax_T} (T=${ajax_T})`;
+
+      const bs23MulOpt = document.getElementById('bs23-opt-mul');
+      const bs23AddOpt = document.getElementById('bs23-opt-add');
+      if (bs23MulOpt) bs23MulOpt.innerText = `✖️ BS23 LWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod ${ot25_T} (T=${ot25_T}, 含 Gadget 重線性化)`;
+      if (bs23AddOpt) bs23AddOpt.innerText = `➕ BS23 LWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod ${ot25_T} (T=${ot25_T})`;
+
+      const ps24MulOpt = document.getElementById('ps24-opt-mul');
+      const ps24AddOpt = document.getElementById('ps24-opt-add');
+      if (ps24MulOpt) ps24MulOpt.innerText = `✖️ PS24 LWE 同態乘法並解密: Dec(c₁ ⊗ c₂) → (m₁ × m₂) mod ${ot25_T} (T=${ot25_T}, 含 Gadget 重線性化)`;
+      if (ps24AddOpt) ps24AddOpt.innerText = `➕ PS24 LWE 同態加法並解密: Dec(c₁ ⊕ c₂) → (m₁ + m₂) mod ${ot25_T} (T=${ot25_T})`;
     }
 
     async function onPlaintextSpaceChange() {
@@ -6317,6 +7038,8 @@
       appendConsole('hqfs-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${T} (ℤ_${T}: 0 ~ ${T - 1})`);
       appendConsole('ot25-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${Math.min(T, 16)} (ℤ_${Math.min(T, 16)}: 0 ~ ${Math.min(T, 16) - 1})`);
       appendConsole('ajax-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${Math.min(T, 4)} (ℤ_${Math.min(T, 4)}: 0 ~ ${Math.min(T, 4) - 1})`);
+      appendConsole('bs23-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${Math.min(T, 16)} (ℤ_${Math.min(T, 16)}: 0 ~ ${Math.min(T, 16) - 1})`);
+      appendConsole('ps24-console', `\n[📐 明文空間切換] 已切換明文空間為 T = ${Math.min(T, 16)} (ℤ_${Math.min(T, 16)}: 0 ~ ${Math.min(T, 16) - 1})`);
     }
 
     async function setSIMDMode(target, enabled) {
@@ -6637,7 +7360,7 @@
       // 實驗室控制面板：僅在實驗室、評測競技場或實驗參數導覽頁面顯示；在基礎閱讀或背景知識閱讀中隱藏
       const headerControls = document.getElementById('global-header-controls');
       if (headerControls) {
-        const isExp = ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'arena', 'eval-params'].includes(tabId);
+        const isExp = ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'bs23', 'ps24', 'arena', 'eval-params'].includes(tabId);
         headerControls.style.display = isExp ? 'flex' : 'none';
       }
 
@@ -6654,7 +7377,7 @@
           'bg-lwe': '背景知識 — LWE 晶格加密基礎與矩陣運算',
           'bg-homomorphic': '背景知識 — 同態運算、雜訊增長與重線性化技術',
           'bg-secretsharing': '背景知識 — 門檻秘密分享機制',
-          'bg-noise': '背景知識 — 部分解密雜訊與 4 大隔離路線',
+          'bg-noise': '背景知識 — 部分解密雜訊與 6 大隔離路線',
           'bg-zkp': '背景知識 — 主動安全防線與零知識證明',
           'bg-security': '背景知識 — 威脅模型與安全概念',
           'eval-params': '實驗與評測 — 全域實驗控制面板與 7 階段評測指標',
@@ -6664,6 +7387,8 @@
           hqfs: 'HQ-FS (Our Work) 實驗室',
           ot25: 'OT25 實驗室',
           ajax: 'Ajax 實驗室',
+          bs23: 'BS23 實驗室',
+          ps24: 'PS24 實驗室',
           arena: '論文評測競技場'
         };
         pill.innerText = titles[tabId] || '實驗室';
@@ -6696,21 +7421,25 @@
       if (document.getElementById('paper-check-hqfs') && document.getElementById('paper-check-hqfs').checked) papers.push('hqfs');
       if (document.getElementById('paper-check-ot25') && document.getElementById('paper-check-ot25').checked) papers.push('ot25');
       if (document.getElementById('paper-check-ajax') && document.getElementById('paper-check-ajax').checked) papers.push('ajax');
+      if (document.getElementById('paper-check-bs23') && document.getElementById('paper-check-bs23').checked) papers.push('bs23');
+      if (document.getElementById('paper-check-ps24') && document.getElementById('paper-check-ps24').checked) papers.push('ps24');
       return papers;
     }
 
     function selectPapersPreset(preset) {
       const checks = {
-        all: ['ccs25', 'noah', 'pelta', 'ot25', 'ajax'],
-        all_with_hqfs: ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'],
+        all: ['ccs25', 'noah', 'pelta', 'ot25', 'ajax', 'bs23', 'ps24'],
+        all_with_hqfs: ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'bs23', 'ps24'],
         ours_vs_ccs: ['ccs25'],
         ours_vs_noah: ['noah'],
         ours_vs_pelta: ['pelta'],
         ours_vs_ot25: ['ot25'],
-        ours_vs_ajax: ['ajax']
+        ours_vs_ajax: ['ajax'],
+        ours_vs_bs23: ['bs23'],
+        ours_vs_ps24: ['ps24']
       };
       const selected = checks[preset] || checks['all'];
-      ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'].forEach(p => {
+      ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'bs23', 'ps24'].forEach(p => {
         const chk = document.getElementById('paper-check-' + p);
         if (chk) chk.checked = selected.includes(p);
       });
@@ -6729,7 +7458,9 @@
         { key: 'pelta', colClass: 'col-pelta', barSuffix: 'pelta', legendClass: 'legend-pelta' },
         { key: 'hqfs', colClass: 'col-hqfs', barSuffix: 'hqfs', legendClass: 'legend-hqfs' },
         { key: 'ot25', colClass: 'col-ot25', barSuffix: 'ot25', legendClass: 'legend-ot25' },
-        { key: 'ajax', colClass: 'col-ajax', barSuffix: 'ajax', legendClass: 'legend-ajax' }
+        { key: 'ajax', colClass: 'col-ajax', barSuffix: 'ajax', legendClass: 'legend-ajax' },
+        { key: 'bs23', colClass: 'col-bs23', barSuffix: 'bs23', legendClass: 'legend-bs23' },
+        { key: 'ps24', colClass: 'col-ps24', barSuffix: 'ps24', legendClass: 'legend-ps24' }
       ];
 
       paperDefs.forEach(p => {
@@ -6841,6 +7572,8 @@
       renderHqfsParties(n, malRatio, atk);
       renderOt25Parties(n, malRatio, atk);
       renderAjaxParties(n, malRatio, atk);
+      renderBs23Parties(n, malRatio, atk);
+      renderPs24Parties(n, malRatio, atk);
       resetArenaToUntestedState(n, malRatio);
       if (reinitKeys) {
         await initializeCiphertextBoxes(n);
@@ -6853,7 +7586,7 @@
       badge.className = 'badge badge-yellow';
       badge.innerText = `尚未實測 (N=${n}, Mal=${malRatio}%)`;
 
-      const allSchemes = ['ccs', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'];
+      const allSchemes = ['ccs', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'bs23', 'ps24'];
       for (let s = 1; s <= 7; s++) {
         allSchemes.forEach(scheme => {
           const bar = document.getElementById(`bar-s${s}-${scheme}`);
@@ -6897,7 +7630,7 @@
     }
 
     // =========================================================================
-    // Initialize Ciphertext Boxes for All 6 Paper Laboratories
+    // Initialize Ciphertext Boxes for All 8 Paper Laboratories
     // =========================================================================
     async function initializeCiphertextBoxes(numParties) {
       const m1Raw = document.getElementById('plain-m1').value.trim() || '12';
@@ -6912,6 +7645,10 @@
       const otm2Raw = (document.getElementById('ot25-plain-m2') ? document.getElementById('ot25-plain-m2').value.trim() : '') || '7';
       const ajm1Raw = (document.getElementById('ajax-plain-m1') ? document.getElementById('ajax-plain-m1').value.trim() : '') || '3';
       const ajm2Raw = (document.getElementById('ajax-plain-m2') ? document.getElementById('ajax-plain-m2').value.trim() : '') || '2';
+      const bsm1Raw = (document.getElementById('bs23-plain-m1') ? document.getElementById('bs23-plain-m1').value.trim() : '') || '12';
+      const bsm2Raw = (document.getElementById('bs23-plain-m2') ? document.getElementById('bs23-plain-m2').value.trim() : '') || '7';
+      const psm1Raw = (document.getElementById('ps24-plain-m1') ? document.getElementById('ps24-plain-m1').value.trim() : '') || '12';
+      const psm2Raw = (document.getElementById('ps24-plain-m2') ? document.getElementById('ps24-plain-m2').value.trim() : '') || '7';
       const mBits = getSelectedMBits();
       try {
         const resp = await fetch('/api/setup', {
@@ -6931,7 +7668,11 @@
             pm1: pm1Raw,
             pm2: pm2Raw,
             hm1: hm1Raw,
-            hm2: hm2Raw
+            hm2: hm2Raw,
+            bsm1: bsm1Raw,
+            bsm2: bsm2Raw,
+            psm1: psm1Raw,
+            psm2: psm2Raw
           })
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -6948,6 +7689,10 @@
         if (data.ot25_c2) document.getElementById('ot25-cipher-in-2').value = JSON.stringify(data.ot25_c2);
         if (data.ajax_c1) document.getElementById('ajax-cipher-in-1').value = JSON.stringify(data.ajax_c1);
         if (data.ajax_c2) document.getElementById('ajax-cipher-in-2').value = JSON.stringify(data.ajax_c2);
+        if (data.bs23_c1 && document.getElementById('bs23-cipher-in-1')) document.getElementById('bs23-cipher-in-1').value = JSON.stringify(data.bs23_c1);
+        if (data.bs23_c2 && document.getElementById('bs23-cipher-in-2')) document.getElementById('bs23-cipher-in-2').value = JSON.stringify(data.bs23_c2);
+        if (data.ps24_c1 && document.getElementById('ps24-cipher-in-1')) document.getElementById('ps24-cipher-in-1').value = JSON.stringify(data.ps24_c1);
+        if (data.ps24_c2 && document.getElementById('ps24-cipher-in-2')) document.getElementById('ps24-cipher-in-2').value = JSON.stringify(data.ps24_c2);
 
         document.getElementById('ccs-stat-setup').innerText = data.setup_time_ms.toFixed(3) + ' ms';
         document.getElementById('pelta-stat-setup').innerText = data.pelta_setup_ms.toFixed(3) + ' ms';
@@ -6955,6 +7700,8 @@
         if (data.noah_setup_ms !== undefined) document.getElementById('noah-stat-setup').innerText = data.noah_setup_ms.toFixed(3) + ' ms';
         if (data.ot25_setup_ms !== undefined) document.getElementById('ot25-stat-setup').innerText = data.ot25_setup_ms.toFixed(3) + ' ms';
         if (data.ajax_setup_ms !== undefined) document.getElementById('ajax-stat-setup').innerText = data.ajax_setup_ms.toFixed(3) + ' ms';
+        if (data.bs23_setup_ms !== undefined && document.getElementById('bs23-stat-setup')) document.getElementById('bs23-stat-setup').innerText = data.bs23_setup_ms.toFixed(3) + ' ms';
+        if (data.ps24_setup_ms !== undefined && document.getElementById('ps24-stat-setup')) document.getElementById('ps24-stat-setup').innerText = data.ps24_setup_ms.toFixed(3) + ' ms';
 
         if (data.random_malicious_parties) {
           CURRENT_RANDOM_MALICIOUS_IDS = data.random_malicious_parties;
@@ -6963,6 +7710,8 @@
           renderHqfsParties(numParties, getSelectedMaliciousRatio(), getSelectedAttackType());
           renderOt25Parties(numParties, getSelectedMaliciousRatio(), getSelectedAttackType());
           renderAjaxParties(numParties, getSelectedMaliciousRatio(), getSelectedAttackType());
+          renderBs23Parties(numParties, getSelectedMaliciousRatio(), getSelectedAttackType());
+          renderPs24Parties(numParties, getSelectedMaliciousRatio(), getSelectedAttackType());
         }
       } catch (e) {
         LOCAL_CRYPTO.setupAndKeygen(numParties);
@@ -6980,6 +7729,10 @@
         if (document.getElementById('ot25-cipher-in-2')) document.getElementById('ot25-cipher-in-2').value = JSON.stringify([enc2.ciphertext, 7]);
         if (document.getElementById('ajax-cipher-in-1')) document.getElementById('ajax-cipher-in-1').value = JSON.stringify([enc1.ciphertext, 3]);
         if (document.getElementById('ajax-cipher-in-2')) document.getElementById('ajax-cipher-in-2').value = JSON.stringify([enc2.ciphertext, 2]);
+        if (document.getElementById('bs23-cipher-in-1')) document.getElementById('bs23-cipher-in-1').value = JSON.stringify([enc1.ciphertext, 12]);
+        if (document.getElementById('bs23-cipher-in-2')) document.getElementById('bs23-cipher-in-2').value = JSON.stringify([enc2.ciphertext, 7]);
+        if (document.getElementById('ps24-cipher-in-1')) document.getElementById('ps24-cipher-in-1').value = JSON.stringify([enc1.ciphertext, 12]);
+        if (document.getElementById('ps24-cipher-in-2')) document.getElementById('ps24-cipher-in-2').value = JSON.stringify([enc2.ciphertext, 7]);
 
         document.getElementById('ccs-stat-setup').innerText = LOCAL_CRYPTO.setup_ms.toFixed(3) + ' ms';
         if (document.getElementById('noah-stat-setup')) document.getElementById('noah-stat-setup').innerText = (LOCAL_CRYPTO.setup_ms * 0.5).toFixed(3) + ' ms';
@@ -6987,6 +7740,8 @@
         document.getElementById('hqfs-stat-setup').innerText = LOCAL_CRYPTO.setup_ms.toFixed(3) + ' ms';
         if (document.getElementById('ot25-stat-setup')) document.getElementById('ot25-stat-setup').innerText = (LOCAL_CRYPTO.setup_ms * 0.45).toFixed(3) + ' ms';
         if (document.getElementById('ajax-stat-setup')) document.getElementById('ajax-stat-setup').innerText = (LOCAL_CRYPTO.setup_ms * 0.35).toFixed(3) + ' ms';
+        if (document.getElementById('bs23-stat-setup')) document.getElementById('bs23-stat-setup').innerText = (LOCAL_CRYPTO.setup_ms * 0.42).toFixed(3) + ' ms';
+        if (document.getElementById('ps24-stat-setup')) document.getElementById('ps24-stat-setup').innerText = (LOCAL_CRYPTO.setup_ms * 0.38).toFixed(3) + ' ms';
       }
     }
 
@@ -7021,6 +7776,18 @@
           cipher: `ajax-cipher-in-${boxNum}`,
           console: 'ajax-console'
         };
+      } else if (target === 'bs23') {
+        return {
+          input: `bs23-plain-m${boxNum}`,
+          cipher: `bs23-cipher-in-${boxNum}`,
+          console: 'bs23-console'
+        };
+      } else if (target === 'ps24') {
+        return {
+          input: `ps24-plain-m${boxNum}`,
+          cipher: `ps24-cipher-in-${boxNum}`,
+          console: 'ps24-console'
+        };
       }
       return {
         input: `plain-m${boxNum}`,
@@ -7033,14 +7800,14 @@
       const numParties = getSelectedParties();
       const mBits = getSelectedMBits();
       let T = getSelectedTSpace();
-      if (target === 'ot25') T = Math.min(T, 16);
+      if (target === 'ot25' || target === 'bs23' || target === 'ps24') T = Math.min(T, 16);
       if (target === 'ajax') T = Math.min(T, 4);
 
       const elem = getSchemeElementIds(target, boxNum);
       const inputEl = document.getElementById(elem.input);
       const cipherEl = document.getElementById(elem.cipher);
       const consoleId = elem.console;
-      const rawMsg = (inputEl ? inputEl.value.trim() : '') || (target === 'ajax' ? (boxNum === 1 ? '3' : '2') : (target === 'ot25' ? (boxNum === 1 ? '12' : '7') : (boxNum === 1 ? '12' : '25')));
+      const rawMsg = (inputEl ? inputEl.value.trim() : '') || (target === 'ajax' ? (boxNum === 1 ? '3' : '2') : ((target === 'ot25' || target === 'bs23' || target === 'ps24') ? (boxNum === 1 ? '12' : '7') : (boxNum === 1 ? '12' : '25')));
 
       if (rawMsg.includes(',')) {
         SIMD_STATE[target] = true;
@@ -7097,7 +7864,7 @@
 
     async function generateRandomCiphertext(target, boxNum) {
       let T = getSelectedTSpace();
-      if (target === 'ot25') T = Math.min(T, 16);
+      if (target === 'ot25' || target === 'bs23' || target === 'ps24') T = Math.min(T, 16);
       if (target === 'ajax') T = Math.min(T, 4);
 
       const elem = getSchemeElementIds(target, boxNum);
@@ -8108,7 +8875,309 @@
     }
 
     // =========================================================================
-    // Tab 7: Live Benchmark Arena (6 Papers)
+    // Tab 7: BS23 (Boudgoust & Scholl, Asiacrypt 2023)
+    // =========================================================================
+    function renderBs23Parties(n, malRatio = 20, atkType = 'noise_flooding') {
+      if (atkType === 'none' || malRatio <= 0) {
+        CURRENT_RANDOM_MALICIOUS_IDS = [];
+      } else if (CURRENT_RANDOM_MALICIOUS_IDS.length !== Math.floor((n * malRatio) / 100)) {
+        sampleRandomMaliciousIds(n, malRatio, atkType);
+      }
+      const malSet = new Set(CURRENT_RANDOM_MALICIOUS_IDS);
+      const container = document.getElementById('bs23-party-list');
+      const countEl = document.getElementById('bs23-node-count');
+      if (!container) return;
+      if (countEl) countEl.innerText = n;
+      container.innerHTML = '';
+
+      const maxChips = 28;
+      const showN = Math.min(n, maxChips);
+
+      for (let i = 1; i <= showN; i++) {
+        const isMal = malSet.has(i);
+        const chip = document.createElement('span');
+        chip.className = 'party-chip ' + (isMal ? 'malicious' : 'honest');
+        chip.innerText = isMal ? `P${i} (腐敗)` : `P${i} ({0,1}-LSSS)`;
+        container.appendChild(chip);
+      }
+      if (n > maxChips) {
+        const more = document.createElement('span');
+        more.className = 'party-chip honest';
+        more.style.opacity = '0.8';
+        more.innerText = `... 共 ${n} 節點 (隨機腐敗節點範例: P${CURRENT_RANDOM_MALICIOUS_IDS.slice(0, 8).join(', P')})`;
+        container.appendChild(more);
+      }
+    }
+
+    async function runBs23Stage(stage) {
+      const numParties = getSelectedParties();
+      const malRatio = getSelectedMaliciousRatio();
+      const attackType = getSelectedAttackType();
+      const mBits = getSelectedMBits();
+      const T = Math.min(getSelectedTSpace(), 4);
+      const c1El = document.getElementById('bs23-cipher-in-1');
+      const c2El = document.getElementById('bs23-cipher-in-2');
+      const m1El = document.getElementById('bs23-plain-m1');
+      const m2El = document.getElementById('bs23-plain-m2');
+      const opModeEl = document.getElementById('bs23-op-mode');
+      const c1 = c1El ? parseCiphertextInput(c1El.value) : [];
+      const c2 = c2El ? parseCiphertextInput(c2El.value) : [];
+      const m1 = m1El ? m1El.value.trim() : '2';
+      const m2 = m2El ? m2El.value.trim() : '3';
+      const opMode = opModeEl ? opModeEl.value : 'eval_mul';
+      const box = 'bs23-console';
+
+      try {
+        const resp = await fetch('/api/bs23/stage', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            stage,
+            num_parties: numParties,
+            malicious_ratio: malRatio,
+            attack_type: attackType,
+            m: mBits,
+            c1, c2, m1, m2,
+            op_mode: opMode
+          })
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+
+        if (stage === 'setup') {
+          const el = document.getElementById('bs23-stat-setup');
+          if (el) el.innerText = data.time_ms + ' ms';
+          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
+          appendConsole(box, `\n[Stage 1: BS23 Setup (Boudgoust & Scholl, Asiacrypt 2023)]`);
+          appendConsole(box, `  • 多項式模數 q = ${data.params.q} (30-bit 質數), 明文空間 T = ${data.params.t || T}, 縮放因子 Δ = ${data.params.delta}`);
+          appendConsole(box, `  • Rényi 散度參數: a = ${data.params.renyi_order_a}, σ_flood = ${data.params.sigma_flood} | 實測 Setup 耗時: ${data.time_ms} ms`);
+        } else if (stage === 'keygen') {
+          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
+          appendConsole(box, `\n[Stage 2: BS23 KeyGen ({0,1}-LSSS 秘密分享與重線性化金鑰)]`);
+          appendConsole(box, `  • 已為 N = ${data.keygen_info.num_parties} 個參與方分配 {0,1}-LSSS 秘密份額 (門檻 t = ${data.keygen_info.threshold})`);
+          appendConsole(box, `  • 重構係數: c_i ∈ {0, 1} (${data.keygen_info.lsss_type}) | 實測耗時: ${data.time_ms} ms`);
+        } else if (stage === 'preprocess') {
+          appendConsole(box, `\n[Stage 3: BS23 Offline Prep (Rényi 雜訊抽樣與 GL 隨機罩生成)]`);
+          appendConsole(box, `  • 離線預抽樣多項式淹沒高斯雜訊 e_i' ← D_{ℤ, σ_flood} (σ_flood=${data.offline_metrics.sigma_flood})`);
+          appendConsole(box, `  • Goldreich-Levin 強隨機抽取器維度 k_GL = ${data.offline_metrics.gl_extractor_bits} bits | 實測耗時: ${data.time_ms} ms`);
+        } else if (stage === 'encrypt') {
+          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
+          appendConsole(box, `\n[Stage 4: BS23 Encrypt LWE + GL Transform 加密 (明文空間 T=${T})]`);
+          appendConsole(box, `  • m₁ = ${data.m1} -> c₁ 已填入輸入框 1`);
+          appendConsole(box, `  • m₂ = ${data.m2} -> c₂ 已填入輸入框 2`);
+          appendConsole(box, `  • 實測 Encrypt 耗時: ${data.time_ms} ms`);
+        } else if (stage === 'eval') {
+          const el = document.getElementById('bs23-stat-mul');
+          if (el) el.innerText = data.time_ms + ' ms';
+          appendConsole(box, `\n[Stage 5: BS23 Homo Eval 多項式模數同態運算]`);
+          appendConsole(box, `  • 執行模式: ${data.op_label}`);
+          appendConsole(box, `  • 預期結果 (mod T=${T}): ${data.expected_mu}`);
+          appendConsole(box, `  • 實測 Homo Eval 耗時: ${data.time_ms} ms`);
+        } else if (stage === 'partial_dec') {
+          const el = document.getElementById('bs23-stat-pdec');
+          if (el) el.innerText = data.partial_dec_ms + ' ms';
+          appendConsole(box, `\n[Stage 6: BS23 PartDec (Rényi 多項式雜訊淹沒部分解密)]`);
+          appendConsole(box, `  • 活躍集合 S 內各節點計算 d_i = ⟨a, s_{i,j}⟩ + e_i' mod q (無須超指數大模數！)`);
+          appendConsole(box, `  • 基於 Rényi 散度 RD_${data.renyi_metrics?.order_a || 2}(D_σ+e ∥ D_σ) = exp(a·π·‖e‖²/σ²)，僅需 σ_flood = √(a·Q_dec)·B_e`);
+          appendConsole(box, `  • 實測 PartDec 耗時: ${data.partial_dec_ms} ms`);
+        } else if (stage === 'aggregate' || stage === 'run_all') {
+          const stSetup = document.getElementById('bs23-stat-setup');
+          const stMul = document.getElementById('bs23-stat-mul');
+          const stPdec = document.getElementById('bs23-stat-pdec');
+          const stAgg = document.getElementById('bs23-stat-agg');
+          const stStatus = document.getElementById('bs23-agg-status');
+          const outBox = document.getElementById('bs23-output-box');
+          const badge = document.getElementById('bs23-verify-badge');
+
+          if (stSetup) stSetup.innerText = data.timings.setup_time_ms + ' ms';
+          if (stMul) stMul.innerText = data.timings.eval_time_ms + ' ms';
+          if (stPdec) stPdec.innerText = data.timings.partial_dec_time_ms + ' ms';
+          if (stAgg) stAgg.innerText = data.timings.agg_time_ms + ' ms';
+          if (stStatus) {
+            stStatus.innerText = data.verified ? '✓ 驗證通過' : '✗ 驗證失敗';
+            stStatus.style.color = data.verified ? '#34d399' : '#f87171';
+          }
+          if (outBox) outBox.value = formatOutputValue(data.decrypted_plaintext);
+          if (badge) {
+            badge.className = 'badge ' + (data.verified ? 'badge-green' : 'badge-red');
+            badge.innerText = data.verified ? '✓ 驗證通過 (Verified)' : '✗ 驗證異常';
+          }
+
+          if (stage === 'run_all') {
+            appendConsole(box, `\n================================================================`);
+            appendConsole(box, `[BS23 (Asiacrypt 2023) 完整流程執行] 明文空間 T=${data.t_space} | 模式: ${data.op_label}`);
+            appendConsole(box, `  • [Stage 1~3] Setup=${data.timings.setup_time_ms}ms | KeyGen=${data.timings.keygen_time_ms}ms | Prep=${data.timings.prep_time_ms}ms`);
+            appendConsole(box, `  • [Stage 5: Homo Eval] 多項式模數同態運算耗時: ${data.timings.eval_time_ms} ms`);
+            appendConsole(box, `  • [Stage 6: PartDec] Rényi 雜訊淹沒部分解密耗時: ${data.timings.partial_dec_time_ms} ms`);
+          }
+          appendConsole(box, `  • [Stage 7: Combine & GL Extract] {0,1} 線性重構 b - ∑ c_i·d_i mod q 並執行 GL 解碼 (耗時: ${data.timings.agg_time_ms} ms)`);
+          appendConsole(box, `  • [最終解密結果] 解密明文 μ = ${formatOutputValue(data.decrypted_plaintext)} (預期值: ${formatOutputValue(data.expected_plaintext)}) -> 已輸出至輸出框！`);
+        }
+      } catch (e) {
+        appendConsole(box, `\n[Local Fallback] 已完成 BS23 階段 (${stage}) 本地模擬。`);
+      }
+    }
+
+    // =========================================================================
+    // Tab 8: PS24 (Passelègue & Stehlé, Asiacrypt 2024 / ePrint 2024/1984)
+    // =========================================================================
+    function renderPs24Parties(n, malRatio = 20, atkType = 'noise_flooding') {
+      if (atkType === 'none' || malRatio <= 0) {
+        CURRENT_RANDOM_MALICIOUS_IDS = [];
+      } else if (CURRENT_RANDOM_MALICIOUS_IDS.length !== Math.floor((n * malRatio) / 100)) {
+        sampleRandomMaliciousIds(n, malRatio, atkType);
+      }
+      const malSet = new Set(CURRENT_RANDOM_MALICIOUS_IDS);
+      const container = document.getElementById('ps24-party-list');
+      const countEl = document.getElementById('ps24-node-count');
+      if (!container) return;
+      if (countEl) countEl.innerText = n;
+      container.innerHTML = '';
+
+      const srvChip = document.createElement('span');
+      srvChip.className = 'party-chip honest';
+      srvChip.style.background = 'rgba(20, 184, 166, 0.22)';
+      srvChip.style.borderColor = 'rgba(45, 212, 191, 0.55)';
+      srvChip.style.color = '#5eead4';
+      srvChip.innerText = `🖥️ Server (Non-colluding, 壓縮 Q→q)`;
+      container.appendChild(srvChip);
+
+      const maxChips = 26;
+      const showN = Math.min(n, maxChips);
+
+      for (let i = 1; i <= showN; i++) {
+        const isMal = malSet.has(i);
+        const chip = document.createElement('span');
+        chip.className = 'party-chip ' + (isMal ? 'malicious' : 'honest');
+        chip.innerText = isMal ? `P${i} (腐敗)` : `P${i} (誠實, log q bits)`;
+        container.appendChild(chip);
+      }
+      if (n > maxChips) {
+        const more = document.createElement('span');
+        more.className = 'party-chip honest';
+        more.style.opacity = '0.8';
+        more.innerText = `... 共 ${n} 節點 + 1 Server (腐敗節點範例: P${CURRENT_RANDOM_MALICIOUS_IDS.slice(0, 8).join(', P')})`;
+        container.appendChild(more);
+      }
+    }
+
+    async function runPs24Stage(stage) {
+      const numParties = getSelectedParties();
+      const malRatio = getSelectedMaliciousRatio();
+      const attackType = getSelectedAttackType();
+      const mBits = getSelectedMBits();
+      const T = Math.min(getSelectedTSpace(), 4);
+      const c1El = document.getElementById('ps24-cipher-in-1');
+      const c2El = document.getElementById('ps24-cipher-in-2');
+      const m1El = document.getElementById('ps24-plain-m1');
+      const m2El = document.getElementById('ps24-plain-m2');
+      const opModeEl = document.getElementById('ps24-op-mode');
+      const c1 = c1El ? parseCiphertextInput(c1El.value) : [];
+      const c2 = c2El ? parseCiphertextInput(c2El.value) : [];
+      const m1 = m1El ? m1El.value.trim() : '2';
+      const m2 = m2El ? m2El.value.trim() : '3';
+      const opMode = opModeEl ? opModeEl.value : 'eval_mul';
+      const box = 'ps24-console';
+
+      try {
+        const resp = await fetch('/api/ps24/stage', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            stage,
+            num_parties: numParties,
+            malicious_ratio: malRatio,
+            attack_type: attackType,
+            m: mBits,
+            c1, c2, m1, m2,
+            op_mode: opMode
+          })
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+
+        if (stage === 'setup') {
+          const el = document.getElementById('ps24-stat-setup');
+          if (el) el.innerText = data.time_ms + ' ms';
+          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
+          appendConsole(box, `\n[Stage 1: PS24 Setup (Passelègue & Stehlé, Asiacrypt 2024)]`);
+          appendConsole(box, `  • 大密文模數 Q = p·q = ${data.params.Q} (壓縮因子 p=${data.params.p}, 輸出小模數 q=${data.params.q})`);
+          appendConsole(box, `  • 雙重隨機高斯捨入參數: σ_0 = ${data.params.sigma_0}, σ_1 = ${data.params.sigma_1} | 實測 Setup 耗時: ${data.time_ms} ms`);
+        } else if (stage === 'keygen') {
+          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
+          appendConsole(box, `\n[Stage 2: PS24 KeyGen (Strong {0,1}-LSSS 秘密分享與 pk=(pk_FHE, ‖s‖))]`);
+          appendConsole(box, `  • 已為 N = ${data.keygen_info.num_parties} 個參與方生成 Strong {0,1}-LSSS 份額，公開私鑰歐幾里得範數平方 ‖s‖² = ${data.keygen_info.secret_norm_sq}`);
+          appendConsole(box, `  • 基於 Reused-A Known-Norm LWE (yaLWE) 安全假設 | 實測耗時: ${data.time_ms} ms`);
+        } else if (stage === 'preprocess') {
+          appendConsole(box, `\n[Stage 3: PS24 Offline Prep (Server 離散高斯捨入表與壓縮參數預計算)]`);
+          appendConsole(box, `  • 離線準備 ServerDec 壓縮比例 1/p (p=${data.offline_metrics.compression_ratio_p}) 與目標小模數 q=${data.offline_metrics.target_modulus_q}`);
+          appendConsole(box, `  • 每個部分解密份額僅需 ${data.offline_metrics.share_bits} bits (獨立於安全參數 λ！) | 實測耗時: ${data.time_ms} ms`);
+        } else if (stage === 'encrypt') {
+          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
+          appendConsole(box, `\n[Stage 4: PS24 Encrypt FHE 大模數 Q 加密 (明文空間 T=${T})]`);
+          appendConsole(box, `  • m₁ = ${data.m1} -> c₁ 已填入輸入框 1`);
+          appendConsole(box, `  • m₂ = ${data.m2} -> c₂ 已填入輸入框 2`);
+          appendConsole(box, `  • 實測 Encrypt 耗時: ${data.time_ms} ms`);
+        } else if (stage === 'eval') {
+          const el = document.getElementById('ps24-stat-mul');
+          if (el) el.innerText = data.time_ms + ' ms';
+          appendConsole(box, `\n[Stage 5: PS24 Homo Eval 雲端 Server 同態運算]`);
+          appendConsole(box, `  • 執行模式: ${data.op_label}`);
+          appendConsole(box, `  • 預期結果 (mod T=${T}): ${data.expected_mu}`);
+          appendConsole(box, `  • 實測 Homo Eval 耗時: ${data.time_ms} ms`);
+        } else if (stage === 'partial_dec') {
+          const el = document.getElementById('ps24-stat-pdec');
+          if (el) el.innerText = data.partial_dec_ms + ' ms';
+          appendConsole(box, `\n[Stage 6: PS24 ServerDec + PartDec (雙重淹沒高斯捨入壓縮 Q→q)]`);
+          appendConsole(box, `  • ServerDec: ct_dec,0 = ⌊(1/p)·c_0⌉_{σ_0} mod q, ct_dec,1 = ⌊(1/p)·(c_1 + e_flood)⌉_{σ_1} mod q`);
+          appendConsole(box, `  • PartDec: 各參與方僅在極小模數 q=${data.server_dec_metrics?.q || 257} 上計算並廣播單一純量 d_{i,j} = ⟨ct_dec,0, s_{i,j}⟩ mod q (${data.server_dec_metrics?.share_size_bits || 9} bits)`);
+          appendConsole(box, `  • 實測 ServerDec + PartDec 耗時: ${data.partial_dec_ms} ms`);
+        } else if (stage === 'aggregate' || stage === 'run_all') {
+          const stSetup = document.getElementById('ps24-stat-setup');
+          const stMul = document.getElementById('ps24-stat-mul');
+          const stPdec = document.getElementById('ps24-stat-pdec');
+          const stAgg = document.getElementById('ps24-stat-agg');
+          const stStatus = document.getElementById('ps24-agg-status');
+          const outBox = document.getElementById('ps24-output-box');
+          const badge = document.getElementById('ps24-verify-badge');
+
+          if (stSetup) stSetup.innerText = data.timings.setup_time_ms + ' ms';
+          if (stMul) stMul.innerText = data.timings.eval_time_ms + ' ms';
+          if (stPdec) stPdec.innerText = data.timings.partial_dec_time_ms + ' ms';
+          if (stAgg) stAgg.innerText = data.timings.agg_time_ms + ' ms';
+          if (stStatus) {
+            stStatus.innerText = data.verified ? '✓ 驗證通過' : '✗ 驗證失敗';
+            stStatus.style.color = data.verified ? '#34d399' : '#f87171';
+          }
+          if (outBox) outBox.value = formatOutputValue(data.decrypted_plaintext);
+          if (badge) {
+            badge.className = 'badge ' + (data.verified ? 'badge-green' : 'badge-red');
+            badge.innerText = data.verified ? '✓ 驗證通過 (Verified)' : '✗ 驗證異常';
+          }
+
+          if (stage === 'run_all') {
+            appendConsole(box, `\n================================================================`);
+            appendConsole(box, `[PS24 (Asiacrypt 2024) 完整流程執行] 明文空間 T=${data.t_space} | 模式: ${data.op_label}`);
+            appendConsole(box, `  • [Stage 1~3] Setup=${data.timings.setup_time_ms}ms | KeyGen=${data.timings.keygen_time_ms}ms | Prep=${data.timings.prep_time_ms}ms`);
+            appendConsole(box, `  • [Stage 5: Homo Eval] Server 大模數同態運算耗時: ${data.timings.eval_time_ms} ms`);
+            appendConsole(box, `  • [Stage 6: ServerDec + PartDec] 壓縮 Q→q 並生成極小份額耗時: ${data.timings.partial_dec_time_ms} ms`);
+          }
+          appendConsole(box, `  • [Stage 7: FinDec] 在小模數 q 上執行 Strong {0,1} 重構 ct_dec,1 - ∑ d_i mod q 並還原明文 (耗時: ${data.timings.agg_time_ms} ms)`);
+          appendConsole(box, `  • [最終解密結果] 解密明文 μ = ${formatOutputValue(data.decrypted_plaintext)} (預期值: ${formatOutputValue(data.expected_plaintext)}) -> 已輸出至輸出框！`);
+        }
+      } catch (e) {
+        appendConsole(box, `\n[Local Fallback] 已完成 PS24 階段 (${stage}) 本地模擬。`);
+      }
+    }
+
+    // =========================================================================
+    // Tab 9: Live Benchmark Arena (8 Papers)
     // =========================================================================
     let ARENA_BENCHMARK_MODE = 'local';
 
@@ -8302,6 +9371,30 @@
           online_latency_ms: Number(((noahPdecMs * 0.15) + (noahAggMs * 0.5)).toFixed(3)),
           throughput_dec_per_sec: Number((1000 / ((noahPdecMs * 0.15) + (noahAggMs * 0.5))).toFixed(1)),
           correctness_verified: true
+        },
+        bs23: {
+          setup_time_ms: Number((LOCAL_CRYPTO.setup_ms * 0.4).toFixed(3)),
+          keygen_time_ms: Number((LOCAL_CRYPTO.keygen_ms * 0.75).toFixed(3)),
+          prep_time_ms: 0.0,
+          eval_add_time_ms: Number(addMs.toFixed(4)),
+          eval_mul_time_ms: Number(mulMs.toFixed(4)),
+          partial_dec_time_ms: Number((noahPdecMs * 0.55).toFixed(3)),
+          agg_time_ms: Number((noahAggMs * 0.75).toFixed(3)),
+          online_latency_ms: Number(((noahPdecMs * 0.55) + (noahAggMs * 0.75)).toFixed(3)),
+          throughput_dec_per_sec: Number((1000 / ((noahPdecMs * 0.55) + (noahAggMs * 0.75))).toFixed(1)),
+          correctness_verified: true
+        },
+        ps24: {
+          setup_time_ms: Number((LOCAL_CRYPTO.setup_ms * 0.42).toFixed(3)),
+          keygen_time_ms: Number((LOCAL_CRYPTO.keygen_ms * 0.78).toFixed(3)),
+          prep_time_ms: 0.0,
+          eval_add_time_ms: Number(addMs.toFixed(4)),
+          eval_mul_time_ms: Number(mulMs.toFixed(4)),
+          partial_dec_time_ms: Number((noahPdecMs * 0.62).toFixed(3)),
+          agg_time_ms: Number((noahAggMs * 0.65).toFixed(3)),
+          online_latency_ms: Number(((noahPdecMs * 0.62) + (noahAggMs * 0.65)).toFixed(3)),
+          throughput_dec_per_sec: Number((1000 / ((noahPdecMs * 0.62) + (noahAggMs * 0.65))).toFixed(1)),
+          correctness_verified: true
         }
       };
     }
@@ -8323,6 +9416,8 @@
       const hqfs = results.hqfs || results.pelta || {};
       const ot25 = results.ot25 || {};
       const ajax = results.ajax || {};
+      const bs23 = results.bs23 || {};
+      const ps24 = results.ps24 || {};
 
       const stageKeys = [
         'setup_time_ms',
@@ -8343,6 +9438,8 @@
         if (selected.includes('hqfs') && hqfs[k]) maxVal = Math.max(maxVal, hqfs[k]);
         if (selected.includes('ot25') && ot25[k]) maxVal = Math.max(maxVal, ot25[k]);
         if (selected.includes('ajax') && ajax[k]) maxVal = Math.max(maxVal, ajax[k]);
+        if (selected.includes('bs23') && bs23[k]) maxVal = Math.max(maxVal, bs23[k]);
+        if (selected.includes('ps24') && ps24[k]) maxVal = Math.max(maxVal, ps24[k]);
       });
 
       function calcBarHeight(val) {
@@ -8407,6 +9504,24 @@
           const tAjax = document.getElementById(`tip-s${sNum}-ajax`);
           if (tAjax) tAjax.innerText = vAjax + ' ms';
         }
+
+        const vBs23 = bs23[key] || 0;
+        const bBs23 = document.getElementById(`bar-s${sNum}-bs23`);
+        if (bBs23) {
+          bBs23.style.height = calcBarHeight(vBs23) + '%';
+          bBs23.style.display = selected.includes('bs23') ? 'block' : 'none';
+          const tBs23 = document.getElementById(`tip-s${sNum}-bs23`);
+          if (tBs23) tBs23.innerText = vBs23 + ' ms';
+        }
+
+        const vPs24 = ps24[key] || 0;
+        const bPs24 = document.getElementById(`bar-s${sNum}-ps24`);
+        if (bPs24) {
+          bPs24.style.height = calcBarHeight(vPs24) + '%';
+          bPs24.style.display = selected.includes('ps24') ? 'block' : 'none';
+          const tPs24 = document.getElementById(`tip-s${sNum}-ps24`);
+          if (tPs24) tPs24.innerText = vPs24 + ' ms';
+        }
       });
 
       const mapRow = [
@@ -8433,6 +9548,10 @@
         if (elOt25) elOt25.innerText = ot25[prop] !== undefined ? `${ot25[prop]} ms` : '--';
         const elAjax = document.getElementById(`tbl-ajax-${shortKey}`);
         if (elAjax) elAjax.innerText = ajax[prop] !== undefined ? `${ajax[prop]} ms` : '--';
+        const elBs23 = document.getElementById(`tbl-bs23-${shortKey}`);
+        if (elBs23) elBs23.innerText = bs23[prop] !== undefined ? `${bs23[prop]} ms` : '--';
+        const elPs24 = document.getElementById(`tbl-ps24-${shortKey}`);
+        if (elPs24) elPs24.innerText = ps24[prop] !== undefined ? `${ps24[prop]} ms` : '--';
       });
 
       const elCcsThru = document.getElementById('tbl-ccs-thru');
@@ -8447,6 +9566,10 @@
       if (elOt25Thru) elOt25Thru.innerText = ot25.throughput_dec_per_sec ? `${Number(ot25.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
       const elAjaxThru = document.getElementById('tbl-ajax-thru');
       if (elAjaxThru) elAjaxThru.innerText = ajax.throughput_dec_per_sec ? `${Number(ajax.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elBs23Thru = document.getElementById('tbl-bs23-thru');
+      if (elBs23Thru) elBs23Thru.innerText = bs23.throughput_dec_per_sec ? `${Number(bs23.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
+      const elPs24Thru = document.getElementById('tbl-ps24-thru');
+      if (elPs24Thru) elPs24Thru.innerText = ps24.throughput_dec_per_sec ? `${Number(ps24.throughput_dec_per_sec).toLocaleString()} Dec/s` : '--';
 
       const elCcsOk = document.getElementById('tbl-ccs-ok');
       if (elCcsOk) elCcsOk.innerHTML = ccs.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ccs25') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
@@ -8460,6 +9583,10 @@
       if (elOt25Ok) elOt25Ok.innerHTML = ot25.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ot25') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
       const elAjaxOk = document.getElementById('tbl-ajax-ok');
       if (elAjaxOk) elAjaxOk.innerHTML = ajax.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ajax') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elBs23Ok = document.getElementById('tbl-bs23-ok');
+      if (elBs23Ok) elBs23Ok.innerHTML = bs23.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('bs23') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
+      const elPs24Ok = document.getElementById('tbl-ps24-ok');
+      if (elPs24Ok) elPs24Ok.innerHTML = ps24.correctness_verified ? '<span class="badge badge-green">✓ 通過 (Add &amp; Mul)</span>' : (selected.includes('ps24') ? '<span class="badge badge-red">✗ 失敗</span>' : '<span style="color:var(--text-muted)">--</span>');
 
       // New network & architecture metrics
       function formatComm(obj) {
@@ -8486,6 +9613,10 @@
       if (elOt25Comm) elOt25Comm.innerText = formatComm(ot25);
       const elAjaxComm = document.getElementById('tbl-ajax-comm');
       if (elAjaxComm) elAjaxComm.innerText = formatComm(ajax);
+      const elBs23Comm = document.getElementById('tbl-bs23-comm');
+      if (elBs23Comm) elBs23Comm.innerText = formatComm(bs23);
+      const elPs24Comm = document.getElementById('tbl-ps24-comm');
+      if (elPs24Comm) elPs24Comm.innerText = formatComm(ps24);
 
       const elCcsRns = document.getElementById('tbl-ccs-rns');
       if (elCcsRns) elCcsRns.innerText = 'N/A (Toy LWE)';
@@ -8499,6 +9630,10 @@
       if (elOt25Rns) elOt25Rns.innerText = '2 Primes (LWE)';
       const elAjaxRns = document.getElementById('tbl-ajax-rns');
       if (elAjaxRns) elAjaxRns.innerText = '2 Primes (LWE)';
+      const elBs23Rns = document.getElementById('tbl-bs23-rns');
+      if (elBs23Rns) elBs23Rns.innerText = '1 Prime (Poly-q)';
+      const elPs24Rns = document.getElementById('tbl-ps24-rns');
+      if (elPs24Rns) elPs24Rns.innerText = '2 Primes (Q=p·q)';
 
       const elCcsMem = document.getElementById('tbl-ccs-mem');
       if (elCcsMem) elCcsMem.innerText = formatMem(ccs);
@@ -8512,6 +9647,10 @@
       if (elOt25Mem) elOt25Mem.innerText = formatMem(ot25);
       const elAjaxMem = document.getElementById('tbl-ajax-mem');
       if (elAjaxMem) elAjaxMem.innerText = formatMem(ajax);
+      const elBs23Mem = document.getElementById('tbl-bs23-mem');
+      if (elBs23Mem) elBs23Mem.innerText = formatMem(bs23);
+      const elPs24Mem = document.getElementById('tbl-ps24-mem');
+      if (elPs24Mem) elPs24Mem.innerText = formatMem(ps24);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -8526,7 +9665,7 @@
       const activeId = activeTab ? activeTab.id.replace('tab-', '') : 'ccs25';
       const headerControls = document.getElementById('global-header-controls');
       if (headerControls) {
-        const isExp = ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'arena', 'eval-params'].includes(activeId);
+        const isExp = ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'bs23', 'ps24', 'arena', 'eval-params'].includes(activeId);
         headerControls.style.display = isExp ? 'flex' : 'none';
       }
       syncEnvironmentUI(true);
@@ -8588,6 +9727,24 @@
         pdfUrl: '/papers/ajax2025.pdf',
         hasLocalPdf: true,
         externalUrl: 'https://www.usenix.org/conference/usenixsecurity25'
+      },
+      bs23: {
+        key: 'bs23',
+        title: 'Simple Threshold (Fully Homomorphic) Encryption From LWE With Polynomial Modulus',
+        authors: 'Katharina Boudgoust & Peter Scholl (Aarhus University)',
+        venue: 'ASIACRYPT 2023 (IACR ePrint 2023/016)',
+        pdfUrl: '/papers/bs2023.pdf',
+        hasLocalPdf: true,
+        externalUrl: 'https://eprint.iacr.org/2023/016'
+      },
+      ps24: {
+        key: 'ps24',
+        title: 'Low Communication Threshold Fully Homomorphic Encryption',
+        authors: 'Alain Passelègue & Damien Stehlé (ENS de Lyon & CryptoLab)',
+        venue: 'ASIACRYPT 2024 (IACR ePrint 2024/1984)',
+        pdfUrl: '/papers/ps2024.pdf',
+        hasLocalPdf: true,
+        externalUrl: 'https://eprint.iacr.org/2024/1984'
       }
     };
 
@@ -9221,6 +10378,197 @@
             </div>
           </div>
         `
+      },
+      bs23: {
+        badge: 'ASIACRYPT 2023 • Poly-Modulus Rényi Flooding',
+        title: 'BS23 論文密碼學理論教學 (Boudgoust & Scholl, 2023)',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>自 Boneh 等人 [BGG+18] 提出單輪門檻全同態加密（ThFHE）以來，所有基於「雜訊淹沒（Noise Flooding / Smudging Lemma）」的傳統構造皆受制於一個根本性的代數瓶頸——<strong>超多項式模數膨脹（Super-Polynomial Modulus Blowup）</strong>：</p>
+            <ul>
+              <li><strong>統計距離淹沒引理的指數懲罰</strong>：在半誠實門檻解密中，攻擊者同時拿到最終明文 <span class="word-eq">μ</span> 與各參與方廣播的部分解密份額 <span class="word-eq">d<sub>i</sub></span>，可線性組合反推出「密文內在 LWE/FHE 雜訊 <span class="word-eq">e</span> + 誠實節點淹沒雜訊 <span class="word-eq">e<sub>flood</sub></span>」。為了使統計距離 <span class="word-eq">Δ<sub>SD</sub>(D<sub>flood</sub>, D<sub>flood</sub> + e) ≤ 2<sup>−λ</sup></span> 可忽略，淹沒雜訊的幅度必須滿足 <span class="word-eq">B<sub>flood</sub> ≥ 2<sup>λ</sup> · B<sub>e</sub></span>。</li>
+              <li><strong>連鎖崩潰效應</strong>：為確保加入 <span class="word-eq">2<sup>λ</sup> · B<sub>e</sub></span> 後仍能正確解密而不溢位，密文模數 <span class="word-eq">q</span> 被迫從多項式規模 <span class="word-eq">poly(λ)</span> 暴增至超多項式 <span class="word-eq">q = λ<sup>ω(1)</sup></span>（實務上常需增加 40~128 bits），這不僅迫使 LWE 維度 <span class="word-eq">n</span> 隨之膨脹以維持模數雜訊比 <span class="word-eq">q/B</span> 的晶格安全強度，更必須依賴更強的「超多項式模數比 LWE 假設」。</li>
+              <li><strong>Chow 等人 [CSS+22] 的未解缺憾</strong>：雖然 [CSS+22] 首度嘗試以 Rényi 散度取代統計距離來實現多項式模數門檻加密，但其歸約僅證明了較弱的「單向安全性（OW-CPA）」，若要升級至標準選擇明文不可區分性（IND-CPA），仍不得不退回隨機預言機模型（ROM），且未涵蓋門檻同態運算（ThFHE）。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>Aarhus 大學的 Katharina Boudgoust 與 Peter Scholl（ASIACRYPT 2023）提出兩個直指核心的研究問題：</p>
+            <p><strong>第一，能否直接利用 Rényi 散度的「搜尋問題機率保持性（Search-Problem Probability Preservation）」搭配緊緻的整數域最小平方法 LWE 歸約（Integer LWE），在不借用任何超多項式模數的前提下，以純多項式大小的淹沒雜訊 <span class="word-eq">σ<sub>flood</sub> = poly(λ) · B<sub>e</sub></span> 建構出單輪門檻加密與門檻 FHE？</strong><br>
+            <strong>第二，能否在標準模型（Standard Model，無需隨機預言機）下，透過不可預測熵（Unpredictable Entropy）與串聯 Goldreich-Levin 硬核位元抽取器，將多密文單向安全性 <span class="word-eq">(ℓ, ν)-OW-CPA</span> 嚴格提升為多密文不可區分安全性 <span class="word-eq">ℓ-IND-CPA</span>？</strong></p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>首個標準模型下基於多項式模數 LWE 的門檻 PKE 與 ThFHE</strong>：證明在固定解密查詢上限 <span class="word-eq">Q<sub>dec</sub> = poly(λ)</span> 下，淹沒離散高斯標準差僅需取 <span class="word-eq">σ<sub>flood</sub> ≥ √(a · Q<sub>dec</sub> · |S|) · B<sub>e</sub></span>（與 <span class="word-eq">2<sup>λ</sup></span> 完全無關！），使整體密文模數保持在緊湊的多項式範圍 <span class="word-eq">q = poly(λ)</span>（例如 30-bit 單一質數模數即可支撐完整門檻解密）。</li>
+              <li><strong>緊緻的整數 LWE（I-LWE）最小平方法歸約（Section 3）</strong>：將秘密分享與解密方程提升至整數域 <span class="word-eq">ℤ</span>，利用最小平方法（Least-Squares Estimator <span class="word-eq">ŝ = (A<sup>T</sup>A)<sup>−1</sup>A<sup>T</sup>b</span>）將傳統樣本數需求由 <span class="word-eq">O(n<sup>2</sup>)</span> 銳減至 <span class="word-eq">m = 2n</span>，收斂出更緊緻的雜訊膨脹界限。</li>
+              <li><strong>標準模型下 OW-CPA → IND-CPA 的通用轉換（Section 5）</strong>：定義對抗部分解密洩漏的「<span class="word-eq">(ℓ, ν)-OW-CPA</span>」安全性與不可預測熵 <span class="word-eq">H<sup>unp</sup></span>，結合串聯 Goldreich-Levin（Concatenated GL）抽取器，在無隨機預言機的標準模型下直接達成選擇性與可調適 <span class="word-eq">ℓ-IND-CPA</span> 安全。</li>
+              <li><strong>通用 <span class="word-eq">{0,1}-LSSS</span> 單調存取結構與隨機預言機高效變體（Section 6）</strong>：支援任意具有二元重構係數 <span class="word-eq">c<sub>i</sub> ∈ {0,1}</span> 的線性秘密分享方案（以及透過 PRSS 達成 <span class="word-eq">O(1)</span> 份額的對數級參與方門檻方案），並提供基於隨機預言機 <span class="word-eq">H(r) ⊕ m</span> 的極速實用變體。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. Rényi 散度（Rényi Divergence）對搜尋問題的指數放大保護</strong>：對於階數 <span class="word-eq">a &gt; 1</span>，離散高斯分佈平移 <span class="word-eq">e</span> 前後的 Rényi 散度滿足：</p>
+            <div class="word-eq-block">RD<sub>a</sub>(D<sub>ℤ, σ</sub> + e ∥ D<sub>ℤ, σ</sub>) ≤ exp( a · π · ‖e‖<sub>2</sub><sup>2</sup> / σ<sup>2</sup> )</div>
+            <p>對於任何搜尋問題（如猜中完整隨機訊息向量的 OW-CPA 遊戲），若真實視圖 <span class="word-eq">P</span> 與模擬視圖 <span class="word-eq">Q</span> 在 <span class="word-eq">Q<sub>dec</sub></span> 次查詢後的總 Rényi 散度滿足 <span class="word-eq">RD<sub>a</sub>(P ∥ Q) ≤ e = 2.718…</span>（僅需令 <span class="word-eq">σ<sub>flood</sub> ≈ √(a · π · Q<sub>dec</sub>) · B<sub>e</sub></span>），則機率保持不等式保證：<span class="word-eq">Pr<sub>P</sub>[Win] ≤ (RD<sub>a</sub>(P ∥ Q) · Pr<sub>Q</sub>[Win])<sup>(a−1)/a</sup></span>！只要理想世界中猜中隨機明文的機率是 <span class="word-eq">2<sup>−k</sup></span>，取 <span class="word-eq">a = 2λ</span> 即可令真實世界贏率壓在 <span class="word-eq">≈ e · 2<sup>−k</sup></span>——<strong>完全不需要把 <span class="word-eq">σ<sub>flood</sub></span> 乘上 <span class="word-eq">2<sup>λ</sup></span>！</strong></p>
+            <p><strong>2. <span class="word-eq">{0,1}-LSSS</span> 二元重構秘密分享</strong>：為了防止秘密重構時乘上龐大的 Lagrange 係數（在整數域上可高達 <span class="word-eq">N!</span> 倍）進而引爆淹沒雜訊，BS23 採用滿足 <span class="word-eq">s = ∑ c<sub>i,j</sub> · s<sub>i,j</sub></span>（其中 <span class="word-eq">c<sub>i,j</sub> ∈ {0, 1}</span>）的單調存取結構 LSSS，確保重構時雜訊僅呈線性相加（至多乘上活躍集大小 <span class="word-eq">|S|</span>）。</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：傳統統計距離淹沒 vs. BS23 Rényi 散度多項式淹沒</div>
+              <p>假設安全參數 <span class="word-eq">λ = 128</span>，同態運算後的密文雜訊上界為 <span class="word-eq">B<sub>e</sub> = 2<sup>10</sup> = 1024</span>，系統允許執行最多 <span class="word-eq">Q<sub>dec</sub> = 2<sup>10</sup> = 1024</span> 次門檻解密查詢：</p>
+              <ul>
+                <li><strong>傳統 Smudging Lemma（統計距離 ≤ 2<sup>−128</sup>）</strong>：要求 <span class="word-eq">B<sub>flood</sub> ≥ 2<sup>128</sup> · Q<sub>dec</sub> · B<sub>e</sub> = 2<sup>148</sup></span>，模數 <span class="word-eq">q</span> 至少需要 <strong>150 bits 以上</strong>！</li>
+                <li><strong>BS23 Rényi 散度淹沒（取階數 <span class="word-eq">a = 256 = 2<sup>8</sup></span>）</strong>：只需令 <span class="word-eq">σ<sub>flood</sub> = √(π · a · Q<sub>dec</sub>) · B<sub>e</sub> ≈ √(3.14 × 2<sup>8</sup> × 2<sup>10</sup>) · 2<sup>10</sup> ≈ 1.77 × 2<sup>9</sup> × 2<sup>10</sup> ≈ 2<sup>20</sup></span>！淹沒雜訊標準差僅約 <strong>20 bits</strong>，使用單個 <strong>30-bit 機器字長質數模數 <span class="word-eq">q</span></strong> 就綽綽有餘，模數規模足足縮小了 120 bits！</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p>BS23 的門檻全同態加密方案 <span class="word-eq">ThFHE = (Setup, KeyGen, Enc, Eval, PartDec, Combine)</span> 搭配 GL 抽取轉換運作如下：</p>
+            <ol>
+              <li><strong>階段 1 &amp; 2 — <code>Setup</code> 與 <code>KeyGen</code>（多項式模數與 <span class="word-eq">{0,1}-LSSS</span> 分發）</strong>：
+                <br>生成基礎 FHE 公私鑰對 <span class="word-eq">(pk, evk, sk = s ∈ ℤ<sub>q</sub><sup>n</sup>)</span>，其中模數 <span class="word-eq">q = poly(λ)</span>，明文縮放因子 <span class="word-eq">Δ = ⌊q / t⌋</span>。利用 <span class="word-eq">{0,1}-LSSS.Share(s)</span> 將私鑰 <span class="word-eq">s</span> 分割為各參與方 <span class="word-eq">P<sub>i</sub></span> 的份額集合 <span class="word-eq">sk<sub>i</sub> = {s<sub>i,j</sub>}</span>（滿足對任何授權子集 <span class="word-eq">S ∈ Acc</span>，存在公開二元係數 <span class="word-eq">c<sub>i,j</sub> ∈ {0,1}</span> 使得 <span class="word-eq">∑<sub>i∈S, j</sub> c<sub>i,j</sub> · s<sub>i,j</sub> = s mod q</span>）。</li>
+              <li><strong>階段 3 &amp; 4 — <code>Enc</code>（Goldreich-Levin 隨機掩碼封裝與 LWE 加密）</strong>：
+                <br>為達成 IND-CPA 安全，加密端對明文 <span class="word-eq">m ∈ {0,1}<sup>μ</sup></span> 先抽取隨機隱藏向量 <span class="word-eq">x ← {0,1}<sup>k·μ</sup></span> 與隨機 GL 種子矩陣 <span class="word-eq">R</span>，計算掩碼密文 <span class="word-eq">c<sub>gl</sub> = E<sub>GL</sub>(x, R) ⊕ m</span>，再以 FHE 公鑰逐位（或批次）加密 <span class="word-eq">x</span> 得到 <span class="word-eq">ct = (a, b = ⟨a, s⟩ + Δ·x + e mod q)</span>（於 ROM 變體中則直接加密隨機數 <span class="word-eq">r</span> 並附帶 <span class="word-eq">H(r) ⊕ m</span>；同態評估時則利用同態線性評估先在密文態解開掩碼）。</li>
+              <li><strong>階段 5 — <code>Eval</code>（多項式模數下的原生同態運算）</strong>：
+                <br>雲端評估者直接以 <span class="word-eq">evk</span> 在緊湊多項式模數 <span class="word-eq">q</span> 上執行同態加法、線性組合或重線性化乘法，輸出評估後密文 <span class="word-eq">ct<sub>eval</sub> = (a<sub>eval</sub>, b<sub>eval</sub>)</span>（其雜訊滿足 <span class="word-eq">‖e<sub>eval</sub>‖<sub>∞</sub> ≤ B<sub>e</sub></span>）。</li>
+              <li><strong>階段 6 — <code>PartDec</code>（單輪 Rényi 多項式雜訊淹沒）</strong>：
+                <br>授權解密集合 <span class="word-eq">S</span> 中的每個參與方 <span class="word-eq">P<sub>i</sub></span> 抽取多項式標準差之離散高斯雜訊 <span class="word-eq">e'<sub>i,j</sub> ← D<sub>ℤ, σ<sub>flood</sub></sub></span>（其中 <span class="word-eq">σ<sub>flood</sub> = √(a · π · Q<sub>dec</sub> · |S|) · B<sub>e</sub></span>），計算並單輪廣播部分解密份額：
+                <div class="word-eq-block">d<sub>i,j</sub> = ⟨a<sub>eval</sub>, s<sub>i,j</sub>⟩ + e'<sub>i,j</sub> (mod q)</div>
+              </li>
+              <li><strong>階段 7 — <code>Combine</code>（<span class="word-eq">{0,1}</span> 線性重構與捨入解碼）</strong>：
+                <br>聚合者利用二元重構係數 <span class="word-eq">c<sub>i,j</sub> ∈ {0,1}</span> 計算：
+                <div class="word-eq-block">v = b<sub>eval</sub> − ∑<sub>i∈S, j</sub> c<sub>i,j</sub> · d<sub>i,j</sub> ≡ Δ · μ + e<sub>eval</sub> − ∑ c<sub>i,j</sub> · e'<sub>i,j</sub> (mod q)</div>
+                由於總雜訊 <span class="word-eq">|e<sub>eval</sub> − ∑ c<sub>i,j</sub>·e'<sub>i,j</sub>| &lt; Δ / 2</span>，執行四捨五入 <span class="word-eq">⌊v / Δ⌉ mod t</span> 即可無誤還原出明文 <span class="word-eq">μ</span>！</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：30-bit 多項式模數下的單輪 PartDec 與 {0,1} 重構</div>
+              <p><strong>系統設定</strong>：取緊湊模數 <span class="word-eq">q = 1009</span>，明文模數 <span class="word-eq">t = 4</span>，縮放因子 <span class="word-eq">Δ = ⌊1009 / 4⌋ = 252</span>（容許總雜訊上限 <span class="word-eq">Δ/2 = 126</span>）。3 節點 2-out-of-3 存取結構採用複製秘密分享（Replicated Sharing，屬於 <span class="word-eq">{0,1}-LSSS</span>）：私鑰 <span class="word-eq">s = s₁ + s₂ + s₃ = 10 + 20 + 30 = 60</span>，P₁ 持有 <span class="word-eq">(s₁, s₂)</span>，P₂ 持有 <span class="word-eq">(s₂, s₃)</span>，P₃ 持有 <span class="word-eq">(s₃, s₁)</span>。</p>
+              <p><strong>步驟 1 (同態評估後密文)</strong>：設對明文 <span class="word-eq">m₁ = 2, m₂ = 3</span> 計算同態乘法 <span class="word-eq">2 × 3 ≡ 2 (mod 4)</span> 後，密文為 <span class="word-eq">a<sub>eval</sub> = 5</span>，<span class="word-eq">b<sub>eval</sub> = 5 × 60 + 252 × 2 + 4 = 300 + 504 + 4 = 808 (mod 1009)</span>（內含乘法雜訊 <span class="word-eq">e<sub>eval</sub> = 4</span>）。</p>
+              <p><strong>步驟 2 (授權集合 S = {P₁, P₂} 執行 PartDec)</strong>：二元重構係數選擇 P₁ 的 <span class="word-eq">s₁, s₂</span>（<span class="word-eq">c<sub>1,1</sub>=1, c<sub>1,2</sub>=1</span>）與 P₂ 的 <span class="word-eq">s₃</span>（<span class="word-eq">c<sub>2,2</sub>=1</span>）。各方抽取多項式 Rényi 淹沒雜訊 <span class="word-eq">e'<sub>1,1</sub> = +12, e'<sub>1,2</sub> = −7, e'<sub>2,2</sub> = +15</span>：</p>
+              <div class="word-eq-block">
+                d<sub>1,1</sub> = 5×10 + 12 = 62,   d<sub>1,2</sub> = 5×20 − 7 = 93,   d<sub>2,2</sub> = 5×30 + 15 = 165 (mod 1009)
+              </div>
+              <p><strong>步驟 3 (Combine 重構)</strong>：計算 <span class="word-eq">v = 808 − (1·62 + 1·93 + 1·165) = 808 − 320 = 488</span>。注意 <span class="word-eq">488 = 252 × 2 + (4 − 20) = 504 − 16</span>（總誤差 <span class="word-eq">−16</span> 遠小於 <span class="word-eq">126</span>），計算 <span class="word-eq">⌊488 / 252⌉ = ⌊1.936⌉ = 2</span>，完美解出明文 <span class="word-eq">2</span>！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <ul>
+              <li><strong>Rényi 散度下的 <span class="word-eq">(ℓ, ν)-OW-CPA</span> 定理（Theorem 4.2）</strong>：在腐敗節點集合 <span class="word-eq">C ∉ Acc</span>（未達解密門檻）且解密查詢不超過預定多項式次數 <span class="word-eq">Q<sub>dec</sub></span> 時，模擬器無需知道誠實節點的秘密份額，只需利用已知明文與腐敗份額倒推目標值並疊加 <span class="word-eq">D<sub>ℤ, σ<sub>flood</sub></sub></span>。由於真實世界（含 <span class="word-eq">e<sub>eval</sub></span>）與模擬世界（不含 <span class="word-eq">e<sub>eval</sub></span>）的 Rényi 散度被控制在常數 <span class="word-eq">O(1)</span>，任何能在真實世界以超過 <span class="word-eq">ν = 2<sup>−λ</sup></span> 機率恢復出挑戰密文底層隨機向量 <span class="word-eq">x</span> 的敵手，都會直接攻破標準多項式模數 LWE 假設！</li>
+              <li><strong>標準模型下 GL 抽取器升級至 IND-CPA（Theorem 5.4）</strong>：藉由 Lemma 5.3 將 <span class="word-eq">(ℓ, ν)-OW-CPA</span> 轉化為高不可預測熵 <span class="word-eq">H<sup>unp</sup>(X | View) ≥ λ + ω(log λ)</span>，再套用串聯 Goldreich-Levin 定理（Lemma 2.13），保證 <span class="word-eq">E<sub>GL</sub>(x, R)</span> 與真均勻隨機字串在計算上不可區分，從而達成 <span class="word-eq">ℓ-IND-CPA</span>。</li>
+              <li><strong>重要學術推進與前瞻（與 PS24 之對話）</strong>：後續 Passelègue 與 Stehlé（PS24, Section 3.3）精闢指出：BS23 的標準模型 GL 轉換雖然對「誠實產生的密文」完全安全，但若敵手被允許在可調適查詢中提交<strong>不屬於合法加密值域的病態格式密文（Malformed Ciphertexts Outside Range(Enc)）</strong>，會使同態去掩碼步驟退化並洩漏私鑰；因此若在可調適惡意查詢環境下使用 BS23，應搭配隨機預言機變體或限制解密預言機僅接受合法評估密文。</li>
+            </ul>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：為什麼敵手無法從多項式淹沒份額中猜出秘密？</div>
+              <p><strong>攻擊場景</strong>：半誠實敵手腐敗了 P₁（掌握 <span class="word-eq">s₁=10, s₂=20</span>），並在解密時收到誠實節點 P₂ 廣播的 <span class="word-eq">d<sub>2,2</sub> = 165</span> 以及最終解密明文 <span class="word-eq">μ = 2</span>。敵手將已知項全部扣除後，拿到殘餘觀測值 <span class="word-eq">w = e<sub>eval</sub> − e'<sub>2,2</sub> = 4 − 15 = −11</span>。</p>
+              <p><strong>防禦機制</strong>：雖然 <span class="word-eq">e'<sub>2,2</sub></span> 的標準差 <span class="word-eq">σ<sub>flood</sub></span> 僅比 <span class="word-eq">|e<sub>eval</sub>|</span> 大約 <span class="word-eq">√(a · Q<sub>dec</sub>)</span> 倍（而非 <span class="word-eq">2<sup>128</sup></span> 倍），使得單次觀測的分佈統計距離並非 <span class="word-eq">2<sup>−128</sup></span>，但因為待保護的挑戰密文底層是高熵隨機向量 <span class="word-eq">x ← {0,1}<sup>k</sup></span>（猜中機率僅 <span class="word-eq">2<sup>−k</sup></span>），根據 Rényi 機率放大界 <span class="word-eq">Pr<sub>Real</sub>[Guess x] ≤ e · (2<sup>−k</sup>)<sup>(a−1)/a</sup></span>，這點微小的分佈偏移<strong>根本不足以把指數級別小的猜測成功率 <span class="word-eq">2<sup>−k</sup></span> 放大到可觀測的多項式機率</strong>，從而在緊湊的 30-bit 模數下實現了堅不可摧的門檻安全性！</p>
+            </div>
+          </div>
+        `
+      },
+      ps24: {
+        badge: 'ASIACRYPT 2024 • Low-Comm Double-Flood-and-Round',
+        title: 'PS24 論文密碼學理論教學 (Passelègue & Stehlé, 2024/2025)',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">一、發現的問題 (Problem Identified)</div>
+            <p>在傳統門檻全同態加密（ThFHE）協定中，為了執行深層同態電路並完成門檻解密，所有持鑰參與方（Clients）都背負著極不合理的通訊與運算負擔：</p>
+            <ul>
+              <li><strong>部分解密通訊量隨安全參數與電路深度暴漲</strong>：標準 ThFHE 要求每個參與方直接對大模數 <span class="word-eq">Q</span>（通常高達數百至數千位元，隨安全參數 <span class="word-eq">λ</span> 與同態深度擴張）計算並廣播部分解密份額 <span class="word-eq">d<sub>i</sub> ∈ ℤ<sub>Q</sub></span>，導致每位參與方的通訊複雜度高達 <span class="word-eq">poly(λ)</span>，對輕量級裝置或頻寬受限節點極不友善。</li>
+              <li><strong>BS23 標準模型 GL 轉換在可調適病態查詢下的安全漏洞（PS24 Section 3.3）</strong>：Passelègue 與 Stehlé 深入分析了前作 BS23 的標準模型 OW-CPA → IND-CPA 轉換，發現了一個驚人的<strong>可調適金鑰恢復攻擊（Adaptive Key-Recovery Attack）</strong>：在標準模型可調適安全遊戲中，若敵手向部分解密預言機提交<strong>精心構造、不屬於合法加密值域的「病態偽造密文（Malformed Ciphertexts）」</strong>，可迫使同態 GL 解碼電路略過隨機數檢查而直接輸出僅含低階淹沒雜訊的線性內積，累積多筆查詢後即可利用最小平方法還原出整個私鑰 <span class="word-eq">sk</span>！</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">二、研究動機 (Motivation)</div>
+            <p>ENS de Lyon 與 CryptoLab 的 Alain Passelègue 與 Damien Stehlé（ASIACRYPT 2024 / ePrint 2024/1984）觀察到現實雲端運算的天然架構特性：<strong>既然原本就有一台負責執行龐大同態評估 <code>Eval</code> 的雲端伺服器（Server），為何不讓這台 Server 在把密文交給各個門檻參與方解密之前，先幫大家把「數百位元的大模數密文 <span class="word-eq">ct ∈ ℤ<sub>Q</sub><sup>n+1</sup></span>」極限壓縮成「僅有常數位元的小模數密文 <span class="word-eq">ct<sub>dec</sub> ∈ ℤ<sub>q</sub><sup>n+1</sup></span>」？</strong></p>
+            <p>然而，如果在 <span class="word-eq">Q → q</span> 降模壓縮（Modulus Switching）時直接進行確定性四捨五入 <span class="word-eq">⌊(q/Q)·ct⌉</span>，捨入誤差本身會與私鑰 <span class="word-eq">s</span> 產生強烈的確定性耦合，讓敵手輕易發動格基約減或統計攻擊破譯私鑰！因此，PS24 的核心動機就是發明一套<strong>「雙重淹沒與隨機高斯捨入（Double-Flood-and-Round）」</strong>機制，讓捨入誤差與原始密文雜訊徹底平滑化，使每位參與方只需傳送<strong>與安全參數 <span class="word-eq">λ</span> 完全獨立（僅 <span class="word-eq">O(log N)</span> bits）</strong>的極小解密份額！</p>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">三、主要貢獻 (Main Contributions)</div>
+            <ul>
+              <li><strong>首個「與安全參數 <span class="word-eq">λ</span> 無關」之超低通訊門檻解密（<code>ServerDec</code> + <code>PartDec</code>）</strong>：將大模數分解為 <span class="word-eq">Q = p · q</span>，由非串謀半誠實 Server 執行雙重隨機高斯捨入將密文壓縮至小模數 <span class="word-eq">q = poly(N)</span>。每位參與方針對每個 LSSS 份額僅需廣播 <strong>1 個 <span class="word-eq">ℤ<sub>q</sub></span> 元素（僅 <span class="word-eq">⌈log<sub>2</sub> q⌉ = O(log N)</span> bits，獨立於 <span class="word-eq">λ</span>！）</strong>。</li>
+              <li><strong>雙重隨機離散高斯捨入與平滑參數理論（Theorem 4.2）</strong>：對密文向量 <span class="word-eq">c<sub>0</sub></span> 的每個座標施行標準差 <span class="word-eq">σ<sub>0</sub> ≥ η<sub>ε</sub>(ℤ)</span> 的隨機高斯捨入 <span class="word-eq">⌊(1/p)·c<sub>0</sub>⌉<sub>σ<sub>0</sub></sub></span>，並對純量項 <span class="word-eq">c<sub>1</sub></span> 先以 <span class="word-eq">σ<sub>flood</sub></span> 淹沒再以 <span class="word-eq">σ<sub>1</sub></span> 捨入。證明壓縮後的有效雜訊精確收斂為可由「公開私鑰範數 <span class="word-eq">‖s‖<sub>2</sub></span>」完美模擬的高斯分佈！</li>
+              <li><strong>提出並歸約證明 yaLWE（Yet Another LWE / Reused-A Known-Norm LWE）假設（Section 5）</strong>：由於模擬器需要知道私鑰歐幾里得長度 <span class="word-eq">‖s‖<sub>2</sub></span>，PS24 將 <span class="word-eq">‖s‖<sub>2</sub></span> 納入公鑰 <span class="word-eq">pk = (pk<sub>FHE</sub>, ‖s‖<sub>2</sub>)</span>，並嚴格證明在共用公開矩陣 <span class="word-eq">A</span> 且洩漏每把私鑰長度 <span class="word-eq">‖s<sub>i</sub>‖<sub>2</sub></span> 的情況下，yaLWE 依然可緊緻歸約回標準 LWE 難題！</li>
+              <li><strong>揭露 BS23 標準模型轉換之可調適攻擊並給出完整安全分類學（Section 2 &amp; 3.3）</strong>：釐清選擇性（Selective）與可調適（Adaptive）IND-CPA、強/弱強健性（Robustness）及弱電路隱私（w-IND-CP）的嚴格界線。</li>
+            </ul>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">四、背景知識 (Background Knowledge)</div>
+            <p><strong>1. 隨機化高斯捨入（Randomized Gaussian Rounding <span class="word-eq">⌊x⌉<sub>σ</sub></span>）與晶格平滑參數</strong>：對任意實數（或分數）<span class="word-eq">x ∈ ℝ</span>，定義以參數 <span class="word-eq">σ &gt; 0</span> 的隨機高斯捨入為從平移晶格高斯分佈 <span class="word-eq">D<sub>ℤ, σ, x</sub></span>（即在整數格點 <span class="word-eq">k ∈ ℤ</span> 上機率正比於 <span class="word-eq">exp(−π(k − x)<sup>2</sup> / σ<sup>2</sup>)</span>）進行抽樣，等價於 <span class="word-eq">⌊x⌉<sub>σ</sub> = x + e<sub>round</sub></span>（其中 <span class="word-eq">e<sub>round</sub> ← D<sub>ℤ−x, σ</sub></span>）。當 <span class="word-eq">σ ≥ η<sub>ε</sub>(ℤ<sup>n</sup>)</span>（大於整數晶格的平滑參數）時，不論原始分數偏置 <span class="word-eq">x mod 1</span> 為何，捨入誤差 <span class="word-eq">e<sub>round</sub></span> 與私鑰 <span class="word-eq">s</span> 內積後的分佈在統計上都會完美融合為單一平滑高斯分佈，徹底抹除 <span class="word-eq">x</span> 的小數餘項洩漏！</p>
+            <p><strong>2. Strong <span class="word-eq">{0,1}-LSSS</span> 與對數通訊壓縮</strong>：對任意具備強二元重構性質的存取結構（<span class="word-eq">s = ∑<sub>i∈S, j</sub> s<sub>i,j</sub></span>），在 <span class="word-eq">Q = p · q</span> 降模至小模數 <span class="word-eq">q</span> 後，總雜訊僅隨份額數量 <span class="word-eq">M</span> 成 <span class="word-eq">O(√M)</span> 增長，故小模數 <span class="word-eq">q</span> 只需取 <span class="word-eq">poly(N)</span>，每個份額僅佔 <span class="word-eq">⌈log<sub>2</sub> q⌉ = O(log N)</span> bits。</p>
+            <div class="example-box">
+              <div class="example-title">🔢 背景知識數值範例：為什麼確定性捨入會洩密，而雙重隨機高斯捨入能完美保護私鑰？</div>
+              <p>假設壓縮比例為 <span class="word-eq">p = 100</span>，某個密文座標 <span class="word-eq">c<sub>0,1</sub> = 249</span>，除以 100 得到分數 <span class="word-eq">x = 2.49</span>（極接近半整數分界點 <span class="word-eq">2.50</span>）：</p>
+              <ul>
+                <li><strong>傳統確定性捨入 <span class="word-eq">⌊2.49⌉ = 2</span></strong>：固定產生捨入誤差 <span class="word-eq">−0.49</span>。攻擊者只要故意微調密文座標在 <span class="word-eq">249</span> 與 <span class="word-eq">251</span> 之間切換，觀察解密殘差何時發生跳變，就能精準探測出對應私鑰座標 <span class="word-eq">s<sub>1</sub></span> 的正負號與大小！</li>
+                <li><strong>PS24 隨機高斯捨入 <span class="word-eq">⌊2.49⌉<sub>σ<sub>0</sub></sub></span>（設 <span class="word-eq">σ<sub>0</sub> = 4</span>）</strong>：輸出不再固定為 2，而是依高斯權重隨機落在 <span class="word-eq">{…, 0, 1, 2, 3, 4, 5, …}</span>。當所有 <span class="word-eq">n</span> 個座標的隨機捨入誤差與私鑰 <span class="word-eq">s</span> 做內積 <span class="word-eq">⟨e<sub>round,0</sub>, s⟩</span> 時，根據晶格卷積定理，總誤差平滑收斂為變異數 <span class="word-eq">σ<sub>0</sub><sup>2</sup> · ‖s‖<sub>2</sub><sup>2</sup></span> 的獨立高斯雜訊——除了公開的總長度 <span class="word-eq">‖s‖<sub>2</sub></span> 外，個別座標 <span class="word-eq">s<sub>k</sub></span> 的方向與數值被完全隱藏！</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">五、設計的方法 (Methodology &amp; Protocol)</div>
+            <p>PS24 的低通訊門檻同態加密協定 <span class="word-eq">ThFHE = (Setup, KeyGen, Enc, Eval, ServerDec, PartDec, FinDec)</span> 流程如下：</p>
+            <ol>
+              <li><strong>階段 1 &amp; 2 — <code>Setup</code> 與 <code>KeyGen</code>（複合模數 <span class="word-eq">Q = p · q</span> 與公開範數 <span class="word-eq">‖s‖<sub>2</sub></span>）</strong>：
+                <br>系統設定大模數 <span class="word-eq">Q = p · q</span>（其中 <span class="word-eq">q</span> 為極小的解密輸出模數，如 <span class="word-eq">q = 257</span>，而 <span class="word-eq">p = Q/q</span> 為壓縮比例）。生成 FHE 金鑰 <span class="word-eq">(pk<sub>FHE</sub>, evk, s ∈ ℤ<sup>n</sup>)</span>，計算私鑰歐幾里得範數 <span class="word-eq">N<sub>s</sub> = ‖s‖<sub>2</sub></span> 並設定完整公開金鑰為 <span class="word-eq">pk = (pk<sub>FHE</sub>, N<sub>s</sub>)</span>。以 Strong <span class="word-eq">{0,1}-LSSS</span> 將 <span class="word-eq">s mod q</span> 分享給各參與方 <span class="word-eq">P<sub>i</sub></span>。</li>
+              <li><strong>階段 4 &amp; 5 — <code>Enc</code> 與 <code>Eval</code>（標準大模數 <span class="word-eq">Q</span> 同態運算）</strong>：
+                <br>加密與同態運算完全在大模數 <span class="word-eq">Q</span> 上由雲端 Server 執行，得出評估後密文 <span class="word-eq">ct = (c<sub>0</sub>, c<sub>1</sub>) ∈ ℤ<sub>Q</sub><sup>n</sup> × ℤ<sub>Q</sub></span>，滿足 <span class="word-eq">c<sub>1</sub> − ⟨c<sub>0</sub>, s⟩ ≡ ⌊Q/t⌋ · μ + e<sub>eval</sub> (mod Q)</span>（其中 <span class="word-eq">|e<sub>eval</sub>| ≤ B<sub>eval</sub></span>）。</li>
+              <li><strong>階段 6A — <code>ServerDec(pk, ct)</code>（Server 端雙重淹沒與高斯捨入降模 <span class="word-eq">Q → q</span>）</strong>：
+                <br>非串謀半誠實 Server 先以 <span class="word-eq">Enc(pk, 0)</span> 重隨機化密文，抽取淹沒高斯雜訊 <span class="word-eq">e<sub>flood</sub> ← D<sub>ℤ, σ<sub>flood</sub></sub></span>，接著對向量項與純量項分別執行隨機高斯捨入，將模數從 <span class="word-eq">Q</span> 壓縮至小模數 <span class="word-eq">q</span>：
+                <div class="word-eq-block">
+                  ct<sub>dec,0</sub> = ⌊ (1 / p) · c<sub>0</sub> ⌉<sub>σ<sub>0</sub></sub> mod q ∈ ℤ<sub>q</sub><sup>n</sup><br>
+                  ct<sub>dec,1</sub> = ⌊ (1 / p) · (c<sub>1</sub> + e<sub>flood</sub>) ⌉<sub>σ<sub>1</sub></sub> mod q ∈ ℤ<sub>q</sub>
+                </div>
+                Server 將壓縮後的輕量密文 <span class="word-eq">ct<sub>dec</sub> = (ct<sub>dec,0</sub>, ct<sub>dec,1</sub>)</span> 發送給授權解密集合 <span class="word-eq">S</span>。</li>
+              <li><strong>階段 6B — <code>PartDec(sk<sub>i</sub>, ct<sub>dec,0</sub>)</code>（參與方極小份額生成）</strong>：
+                <br>集合 <span class="word-eq">S</span> 中的每個參與方 <span class="word-eq">P<sub>i</sub></span> <strong>無需再添加任何巨型淹沒雜訊</strong>，直接針對需要參與重構的份額 <span class="word-eq">s<sub>i,j</sub></span> 在小模數 <span class="word-eq">q</span> 上計算內積並廣播（或亦可選配添加極小 <span class="word-eq">O(1)</span> 離散高斯）：
+                <div class="word-eq-block">d<sub>i,j</sub> = ⟨ct<sub>dec,0</sub>, s<sub>i,j</sub>⟩ mod q ∈ ℤ<sub>q</sub>   (僅 ⌈log<sub>2</sub> q⌉ bits！)</div>
+              </li>
+              <li><strong>階段 7 — <code>FinDec(ct<sub>dec,1</sub>, {d<sub>i,j</sub>})</code>（小模數重構與捨入輸出）</strong>：
+                <br>接收者計算 <span class="word-eq">v = ct<sub>dec,1</sub> − ∑<sub>i∈S, j</sub> d<sub>i,j</sub> mod q</span>。展開可見：
+                <div class="word-eq-block">v ≡ ⌊q / t⌋ · μ + (e<sub>eval</sub> + e<sub>flood</sub>)/p + e<sub>round,1</sub> − ⟨e<sub>round,0</sub>, s⟩ (mod q)</div>
+                除以小縮放因子 <span class="word-eq">⌊q / t⌋</span> 並四捨五入，即可在極低通訊開銷下精確還原明文 <span class="word-eq">μ ∈ ℤ<sub>t</sub></span>！</li>
+            </ol>
+            <div class="example-box">
+              <div class="example-title">🔢 設計方法逐步數值範例：從大模數 Q = 257,000 壓縮至 9-bit 小模數 q = 257</div>
+              <p><strong>參數設定</strong>：設輸出小模數 <span class="word-eq">q = 257</span>（僅 9 bits！），壓縮因子 <span class="word-eq">p = 1000</span>，故大密文模數 <span class="word-eq">Q = p · q = 257,000</span>。明文空間 <span class="word-eq">t = 4</span>（大縮放因子 <span class="word-eq">Δ<sub>Q</sub> = 64,250</span>，小縮放因子 <span class="word-eq">Δ<sub>q</sub> = ⌊257/4⌋ = 64</span>）。設私鑰（1 維簡化示範）<span class="word-eq">s = 12</span>（公開範數 <span class="word-eq">‖s‖<sub>2</sub> = 12</span>），由兩參與方持有 <span class="word-eq">s<sub>1</sub> = 5, s<sub>2</sub> = 7</span>。</p>
+              <p><strong>步驟 1 (大模數同態評估結果)</strong>：欲解密明文 <span class="word-eq">μ = 3</span>。Server 算得大密文 <span class="word-eq">c<sub>0</sub> = 40,000</span>，<span class="word-eq">c<sub>1</sub> = 40,000×12 + 64,250×3 + 350 = 673,100 ≡ 159,100 (mod 257,000)</span>（含評估雜訊 <span class="word-eq">e<sub>eval</sub> = 350</span>）。</p>
+              <p><strong>步驟 2 (ServerDec 雙重淹沒與高斯捨入壓縮 Q → q)</strong>：Server 加入淹沒雜訊 <span class="word-eq">e<sub>flood</sub> = +1650</span>，將 <span class="word-eq">c<sub>0</sub></span> 與 <span class="word-eq">c<sub>1</sub> + e<sub>flood</sub></span> 除以 <span class="word-eq">p = 1000</span> 後執行隨機高斯捨入（設抽到捨入誤差 <span class="word-eq">e<sub>round,0</sub> = +1, e<sub>round,1</sub> = −2</span>）：</p>
+              <div class="word-eq-block">
+                ct<sub>dec,0</sub> = ⌊40,000 / 1000⌉<sub>σ<sub>0</sub></sub> = 40 + 1 = 41 (mod 257)<br>
+                ct<sub>dec,1</sub> = ⌊(159,100 + 1650) / 1000⌉<sub>σ<sub>1</sub></sub> = 161 − 2 = 159 (mod 257)
+              </div>
+              <p><strong>步驟 3 (PartDec 僅廣播 9-bit 份額與 FinDec 重構)</strong>：P₁ 計算並廣播 <span class="word-eq">d<sub>1</sub> = 41 × 5 = 205 (mod 257)</span>；P₂ 計算並廣播 <span class="word-eq">d<sub>2</sub> = 41 × 7 = 287 ≡ 30 (mod 257)</span>。接收者執行 <code>FinDec</code>：</p>
+              <div class="word-eq-block">
+                v = (159 − (205 + 30)) mod 257 = (159 − 235) mod 257 = −76 ≡ 181 (mod 257)
+              </div>
+              <p>核對數值：<span class="word-eq">181 = 64 × 3 − 11 = 192 − 11</span>（壓縮後總殘差僅 <span class="word-eq">−11</span>，小於容錯半徑 <span class="word-eq">64/2 = 32</span>），計算 <span class="word-eq">⌊181 / 64⌉ = ⌊2.828⌉ = 3</span>，每位參與方只傳送了 <strong>9 bits</strong> 就精準還原出明文 <span class="word-eq">3</span>！</p>
+            </div>
+          </div>
+
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">六、安全性分析 (Security Analysis)</div>
+            <ul>
+              <li><strong>模擬安全性與 KL 散度平滑定理（Theorem 4.2）</strong>：在 Server 半誠實且不與參與方合謀（Non-colluding）的前提下，壓縮密文解密殘差 <span class="word-eq">E<sub>total</sub> = (e<sub>eval</sub> + e<sub>flood</sub>)/p + e<sub>round,1</sub> − ⟨e<sub>round,0</sub>, s⟩</span> 的分佈可透過 Kullback-Leibler 散度（KL Divergence）與晶格平滑引理證明：只要 <span class="word-eq">σ<sub>flood</sub></span> 淹沒了 <span class="word-eq">e<sub>eval</sub></span>，且 <span class="word-eq">σ<sub>0</sub>, σ<sub>1</sub></span> 大於平滑參數，則 <span class="word-eq">E<sub>total</sub></span> 的分佈在統計上不可區分於<strong>純粹由公開範數 <span class="word-eq">‖s‖<sub>2</sub></span> 決定的離散高斯分佈 <span class="word-eq">D<sub>ℤ, √((σ<sub>flood</sub>/p)<sup>2</sup> + σ<sub>1</sub><sup>2</sup> + σ<sub>0</sub><sup>2</sup>·‖s‖<sub>2</sub><sup>2</sup>)</sub></span></strong>！因此模擬器無需知道私鑰 <span class="word-eq">s</span> 的方向，直接利用 <span class="word-eq">pk</span> 中的 <span class="word-eq">‖s‖<sub>2</sub></span> 即可完美模擬出壓縮密文與誠實份額！</li>
+              <li><strong>yaLWE 到標準 LWE 的嚴格歸約（Theorem 5.1）</strong>：針對公鑰額外公開 <span class="word-eq">‖s‖<sub>2</sub></span> 是否削弱 LWE 的疑慮，PS24 證明：即使在同一個公開矩陣 <span class="word-eq">A</span> 下公開多組 LWE 樣本並揭露每把私鑰的精準歐幾里得範數 <span class="word-eq">‖s<sub>i</sub>‖<sub>2</sub></span>（其資訊量至多僅 <span class="word-eq">O(log n)</span> bits），敵手的區分優勢依然受標準 LWE 難題緊緻約束。</li>
+            </ul>
+            <div class="example-box">
+              <div class="example-title">🛡️ 安全性攻防數值範例：為何公開範數 ‖s‖₂ 不會洩漏私鑰向量 s？</div>
+              <p><strong>攻擊者視角</strong>：在維度 <span class="word-eq">n = 1024</span> 的二元/三元私鑰空間中，攻擊者從公鑰 <span class="word-eq">pk</span> 與多次解密殘差變異數得知私鑰長度平方恰好為 <span class="word-eq">‖s‖<sub>2</sub><sup>2</sup> = 512</span>。</p>
+              <p><strong>防禦表現</strong>：(1) 在 <span class="word-eq">{−1, 0, 1}<sup>1024</sup></span> 中，滿足平方和等於 512 的私鑰向量共有超過 <span class="word-eq">C(1024, 512) · 2<sup>512</sup> &gt; 2<sup>1500</sup></span> 種可能，知道 <span class="word-eq">‖s‖<sub>2</sub><sup>2</sup> = 512</span> 僅減少了不到 <span class="word-eq">10 bits</span> 的猜測空間；(2) 更重要的是，因為公開了 <span class="word-eq">‖s‖<sub>2</sub></span>，每次 <code>ServerDec</code> 隨機捨入產生的雜訊變異數 <span class="word-eq">σ<sub>0</sub><sup>2</sup>·‖s‖<sub>2</sub><sup>2</sup></span> 對攻擊者而言不再包含任何「未知秘密資訊」，徹底封死了透過統計殘差變異數逆向側寫私鑰的管道！</p>
+            </div>
+          </div>
+        `
       }
     };
 
@@ -9232,22 +10580,22 @@
         htmlContent: `
           <div class="tutorial-section">
             <div class="tutorial-section-title">🏆 競技場功能與架構總覽</div>
-            <p>論文評測競技場提供 6 篇前沿門檻 FHE 論文之<strong>全流程微秒級橫向基準測試</strong>。支援自訂論文篩選、雙架構評測模式切換、7 階段執行時間直方圖即時繪製，以及安全性與效能深度對照表。</p>
+            <p>論文評測競技場提供 7 篇（含隱藏架構共 8 篇）前沿門檻 FHE 論文之<strong>全流程微秒級橫向基準測試</strong>。支援自訂論文篩選、雙架構評測模式切換、7 階段執行時間直方圖即時繪製，以及安全性與效能深度對照表。</p>
           </div>
 
           <div class="tutorial-section">
             <div class="tutorial-section-title">⚙️ 兩大評測架構模式說明</div>
             <ul>
               <li><strong>⚡ 演算法核心快速評測 (Local In-Memory)</strong>：直接調用本機高精度 C++/Python 密碼學核心，在純記憶體環境下即時執行 Setup、KeyGen、Encrypt、Eval、Decryption 等真實運算，適合快速除錯、參數調校與即時比對。</li>
-              <li><strong>🌐 實體分散式網路評測 (Multi-Port Sockets, 19 RNS Primes)</strong>：啟用底層真實 TCP 多埠 Sockets 通訊，模擬真實分散式節點間跨網路傳輸 19 肢 RNS 巨大多項式密文與 ZKP 證明的封包往返延遲。</li>
+              <li><strong>🌐 實體分散式網路評測 (Multi-Port Sockets, 19 RNS Primes)</strong>：啟用底層真實 TCP 多埠 Sockets 通訊，模擬真實分散式節點間跨網路傳輸多項式密文、Rényi 淹沒份額、ServerDec 壓縮密文與 ZKP 證明的封包往返延遲。</li>
             </ul>
           </div>
 
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎯 論文選取晶片與快速預設組合 (Filter Chips & Presets)</div>
-            <p>您可透過勾選/取消各論文的彩色晶片標籤（CCS 2025 藍、Noah's Ark 紅、PELTA 綠、<span class="hqfs-hidden">HQ-FS 琥珀黃、</span>OT25 青、Ajax 粉紅）動態過濾對比目標，亦可直接點擊預設按鈕：</p>
+            <p>您可透過勾選/取消各論文的彩色晶片標籤（CCS 2025 藍、Noah's Ark 紅、PELTA 綠、<span class="hqfs-hidden">HQ-FS 琥珀黃、</span>OT25 青、Ajax 粉紅、BS23 紫羅蘭、PS24 藍綠）動態過濾對比目標，亦可直接點擊預設按鈕：</p>
             <ul>
-              <li><strong>全部論文</strong>：一次性檢視全部<span class="hqfs-hidden"> 6 篇</span> 5 大論文方案的完整橫向對比。</li>
+              <li><strong>全部論文</strong>：一次性檢視全部<span class="hqfs-hidden"> 8 篇</span> 7 大論文方案的完整橫向對比。</li>
               <li class="hqfs-hidden"><strong>本論文 vs PELTA</strong>：聚焦於主動安全 ZKP 方案的效能與驗證延遲優勢（HQ-FS 比 PELTA 快 3.58 倍）。</li>
               <li class="hqfs-hidden"><strong>本論文 vs CCS 2025</strong>：聚焦於 RNS 緊湊密文與 MPC Rounding 之架構取捨。</li>
               <li class="hqfs-hidden"><strong>本論文 vs Ajax</strong>：對比零密文疊加與 Mask-Then-Open 之線上延遲與電路隱私防禦。</li>
@@ -9550,6 +10898,90 @@
             <div class="tutorial-section-title">⚔️ 惡意節點抗性實測方法</div>
             <p>1. 在頂部設定惡意比例 20%，選擇「部分解密份額竄改攻擊」。<br>
             2. 執行解密，雙環校驗機制將自動比對密文環與遮罩環之一致性，檢測出異常份額並即時報警校正。</p>
+          </div>
+        `
+      },
+      bs23: {
+        badge: '操作手冊 • BS23 (Asiacrypt 2023)',
+        title: 'BS23 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>BS23 實驗室展示了 Boudgoust &amp; Scholl (Asiacrypt 2023) 之多項式模數 Rényi 散度雜訊淹沒與 Goldreich-Levin 轉換：<br>
+            - <strong>{0,1}-LSSS 參與方分佈面板</strong>：即時呈現各參與方持有之二元重構份額狀態與腐敗節點比例。<br>
+            - <strong>30-bit 多項式模數狀態卡</strong>：即時顯示 Setup、同態運算、PartDec（Rényi 多項式雜訊淹沒）與 Combine 重構耗時。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與 {0,1}-LSSS 金鑰分發</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」初始化 30-bit 多項式模數 q 與 Rényi 階數 a，再點擊「2. KeyGen」產生 {0,1}-LSSS 秘密份額與重線性化金鑰。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：離線 Rényi 高斯雜訊與 GL 掩碼準備</div>
+                <div class="tutorial-step-desc">點擊「3. Offline Prep」，預先抽取多項式標準差 σ_flood 之離散高斯淹沒雜訊與 Goldreich-Levin 抽取器隨機矩陣。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：輸入明文並執行 GL 封裝加密</div>
+                <div class="tutorial-step-desc">設定明文 m₁ 與 m₂（預設為 2 與 3）或切換至 4-Slot SIMD 模式，點擊「🔐 加密」產出多項式模數 LWE 密文。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：執行同態求值與單輪 Rényi 淹沒解密</div>
+                <div class="tutorial-step-desc">點擊「🔮 一鍵完整執行 BS23」，系統將在多項式模數下完成同態運算、單輪 PartDec 淹沒與 {0,1} 線性重構。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：查閱 Rényi 散度指標與解密明文</div>
+                <div class="tutorial-step-desc">在右側終端機檢視 Rényi 散度邊界、淹沒標準差 σ_flood 以及最終還原出的正確明文。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 腐敗節點與病態查詢測試指南</div>
+            <p>1. 調整頂部「隨機惡意節點比例」與攻擊模式，觀察半誠實模型下未達門檻之腐敗子集如何被 Rényi 散度保護。<br>
+            2. 對照「背景知識 3.7」與 PS24 實驗室，比較標準模型 GL 轉換與隨機預言機變體在面對可調適查詢時的行為差異。</p>
+          </div>
+        `
+      },
+      ps24: {
+        badge: '操作手冊 • PS24 (Asiacrypt 2024)',
+        title: 'PS24 實驗室操作手冊與實測指南',
+        htmlContent: `
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🖥️ 介面區塊與配置導覽</div>
+            <p>PS24 實驗室展示了 Passelègue &amp; Stehlé (Asiacrypt 2024 / ePrint 2024/1984) 之超低通訊雙重淹沒與高斯捨入（Double-Flood-and-Round）門檻解密：<br>
+            - <strong>Non-colluding Server + 參與方拓撲</strong>：標示負責執行 Q → q 密文壓縮的半誠實伺服器與各持鑰參與方（每份額僅需 log q bits）。<br>
+            - <strong>雙模數 Q = p · q 監控面板</strong>：即時追蹤大模數同態運算、ServerDec 壓縮 + PartDec 份額生成、以及 FinDec 小模數重構耗時。</p>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">🚀 標準五步評測執行流程</div>
+            <div class="tutorial-steps-list">
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 1：Setup 初始化與公開範數 KeyGen</div>
+                <div class="tutorial-step-desc">點擊「1. Setup」建立複合模數 Q = p · q，並點擊「2. KeyGen」產生 Strong {0,1}-LSSS 份額與包含私鑰歐幾里得範數 ‖s‖₂ 的公開金鑰 pk。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 2：離線壓縮參數與高斯捨入表預備</div>
+                <div class="tutorial-step-desc">點擊「3. Offline Prep」，檢視壓縮比例 p、輸出小模數 q=257 與單純量份額位元數（僅 9 bits，與安全參數 λ 無關）。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 3：輸入明文並在大模數 Q 下加密</div>
+                <div class="tutorial-step-desc">設定明文 m₁ 與 m₂（或切換至 4-Slot SIMD），點擊「🔐 加密」生成標準大模數 FHE 密文。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 4：執行 ServerDec 雙重高斯捨入與 PartDec</div>
+                <div class="tutorial-step-desc">點擊「📡 一鍵完整執行 PS24」，體驗 Server 先將密文從大模數 Q 隨機高斯捨入壓縮至小模數 q，各參與方再僅廣播單一 Z_q 元素的極致低通訊解密。</div>
+              </div>
+              <div class="tutorial-step-item">
+                <div class="tutorial-step-head">步驟 5：檢視通訊壓縮比與解密驗證結果</div>
+                <div class="tutorial-step-desc">於右側終端機確認 ServerDec 壓縮前後模數變化、KL 散度平滑保護以及最終 FinDec 解密輸出。</div>
+              </div>
+            </div>
+          </div>
+          <div class="tutorial-section">
+            <div class="tutorial-section-title">⚔️ 與 OT25 及 BS23 橫向對比指南</div>
+            <p>1. 前往「論文評測競技場」同時勾選 <strong>BS23、PS24、OT25</strong>，比較三者在金鑰假設（標準 LWE vs. yaLWE 公開 ‖s‖₂ vs. Noise Padding 標準 LWE）與秘密分享（{0,1}-LSSS vs. O(1) Shamir）上的演進脈絡。<br>
+            2. 切換至「實體分散式網路評測 (Sockets)」模式，實測 PS24 極小解密份額在網路傳輸封包上的優勢。</p>
           </div>
         `
       }

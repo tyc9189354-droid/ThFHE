@@ -36,6 +36,8 @@ from schemes.pelta_scheme import PeltaThFHEScheme
 from schemes.hqfs_scheme import HQFSThFHEScheme
 from schemes.ot25_scheme import OT25ThFHEScheme
 from schemes.ajax_scheme import AjaxThFHEScheme
+from schemes.bs23_scheme import BS23ThFHEScheme
+from schemes.ps24_scheme import PS24ThFHEScheme
 from runner.benchmark_runner import BenchmarkRunner
 
 PORT = 3000
@@ -89,7 +91,17 @@ LIVE_LAB = {
     "ajax_scheme": None,
     "ajax_setup_ms": 0.0,
     "ajax_keygen_ms": 0.0,
-    "ajax_prep_ms": 0.0
+    "ajax_prep_ms": 0.0,
+    # BS23 state
+    "bs23_scheme": None,
+    "bs23_setup_ms": 0.0,
+    "bs23_keygen_ms": 0.0,
+    "bs23_prep_ms": 0.0,
+    # PS24 state
+    "ps24_scheme": None,
+    "ps24_setup_ms": 0.0,
+    "ps24_keygen_ms": 0.0,
+    "ps24_prep_ms": 0.0
 }
 
 
@@ -244,6 +256,54 @@ def ensure_ajax_initialized(num_parties: int = 10, m: int = 10) -> AjaxThFHESche
         LIVE_LAB["ajax_keygen_ms"] = round(t_keygen, 3)
         LIVE_LAB["ajax_prep_ms"] = round(t_prep, 3)
     return ajscheme
+
+
+def ensure_bs23_initialized(num_parties: int = 10, m: int = 10) -> BS23ThFHEScheme:
+    num_parties = max(10, min(1000, int(num_parties)))
+    bscheme: BS23ThFHEScheme = LIVE_LAB.get("bs23_scheme")
+    if bscheme is None or bscheme.num_parties != num_parties or bscheme.m != m:
+        bscheme = BS23ThFHEScheme()
+        t0 = time.perf_counter()
+        bscheme.setup(k=32, m=m, num_parties=num_parties)
+        t_setup = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        bscheme.keygen()
+        t_keygen = (time.perf_counter() - t1) * 1000.0
+
+        t2 = time.perf_counter()
+        bscheme.preprocess()
+        t_prep = (time.perf_counter() - t2) * 1000.0
+
+        LIVE_LAB["bs23_scheme"] = bscheme
+        LIVE_LAB["bs23_setup_ms"] = round(t_setup, 3)
+        LIVE_LAB["bs23_keygen_ms"] = round(t_keygen, 3)
+        LIVE_LAB["bs23_prep_ms"] = round(t_prep, 3)
+    return bscheme
+
+
+def ensure_ps24_initialized(num_parties: int = 10, m: int = 10) -> PS24ThFHEScheme:
+    num_parties = max(10, min(1000, int(num_parties)))
+    pscheme: PS24ThFHEScheme = LIVE_LAB.get("ps24_scheme")
+    if pscheme is None or pscheme.num_parties != num_parties or pscheme.m != m:
+        pscheme = PS24ThFHEScheme()
+        t0 = time.perf_counter()
+        pscheme.setup(k=32, m=m, num_parties=num_parties)
+        t_setup = (time.perf_counter() - t0) * 1000.0
+
+        t1 = time.perf_counter()
+        pscheme.keygen()
+        t_keygen = (time.perf_counter() - t1) * 1000.0
+
+        t2 = time.perf_counter()
+        pscheme.preprocess()
+        t_prep = (time.perf_counter() - t2) * 1000.0
+
+        LIVE_LAB["ps24_scheme"] = pscheme
+        LIVE_LAB["ps24_setup_ms"] = round(t_setup, 3)
+        LIVE_LAB["ps24_keygen_ms"] = round(t_keygen, 3)
+        LIVE_LAB["ps24_prep_ms"] = round(t_prep, 3)
+    return pscheme
 
 
 def parse_message_or_slots(raw_val: Any, p_mod: int, simd_mode: bool = False) -> Tuple[bool, Union[int, List[int]]]:
@@ -408,6 +468,32 @@ def normalize_ajax_ciphertext(raw_ct: Any, ajscheme: AjaxThFHEScheme) -> Any:
     return ct
 
 
+def normalize_bs23_ciphertext(raw_ct: Any, bscheme: BS23ThFHEScheme) -> Any:
+    if bscheme.bs23 is None or bscheme.bs23.s is None:
+        bscheme.keygen()
+    q = bscheme.bs23.q
+    if isinstance(raw_ct, (list, tuple)) and len(raw_ct) == 2:
+        a_raw, b_raw = raw_ct[0], raw_ct[1]
+        if isinstance(a_raw, (list, tuple, np.ndarray)):
+            a_vec = np.array(([int(x) % q for x in a_raw] + [0] * bscheme.n_dim)[:bscheme.n_dim], dtype=object)
+            return (a_vec, int(b_raw) % q)
+    ct, _ = bscheme.encrypt(3)
+    return ct
+
+
+def normalize_ps24_ciphertext(raw_ct: Any, pscheme: PS24ThFHEScheme) -> Any:
+    if pscheme.ps24 is None or pscheme.ps24.s is None:
+        pscheme.keygen()
+    Q = pscheme.ps24.Q
+    if isinstance(raw_ct, (list, tuple)) and len(raw_ct) == 2:
+        a_raw, b_raw = raw_ct[0], raw_ct[1]
+        if isinstance(a_raw, (list, tuple, np.ndarray)):
+            a_vec = np.array(([int(x) % Q for x in a_raw] + [0] * pscheme.n_dim)[:pscheme.n_dim], dtype=object)
+            return (a_vec, int(b_raw) % Q)
+    ct, _ = pscheme.encrypt(3)
+    return ct
+
+
 def json_serialize_fallback(o):
     if hasattr(o, "tolist"):
         return o.tolist()
@@ -429,6 +515,142 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    # ------------------------------------------------------------------
+    # Generic single-stage lab API shared by BS23 and PS24 laboratories
+    # ------------------------------------------------------------------
+    def _lab_stage_generic(self, req: Dict[str, Any], key: str):
+        is_bs = (key == "bs23")
+        tag = "BS23" if is_bs else "PS24"
+        ensure_fn = ensure_bs23_initialized if is_bs else ensure_ps24_initialized
+        normalize_fn = normalize_bs23_ciphertext if is_bs else normalize_ps24_ciphertext
+        stage = req.get("stage", "run_all")
+        num_parties = max(10, min(1000, int(req.get("num_parties", LIVE_LAB["num_parties"]))))
+        malicious_ratio = max(0, min(49, int(req.get("malicious_ratio", 0))))
+        attack_type = req.get("attack_type", "none")
+        m_bits = int(req.get("m", LIVE_LAB["m"]))
+        xs = ensure_fn(num_parties=num_parties, m=m_bits)
+        core = xs.bs23 if is_bs else xs.ps24
+        p_mod = xs.p
+
+        if stage == "setup":
+            t0 = time.perf_counter()
+            params = xs.setup(k=32, m=m_bits, num_parties=num_parties)
+            ms = round((time.perf_counter() - t0) * 1000.0, 3)
+            LIVE_LAB[f"{key}_setup_ms"] = ms
+            xs.keygen()
+            core = xs.bs23 if is_bs else xs.ps24
+            m1_val = int(req.get("m1", 12)) % p_mod
+            m2_val = int(req.get("m2", 25)) % p_mod
+            c1, _ = xs.encrypt(m1_val)
+            c2, _ = xs.encrypt(m2_val)
+            self._send_json(200, {
+                "status": "ok", "stage": "setup", "time_ms": ms, "t_space": p_mod,
+                "params": params, "c1": [c1[0], c1[1]], "c2": [c2[0], c2[1]]
+            })
+
+        elif stage == "keygen":
+            t0 = time.perf_counter()
+            kg_info = xs.keygen()
+            ms = round((time.perf_counter() - t0) * 1000.0, 3)
+            LIVE_LAB[f"{key}_keygen_ms"] = ms
+            m1_val = int(req.get("m1", 12)) % p_mod
+            m2_val = int(req.get("m2", 25)) % p_mod
+            c1, _ = xs.encrypt(m1_val)
+            c2, _ = xs.encrypt(m2_val)
+            self._send_json(200, {
+                "status": "ok", "stage": "keygen", "time_ms": ms, "t_space": p_mod,
+                "keygen_info": kg_info, "c1": [c1[0], c1[1]], "c2": [c2[0], c2[1]]
+            })
+
+        elif stage == "preprocess":
+            t0 = time.perf_counter()
+            prep_data = xs.preprocess()
+            ms = round((time.perf_counter() - t0) * 1000.0, 3)
+            LIVE_LAB[f"{key}_prep_ms"] = ms
+            self._send_json(200, {
+                "status": "ok", "stage": "preprocess", "time_ms": ms, "t_space": p_mod,
+                "prep_data": prep_data, "offline_metrics": xs.get_offline_metrics(prep_data)
+            })
+
+        elif stage == "encrypt":
+            m1_val = int(req.get("m1", 3)) % p_mod
+            m2_val = int(req.get("m2", 2)) % p_mod
+            t0 = time.perf_counter()
+            c1, _ = xs.encrypt(m1_val)
+            c2, _ = xs.encrypt(m2_val)
+            ms = round((time.perf_counter() - t0) * 1000.0, 4)
+            n1 = core.noise_of(c1, m1_val)
+            n2 = core.noise_of(c2, m2_val)
+            self._send_json(200, {
+                "status": "ok", "stage": "encrypt", "time_ms": ms, "t_space": p_mod,
+                "m1": m1_val, "m2": m2_val, "c1": [c1[0], c1[1]], "c2": [c2[0], c2[1]],
+                "fresh_noise": [int(n1), int(n2)], "Delta": int(core.Delta), "modulus_bits": int(core.M.bit_length())
+            })
+
+        elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
+            m1_val = int(req.get("m1", 3)) % p_mod
+            m2_val = int(req.get("m2", 2)) % p_mod
+            if stage == "run_all" and not req.get("c1"):
+                c1, _ = xs.encrypt(m1_val)
+                c2, _ = xs.encrypt(m2_val)
+            else:
+                c1 = normalize_fn(req.get("c1", []), xs)
+                c2 = normalize_fn(req.get("c2", []), xs)
+                m1_val = core.decrypt_direct(c1)
+                m2_val = core.decrypt_direct(c2)
+            op_mode = req.get("op_mode", "eval_mul")
+
+            t0 = time.perf_counter()
+            if op_mode == "eval_mul":
+                ct_eval = xs.eval_mul(c1, c2)
+                expected_mu = (m1_val * m2_val) % p_mod
+                op_label = f"{tag} 同態乘法 Dec(c₁ ⊗ c₂) = ({m1_val} × {m2_val}) mod {p_mod} (T={p_mod})"
+            elif op_mode == "eval_add":
+                ct_eval = xs.eval_add(c1, c2)
+                expected_mu = (m1_val + m2_val) % p_mod
+                op_label = f"{tag} 同態加法 Dec(c₁ ⊕ c₂) = ({m1_val} + {m2_val}) mod {p_mod} (T={p_mod})"
+            elif op_mode == "dec_1":
+                ct_eval = c1
+                expected_mu = m1_val
+                op_label = f"{tag} 單獨解密 Dec(c₁) (T={p_mod})"
+            else:
+                ct_eval = c2
+                expected_mu = m2_val
+                op_label = f"{tag} 單獨解密 Dec(c₂) (T={p_mod})"
+            eval_ms = round((time.perf_counter() - t0) * 1000.0, 4)
+            eval_noise = int(core.noise_of(ct_eval, expected_mu))
+
+            if stage == "eval":
+                self._send_json(200, {
+                    "status": "ok", "stage": "eval", "time_ms": eval_ms, "op_label": op_label,
+                    "t_space": p_mod, "ct_eval": [ct_eval[0], ct_eval[1]], "expected_mu": expected_mu,
+                    "eval_noise": eval_noise, "Delta": int(core.Delta)
+                })
+                return
+
+            mu_dec, pdec_ms, agg_ms = xs.decrypt_with_stages(
+                ct_eval, malicious_ratio=malicious_ratio, attack_type=attack_type,
+            )
+            is_tampered = (malicious_ratio > 0 and attack_type != "none")
+            verified = (mu_dec == expected_mu)
+            self._send_json(200, {
+                "status": "ok", "stage": stage, "t_space": p_mod, "op_mode": op_mode, "op_label": op_label,
+                "num_parties": num_parties, "malicious_ratio": malicious_ratio, "attack_type": attack_type,
+                "m1": m1_val, "m2": m2_val, "expected_plaintext": expected_mu,
+                "decrypted_plaintext": mu_dec, "verified": verified, "is_tampered": is_tampered,
+                "eval_noise": eval_noise, "Delta": int(core.Delta),
+                "audit_info": xs.last_audit,
+                "timings": {
+                    "setup_time_ms": LIVE_LAB[f"{key}_setup_ms"],
+                    "keygen_time_ms": LIVE_LAB[f"{key}_keygen_ms"],
+                    "prep_time_ms": LIVE_LAB[f"{key}_prep_ms"],
+                    "eval_time_ms": eval_ms,
+                    "partial_dec_time_ms": round(pdec_ms, 3),
+                    "agg_time_ms": round(agg_ms, 3),
+                    "total_online_ms": round(pdec_ms + agg_ms, 3)
+                }
+            })
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
@@ -457,12 +679,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             LIVE_LAB["noah_scheme"] = None
             LIVE_LAB["ot25_scheme"] = None
             LIVE_LAB["ajax_scheme"] = None
+            LIVE_LAB["bs23_scheme"] = None
+            LIVE_LAB["ps24_scheme"] = None
             scheme = ensure_ccs_initialized(num_parties=num_parties, k=k, m=m)
             pscheme = ensure_pelta_initialized(num_parties=num_parties, m=m)
             hscheme = ensure_hqfs_initialized(num_parties=num_parties, m=m)
             nscheme = ensure_noah_initialized(num_parties=num_parties, m=m)
             otscheme = ensure_ot25_initialized(num_parties=num_parties, m=m)
             ajscheme = ensure_ajax_initialized(num_parties=num_parties, m=m)
+            bsscheme = ensure_bs23_initialized(num_parties=num_parties, m=m)
+            psscheme = ensure_ps24_initialized(num_parties=num_parties, m=m)
 
             p_mod = scheme.lwe.p
             is_simd_1, m1_parsed = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=ccs_simd)
@@ -519,6 +745,10 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             otct2, _ = otscheme.encrypt(m2_int)
             ajct1, _ = ajscheme.encrypt(m1_int)
             ajct2, _ = ajscheme.encrypt(m2_int)
+            bsct1, _ = bsscheme.encrypt(m1_int % bsscheme.p)
+            bsct2, _ = bsscheme.encrypt(m2_int % bsscheme.p)
+            psct1, _ = psscheme.encrypt(m1_int % psscheme.p)
+            psct2, _ = psscheme.encrypt(m2_int % psscheme.p)
 
             num_mal = 0 if attack_type == "none" else (num_parties * malicious_ratio) // 100
             random_mal_parties = sorted(random.sample(range(1, num_parties + 1), num_mal)) if num_mal > 0 else []
@@ -551,6 +781,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "ajax_setup_ms": LIVE_LAB["ajax_setup_ms"],
                 "ajax_keygen_ms": LIVE_LAB["ajax_keygen_ms"],
                 "ajax_prep_ms": LIVE_LAB["ajax_prep_ms"],
+                "bs23_setup_ms": LIVE_LAB["bs23_setup_ms"],
+                "bs23_keygen_ms": LIVE_LAB["bs23_keygen_ms"],
+                "bs23_prep_ms": LIVE_LAB["bs23_prep_ms"],
+                "ps24_setup_ms": LIVE_LAB["ps24_setup_ms"],
+                "ps24_keygen_ms": LIVE_LAB["ps24_keygen_ms"],
+                "ps24_prep_ms": LIVE_LAB["ps24_prep_ms"],
                 "c1": c1,
                 "c2": c2,
                 "pelta_c1": [pct1[0], pct1[1]],
@@ -562,7 +798,11 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "ot25_c1": [otct1[0], otct1[1]],
                 "ot25_c2": [otct2[0], otct2[1]],
                 "ajax_c1": [ajct1[0], ajct1[1]],
-                "ajax_c2": [ajct2[0], ajct2[1]]
+                "ajax_c2": [ajct2[0], ajct2[1]],
+                "bs23_c1": [bsct1[0], bsct1[1]],
+                "bs23_c2": [bsct2[0], bsct2[1]],
+                "ps24_c1": [psct1[0], psct1[1]],
+                "ps24_c2": [psct2[0], psct2[1]]
             })
 
         elif path == "/api/encrypt":
@@ -663,6 +903,24 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 self._send_json(200, {
                     "status": "ok",
                     "target": "ajax",
+                    "simd_mode": False,
+                    "message": val,
+                    "p_mod": p_mod,
+                    "t_space": p_mod,
+                    "ciphertext": [ct[0], ct[1]],
+                    "enc_time_ms": round(enc_ms, 4)
+                })
+            elif target in ("bs23", "ps24"):
+                xscheme = ensure_bs23_initialized(num_parties=num_parties, m=m_bits) if target == "bs23" else ensure_ps24_initialized(num_parties=num_parties, m=m_bits)
+                p_mod = xscheme.p
+                is_simd, parsed = parse_message_or_slots(req.get("message", 12), p_mod, simd_mode=simd_mode)
+                t0 = time.perf_counter()
+                val = int(parsed if isinstance(parsed, int) else parsed[0])
+                ct, _ = xscheme.encrypt(val)
+                enc_ms = (time.perf_counter() - t0) * 1000.0
+                self._send_json(200, {
+                    "status": "ok",
+                    "target": target,
                     "simd_mode": False,
                     "message": val,
                     "p_mod": p_mod,
@@ -2154,6 +2412,9 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     }
                 })
 
+        elif path in ("/api/bs23/stage", "/api/ps24/stage"):
+            self._lab_stage_generic(req, "bs23" if "bs23" in path else "ps24")
+
         elif path == "/api/benchmark":
             mode = req.get("mode", "local")
             num_parties = max(10, min(1000, int(req.get("num_parties", 10))))
@@ -2172,10 +2433,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             hqfs_scheme = HQFSThFHEScheme()
             ot25_scheme = OT25ThFHEScheme()
             ajax_scheme = AjaxThFHEScheme()
+            bs23_scheme = BS23ThFHEScheme()
+            ps24_scheme = PS24ThFHEScheme()
 
-            schemes_requested = req.get("schemes", ["ccs25", "noah", "pelta", "hqfs", "ot25", "ajax"])
+            schemes_requested = req.get("schemes", ["ccs25", "noah", "pelta", "hqfs", "ot25", "ajax", "bs23", "ps24"])
             if not isinstance(schemes_requested, list) or not schemes_requested:
-                schemes_requested = ["ccs25", "noah", "pelta", "hqfs", "ot25", "ajax"]
+                schemes_requested = ["ccs25", "noah", "pelta", "hqfs", "ot25", "ajax", "bs23", "ps24"]
 
             def format_res(r):
                 return {
@@ -2239,6 +2502,13 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         malicious_ratio=malicious_ratio, attack_type=attack_type,
                     )
                     results_map["ajax"] = format_res(res_ajax)
+                for _key in ("bs23", "ps24"):
+                    if _key in schemes_requested:
+                        _res = runner.run_distributed(
+                            _key, k=k, m=m, num_parties=num_parties, b=b,
+                            malicious_ratio=malicious_ratio, attack_type=attack_type,
+                        )
+                        results_map[_key] = format_res(_res)
             else:
                 # Fast In-Memory Local Algorithm Mode
                 if "ccs25" in schemes_requested:
@@ -2277,6 +2547,13 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         malicious_ratio=malicious_ratio, attack_type=attack_type
                     )
                     results_map["ajax"] = format_res(res_ajax)
+                for _key, _sch in (("bs23", bs23_scheme), ("ps24", ps24_scheme)):
+                    if _key in schemes_requested:
+                        _res = runner.run_local(
+                            _sch, k=k, m=m, num_parties=num_parties, b=b,
+                            malicious_ratio=malicious_ratio, attack_type=attack_type
+                        )
+                        results_map[_key] = format_res(_res)
 
             self._send_json(200, {
                 "status": "ok",
@@ -2325,6 +2602,8 @@ def run():
     ensure_noah_initialized(num_parties=10, m=10)
     ensure_ot25_initialized(num_parties=10, m=10)
     ensure_ajax_initialized(num_parties=10, m=10)
+    ensure_bs23_initialized(num_parties=10, m=10)
+    ensure_ps24_initialized(num_parties=10, m=10)
 
     target_port = PORT
     if len(sys.argv) > 1 and sys.argv[1].isdigit():

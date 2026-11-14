@@ -1616,6 +1616,18 @@
     .sidebar-nav-btn.bg-knowledge-btn.active::before {
       background: #10b981;
     }
+    .sidebar-nav-btn.foundation-btn.active {
+      border-color: rgba(56, 189, 248, 0.45);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(99, 102, 241, 0.14));
+    }
+    .sidebar-nav-btn.foundation-btn.active::before {
+      background: #38bdf8;
+    }
+    .view-indicator.foundation-view {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+    }
     .view-indicator.bg-view {
       background: rgba(16, 185, 129, 0.15);
       border-color: rgba(16, 185, 129, 0.4);
@@ -1689,7 +1701,7 @@
     </div>
 
     <!-- Global Environment Controls: Parties (10..1000) + Random Malicious Ratio (0..49%) + Attack Type -->
-    <div class="header-controls">
+    <div class="header-controls" id="global-header-controls">
       <!-- 1. Party Count Selector: Min 10, Max 1000 -->
       <div class="env-bar">
         <span class="env-label">🌐 參與方數量 (10~1000):</span>
@@ -1750,7 +1762,23 @@
   <div class="workspace-layout">
     <!-- Collapsible Sidebar -->
     <aside class="app-sidebar" id="app-sidebar">
-      <!-- Background Knowledge Header & Nav Section -->
+      <!-- Foundational Knowledge Header & Nav Section -->
+      <div class="sidebar-header" style="background: rgba(10, 16, 30, 0.72); border-bottom: 1px solid var(--card-border);">
+        <div class="sidebar-title-group">
+          <span class="sidebar-title" style="color: #38bdf8;">基礎知識閱讀</span>
+        </div>
+      </div>
+
+      <div class="sidebar-nav" style="padding: 0.45rem 0.65rem 0.65rem; border-bottom: 1px solid var(--card-border); gap: 0.35rem; flex: none;">
+        <button class="sidebar-nav-btn foundation-btn" id="sidebar-btn-foundations" onclick="switchTab('foundations', this)">
+          <div class="nav-text-group">
+            <span class="nav-title">底層數學與密碼基石</span>
+            <span class="nav-desc">同餘模算術 • 環與多項式 • 格幾何 • 離散高斯</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Background Knowledge Header & Nav Section (Pure Theory) -->
       <div class="sidebar-header" style="background: rgba(10, 16, 30, 0.72); border-bottom: 1px solid var(--card-border);">
         <div class="sidebar-title-group">
           <span class="sidebar-title" style="color: #34d399;">背景知識導覽</span>
@@ -1796,18 +1824,12 @@
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-security" onclick="switchTab('bg-security', this)">
           <div class="nav-text-group">
             <span class="nav-title">六、威脅模型與安全概念</span>
-            <span class="nav-desc">CPA<sup>D</sup> • FuncCPA • UC 模擬安全</span>
-          </div>
-        </button>
-
-        <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-params" onclick="switchTab('bg-params', this)">
-          <div class="nav-text-group">
-            <span class="nav-title">七、全域控制與評測指標</span>
-            <span class="nav-desc">全域參數空間與 7 階段評測指標對照</span>
+            <span class="nav-desc">IND-CPA/CCA2 • CPA<sup>D</sup> • FuncCPA • UC 安全</span>
           </div>
         </button>
       </div>
 
+      <!-- Experiment & Benchmark Nav Section -->
       <div class="sidebar-header">
         <div class="sidebar-title-group">
           <span class="sidebar-title">實驗與評測導覽</span>
@@ -1815,7 +1837,16 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-label">獨立論文實驗室 (<span class="hqfs-hidden">6 大論文專屬實驗室</span><span class="hqfs-visible-note">5 大論文專屬實驗室</span>)</div>
+        <div class="nav-section-label">實驗架構與評測指南</div>
+
+        <button class="sidebar-nav-btn" id="sidebar-btn-eval-params" onclick="switchTab('eval-params', this)">
+          <div class="nav-text-group">
+            <span class="nav-title">實驗控制與 7 階段評測指標</span>
+            <span class="nav-desc">4 大控制變因 • 7 階段計時鏈 • 競技場圖表解讀</span>
+          </div>
+        </button>
+
+        <div class="nav-section-label" style="margin-top: 0.85rem;">獨立論文實驗室 (<span class="hqfs-hidden">6 大論文專屬實驗室</span><span class="hqfs-visible-note">5 大論文專屬實驗室</span>)</div>
 
         <button class="sidebar-nav-btn active" id="sidebar-btn-ccs25" onclick="switchTab('ccs25', this)">
           <div class="nav-text-group">
@@ -1878,11 +1909,404 @@
     <!-- ===================================================================== -->
     <!-- TAB BG-1: LWE 晶格加密基礎、底層幾何難題與矩陣向量算式範例                 -->
     <!-- ===================================================================== -->
+        <!-- ===================================================================== -->
+    <!-- TAB FOUNDATIONS: 密碼學與同態加密底層數學基石 (基礎知識閱讀)             -->
+    <!-- ===================================================================== -->
+    <section id="tab-foundations" class="tab-content">
+      <div class="lab-hero-header" style="border-color: rgba(56, 189, 248, 0.45); background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(99, 102, 241, 0.08));">
+        <h2 class="lab-hero-title">基礎知識閱讀 — 密碼學與同態加密底層數學基石</h2>
+        <div class="lab-hero-sub">進入晶格密碼 (Lattice Cryptography) 與全同態加密 (FHE) 所需具備的數論、抽象代數、幾何晶格、機率分佈與計算複雜度核心底層知識</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">直接前往背景知識：一、LWE 晶格加密基礎 →</button>
+          <button type="button" class="btn-lab-manual" onclick="switchTab('eval-params', document.getElementById('sidebar-btn-eval-params'))">前往實驗控制與評測指標導覽 →</button>
+        </div>
+      </div>
+
+      <!-- Quick Anchor Navigation Pills -->
+      <div class="card" style="margin-bottom: 1.35rem; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.65);">
+        <div style="font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.5rem;">快速跳轉至底層單元：</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.45rem;">
+          <a href="#fd-roadmap" class="badge badge-blue" style="text-decoration: none; padding: 0.35rem 0.65rem;">🗺️ 知識地圖與前置準備</a>
+          <a href="#fd-mod" class="badge badge-green" style="text-decoration: none; padding: 0.35rem 0.65rem;">① 數論與同餘模算術</a>
+          <a href="#fd-algebra" class="badge badge-yellow" style="text-decoration: none; padding: 0.35rem 0.65rem;">② 抽象代數基石 (群環體)</a>
+          <a href="#fd-linalg" class="badge badge-purple" style="text-decoration: none; padding: 0.35rem 0.65rem;">③ 線性代數與範數度量</a>
+          <a href="#fd-lattice" class="badge badge-blue" style="text-decoration: none; padding: 0.35rem 0.65rem;">④ 幾何晶格理論基礎</a>
+          <a href="#fd-prob" class="badge badge-green" style="text-decoration: none; padding: 0.35rem 0.65rem;">⑤ 機率統計與離散高斯</a>
+          <a href="#fd-complexity" class="badge badge-yellow" style="text-decoration: none; padding: 0.35rem 0.65rem;">⑥ 複雜度與可證明安全</a>
+        </div>
+      </div>
+
+      <!-- 知識地圖與底層演進脈絡 -->
+      <div class="card" id="fd-roadmap" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>0. 密碼學範式轉移：為什麼需要全新的一套底層數學？</span>
+          <span class="badge badge-blue">知識地圖與演進</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          傳統公鑰密碼學（如 RSA、Diffie-Hellman、ECC 橢圓曲線）建立在整數質因數分解或離散對數難題上。
+          這些問題本質上屬於有限阿貝爾群（Abelian Group）的代數結構，具有高度的<strong>週期規律性</strong>。
+          1994 年彼得·秀爾（Peter Shor）提出的量子演算法（Shor's Algorithm），能利用量子傅立葉轉換在多項式時間內捕捉到該週期，徹底粉碎傳統密碼學的安全根基。
+        </p>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          後量子晶格密碼學（Lattice-based Cryptography）與全同態加密（Fully Homomorphic Encryption, FHE）帶來了密碼學史上最徹底的<strong>範式轉移（Paradigm Shift）</strong>：
+          不再依賴群的代數週期，而是將安全性錨定於<strong>高維歐幾里得幾何晶格的最短向量難題</strong>，並藉由引入<strong>受控微小隨機雜訊（Noise）</strong>，使密文兼具量子免疫力與密文上任意代數求值能力。
+        </p>
+        <div style="background: rgba(10, 16, 30, 0.75); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 0.85rem; margin-top: 0.65rem;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.45rem;">📚 底層數學工具與後續背景知識對照表</div>
+          <table style="width: 100%; font-size: 0.8rem; color: #cbd5e1; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #94a3b8; text-align: left;">
+                <th style="padding: 0.4rem 0.5rem;">底層數學模組</th>
+                <th style="padding: 0.4rem 0.5rem;">核心底層概念</th>
+                <th style="padding: 0.4rem 0.5rem;">銜接之後的背景知識章節</th>
+                <th style="padding: 0.4rem 0.5rem;">在系統中的關鍵作用</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 0.4rem 0.5rem; color: #38bdf8; font-weight: 600;">① 數論與模算術</td>
+                <td style="padding: 0.4rem 0.5rem;">模同餘、乘法反元素 (EEA)、中國剩餘定理 (CRT)</td>
+                <td style="padding: 0.4rem 0.5rem;">背景 (二) RNS 模數鏈、背景 (四) 雜訊控制</td>
+                <td style="padding: 0.4rem 0.5rem;">支撐 60-bit 機器字長平行運算與模數縮放降噪</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 0.4rem 0.5rem; color: #34d399; font-weight: 600;">② 抽象代數基石</td>
+                <td style="padding: 0.4rem 0.5rem;">旋輪多項式商環 ℤ<sub>q</sub>[X]/(X<sup>N</sup>+1)、有限體 𝔽<sub>p</sub></td>
+                <td style="padding: 0.4rem 0.5rem;">背景 (一) RLWE、背景 (二) TFHE 盲旋轉、背景 (三) Shamir 分享</td>
+                <td style="padding: 0.4rem 0.5rem;">限制多項式維度不無限膨脹，支援 NTT 快速摺積與插值</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 0.4rem 0.5rem; color: #fbbf24; font-weight: 600;">③ 線性代數與範數</td>
+                <td style="padding: 0.4rem 0.5rem;">向量內積、矩陣相乘、L<sub>1</sub> / L<sub>2</sub> / L<sub>∞</sub> 範數</td>
+                <td style="padding: 0.4rem 0.5rem;">背景 (一) LWE 矩陣運算、背景 (五) Ajtai 範數約束</td>
+                <td style="padding: 0.4rem 0.5rem;">定義密鑰維度，L<sub>∞</sub> 範數為判定解密是否正確的黃金準則</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 0.4rem 0.5rem; color: #c084fc; font-weight: 600;">④ 幾何晶格本質</td>
+                <td style="padding: 0.4rem 0.5rem;">離散格點 Λ(B)、基本多面體 𝒫(B)、SVP / CVP 難題</td>
+                <td style="padding: 0.4rem 0.5rem;">背景 (一) LWE 晶格難題、Regev 最差至平均歸約</td>
+                <td style="padding: 0.4rem 0.5rem;">提供對抗量子電腦 Shor 演算法的不可破譯安全性屏障</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 0.4rem 0.5rem; color: #f472b6; font-weight: 600;">⑤ 機率與離散高斯</td>
+                <td style="padding: 0.4rem 0.5rem;">離散高斯 𝒟<sub>σ</sub>、雜訊方差疊加定律、高斯尾端界限</td>
+                <td style="padding: 0.4rem 0.5rem;">背景 (一) 誤差抽樣、背景 (四) 雜訊淹沒 (Noise Smudging)</td>
+                <td style="padding: 0.4rem 0.5rem;">確保密文具備可證明安全性，並防範部分解密私鑰洩漏</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.4rem 0.5rem; color: #60a5fa; font-weight: 600;">⑥ 複雜度與安全模型</td>
+                <td style="padding: 0.4rem 0.5rem;">可忽略函數 negl(λ)、遊戲優勢 Adv、隨機預言機 ROM</td>
+                <td style="padding: 0.4rem 0.5rem;">背景 (五) NIZK 健全性、背景 (六) IND-CPA/CCA2 與 UC 安全</td>
+                <td style="padding: 0.4rem 0.5rem;">為門檻密碼系統提供數學上嚴謹的形式化安全性證明框架</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 第一單元：數論與同餘模算術 -->
+      <div class="card" id="fd-mod" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>1. 數論與同餘模算術 (Modular Arithmetic &amp; Number Theory)</span>
+          <span class="badge badge-green">基礎單元一</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【1.1 模同餘基本概念 (Congruence Modulo)】</strong>：
+            <br>• <strong>定義</strong>：設 <span class="word-eq">q ≥ 2</span> 為正整數（稱為模數 Modulus）。若整數 <span class="word-eq">a</span> 與 <span class="word-eq">b</span> 除以 <span class="word-eq">q</span> 的餘數相同，即 <span class="word-eq">q</span> 能整除差值 <span class="word-eq">(a - b)</span>，則稱 <span class="word-eq">a</span> 與 <span class="word-eq">b</span> 模 <span class="word-eq">q</span> 同餘，記為：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              a ≡ b (mod q)  ⟺  q | (a - b)  ⟺  a = k · q + b  (k ∈ ℤ)
+            </div>
+            • <strong>同餘運算律</strong>：若 <span class="word-eq">a₁ ≡ b₁ (mod q)</span> 且 <span class="word-eq">a₂ ≡ b₂ (mod q)</span>，則加法、減法與乘法均維持同餘：
+            <br>&nbsp;&nbsp;加法：<span class="word-eq">(a₁ + a₂) ≡ (b₁ + b₂) (mod q)</span>
+            <br>&nbsp;&nbsp;乘法：<span class="word-eq">(a₁ · a₂) ≡ (b₁ · b₂) (mod q)</span>
+            <br>• <strong>平衡餘數區間 (Centered Remainder Representation)</strong>：在密碼學雜訊分析中，除了使用標準區間 <span class="word-eq">[0, q - 1]</span>，更常採用以 0 為中心的平衡區間 <span class="word-eq">[-⌊q/2⌋, ⌊(q-1)/2⌋]</span>。例如當 <span class="word-eq">q = 17</span> 時，餘數 <span class="word-eq">16</span> 等價於 <span class="word-eq">-1</span>，這使得微小的正負雜訊能被直觀表示。
+          </li>
+
+          <li><strong>【1.2 乘法反元素 (Modular Inverse) 與擴展歐幾里得演算法 (EEA)】</strong>：
+            <br>• <strong>核心問題：模運算中沒有實數除法！</strong>
+            在實數世界中，除以 7 等價於乘以 <span class="word-eq">1/7</span>；但在整數模數 <span class="word-eq">ℤ<sub>q</sub></span> 中不存在小數。若要執行除法，必須尋找整數 <span class="word-eq">x</span> 滿足：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              a · x ≡ 1 (mod q)
+            </div>
+            此時稱 <span class="word-eq">x</span> 為 <span class="word-eq">a</span> 在模 <span class="word-eq">q</span> 下的<strong>乘法反元素（Modular Multiplicative Inverse）</strong>，記為 <span class="word-eq">a⁻¹ (mod q)</span>。
+            <br>• <strong>存在充要條件</strong>：乘法反元素存在的充分且必要條件為 <span class="word-eq">gcd(a, q) = 1</span>（即 <span class="word-eq">a</span> 與 <span class="word-eq">q</span> 互質）。若 <span class="word-eq">q</span> 為質數且 <span class="word-eq">a ≢ 0 (mod q)</span>，則反元素必定存在且唯一。
+            <br>• <strong>費馬小定理 (Fermat's Little Theorem)</strong>：若 <span class="word-eq">q</span> 為質數，則任意不被 <span class="word-eq">q</span> 整除的整數 <span class="word-eq">a</span> 滿足 <span class="word-eq">a<sup>q-1</sup> ≡ 1 (mod q)</span>。由此可直接推導出：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              a⁻¹ ≡ a<sup>q-2</sup> (mod q)
+            </div>
+            <div class="example-box" style="margin-top: 0.5rem; background: rgba(10, 16, 30, 0.7); border-left: 3px solid #34d399; padding: 0.75rem;">
+              <strong style="color: #34d399;">🔢 數值計算範例：利用擴展歐幾里得演算法求解乘法反元素</strong>
+              <br>目標：計算 <span class="word-eq">a = 7</span> 在模數 <span class="word-eq">q = 23</span> 下的乘法反元素 <span class="word-eq">7⁻¹ mod 23</span>。
+              <br><strong>第一步：正向輾轉相除求最大公因數 gcd(23, 7)</strong>
+              <br>• 23 = 3 · 7 + 2 &nbsp;&nbsp;&nbsp;&nbsp; (餘數 2)
+              <br>• 7 = 3 · 2 + 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (餘數 1，抵達互質)
+              <br>• 2 = 2 · 1 + 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (餘數 0，驗證 gcd(23, 7) = 1)
+              <br><strong>第二步：逆向回代求 Bézout 等式 1 = 23 · x + 7 · y</strong>
+              <br>• 由倒數第二式可得：<span class="word-eq">1 = 7 - 3 · 2</span>
+              <br>• 將第一式的餘數 <span class="word-eq">2 = 23 - 3 · 7</span> 代入：
+              <br>&nbsp;&nbsp;<span class="word-eq">1 = 7 - 3 · (23 - 3 · 7) = 7 - 3 · 23 + 9 · 7 = 10 · 7 - 3 · 23</span>
+              <br><strong>第三步：兩端對模數 23 取同餘</strong>
+              <br>• <span class="word-eq">10 · 7 - 3 · 23 ≡ 10 · 7 - 0 ≡ 1 (mod 23)</span>
+              <br>• 結論：<span class="word-eq">7⁻¹ ≡ 10 (mod 23)</span>！
+              <br>• 驗算：<span class="word-eq">7 · 10 = 70 = 3 · 23 + 1 ≡ 1 (mod 23)</span>，驗證無誤。
+            </div>
+          </li>
+
+          <li><strong>【1.3 中國剩餘定理 (CRT) 與殘數數系 (RNS)】</strong>：
+            <br>• <strong>密碼學痛點</strong>：在同態加密中，為了支撐連續多層的同態乘法，密文模數 <span class="word-eq">Q</span> 往往高達 200 到 1000 位元。電腦硬體（64-bit CPU / GPU）無法原生執行千位元大數的高速相加乘，大數庫（如 GMP）運算極慢且涉及大量進位。
+            <br>• <strong>CRT 原理</strong>：若 <span class="word-eq">q₀, q₁, …, q<sub>k-1</sub></span> 為兩兩互質的小質數（通常選用小於 <span class="word-eq">2⁶⁰</span> 的機器字長質數），則整數環 <span class="word-eq">ℤ<sub>Q</sub></span>（其中 <span class="word-eq">Q = ∏ q<sub>i</sub></span>）與各小質數分量的直積環同構：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ℤ<sub>Q</sub> ≅ ℤ<sub>q₀</sub> × ℤ<sub>q₁</sub> × ⋯ × ℤ<sub>q<sub>k-1</sub></sub>
+            </div>
+            任意大數 <span class="word-eq">X ∈ ℤ<sub>Q</sub></span> 可唯一表示為餘數向量 <span class="word-eq">(x₀, x₁, …, x<sub>k-1</sub>)</span>，其中 <span class="word-eq">x<sub>i</sub> = X mod q<sub>i</sub></span>。
+            <br>• <strong>RNS 巨大優勢</strong>：加法與乘法可在各個通道中<strong>完全平行獨立計算，通道間毫無進位依賴</strong>！
+            <div class="example-box" style="margin-top: 0.5rem; background: rgba(10, 16, 30, 0.7); border-left: 3px solid #38bdf8; padding: 0.75rem;">
+              <strong style="color: #38bdf8;">🔢 數值計算範例：CRT 殘數合成重建完整大數</strong>
+              <br>設三個互質小質數為 <span class="word-eq">q₀ = 3, q₁ = 5, q₂ = 7</span>，合成大模數 <span class="word-eq">Q = 3 · 5 · 7 = 105</span>。
+              <br>已知某密文相位在三個通道中的餘數分別為：<span class="word-eq">x ≡ 2 (mod 3)</span>、<span class="word-eq">x ≡ 3 (mod 5)</span>、<span class="word-eq">x ≡ 2 (mod 7)</span>。
+              <br><strong>第一步：計算各通道局部除數 M<sub>i</sub> = Q / q<sub>i</sub></strong>
+              <br>• M₀ = 105 / 3 = 35
+              <br>• M₁ = 105 / 5 = 21
+              <br>• M₂ = 105 / 7 = 15
+              <br><strong>第二步：計算局部乘法反元素 y<sub>i</sub> = M<sub>i</sub>⁻¹ mod q<sub>i</sub></strong>
+              <br>• y₀ = 35⁻¹ mod 3 ≡ 2⁻¹ mod 3 ≡ 2 (因為 2 · 2 = 4 ≡ 1 mod 3)
+              <br>• y₁ = 21⁻¹ mod 5 ≡ 1⁻¹ mod 5 ≡ 1
+              <br>• y₂ = 15⁻¹ mod 7 ≡ 1⁻¹ mod 7 ≡ 1
+              <br><strong>第三步：代入 CRT 重建公式加權求和</strong>
+              <br>• <span class="word-eq">x = ( ∑<sub>i=0</sub>² x<sub>i</sub> · M<sub>i</sub> · y<sub>i</sub> ) mod Q</span>
+              <br>• <span class="word-eq">x = (2 · 35 · 2 + 3 · 21 · 1 + 2 · 15 · 1) mod 105</span>
+              <br>• <span class="word-eq">x = (140 + 63 + 30) mod 105 = 233 mod 105 = 23</span>！
+              <br>• 驗算：<span class="word-eq">23 mod 3 = 2</span>，<span class="word-eq">23 mod 5 = 3</span>，<span class="word-eq">23 mod 7 = 2</span>，完美精準重建！
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 第二單元：抽象代數基石 -->
+      <div class="card" id="fd-algebra" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>2. 抽象代數基石 (Abstract Algebra: Groups, Rings &amp; Fields)</span>
+          <span class="badge badge-yellow">基礎單元二</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【2.1 代數結構層次階梯：群 (Group) ⟶ 環 (Ring) ⟶ 體 (Field)】</strong>：
+            <br>• <strong>群 (Group, G)</strong>：包含一個二元運算（通常記為加法 <span class="word-eq">+</span>），滿足四條公理：
+            <br>&nbsp;&nbsp;① 封閉性：任意 <span class="word-eq">a, b ∈ G</span> 則 <span class="word-eq">a + b ∈ G</span>。
+            <br>&nbsp;&nbsp;② 結合律：<span class="word-eq">(a + b) + c = a + (b + c)</span>。
+            <br>&nbsp;&nbsp;③ 單位元存在：存在 <span class="word-eq">0 ∈ G</span> 使 <span class="word-eq">a + 0 = a</span>。
+            <br>&nbsp;&nbsp;④ 反元素存在：對任意 <span class="word-eq">a ∈ G</span> 存在 <span class="word-eq">-a ∈ G</span> 使 <span class="word-eq">a + (-a) = 0</span>。
+            <br>&nbsp;&nbsp;若加法還滿足交換律（<span class="word-eq">a + b = b + a</span>），則稱為阿貝爾群（Abelian Group）。整數模群 <span class="word-eq">(ℤ<sub>q</sub>, +)</span> 即為典型的阿貝爾群。
+            <br>• <strong>環 (Ring, R)</strong>：具備加法與乘法兩種運算。在加法下為阿貝爾群；在乘法下滿足結合律與對加法的分配律。但注意：<strong>環中的元素不一定存在乘法反元素！</strong>例如整數環 <span class="word-eq">ℤ</span> 中，只有 1 與 -1 存在乘法反元素。
+            <br>• <strong>體 (Field, F)</strong>：若環中的所有非零元素在乘法下也構成阿貝爾群（即每個非零元素皆存在唯一的乘法反元素），則稱為「體」。實數體 <span class="word-eq">ℝ</span>、有理數體 <span class="word-eq">ℚ</span> 以及當模數 <span class="word-eq">p</span> 為質數時的有限體 <span class="word-eq">𝔽<sub>p</sub></span>（又稱伽羅瓦體 GF(p)）皆為體。
+          </li>
+
+          <li><strong>【2.2 旋輪多項式商環 ℛ<sub>q</sub> = ℤ<sub>q</sub>[X]/(X<sup>N</sup>+1) 的本質】</strong>：
+            <br>• <strong>為什麼同態加密的核心必定是多項式商環？</strong>
+            在一般多項式環 <span class="word-eq">ℤ<sub>q</sub>[X]</span> 中，兩個 <span class="word-eq">N - 1</span> 次多項式相乘後，次數會膨脹至 <span class="word-eq">2N - 2</span> 次。如果連續進行 10 次同態乘法，多項式長度將呈指數暴增，密文將無法儲存！
+            <br>• <strong>模 X<sup>N</sup> + 1 折疊機制（負循環摺積 Negacyclic Convolution）</strong>：
+            引入商多項式 <span class="word-eq">X<sup>N</sup> + 1</span> 作為理想模除基底，代數上等價於強制約定：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              X<sup>N</sup> ≡ -1 (mod X<sup>N</sup> + 1)  ⟹  X<sup>N+k</sup> ≡ -X<sup>k</sup>
+            </div>
+            這意味著：任何次數高於等於 <span class="word-eq">N</span> 的項，遇到 <span class="word-eq">X<sup>N</sup></span> 就自動「反號折回」變成低次項！多項式長度永遠被強制鎖定在 <span class="word-eq">N</span> 個係數以內。
+            <br>• <strong>數論轉換 (NTT) 加速</strong>：當維度 <span class="word-eq">N</span> 為 2 的冪次方時，在該商環上的乘法可以透過數論轉換（NTT）在 <span class="word-eq">O(N log N)</span> 時間內完成，比傳統卷積 <span class="word-eq">O(N²)</span> 提速數千倍！
+            <div class="example-box" style="margin-top: 0.5rem; background: rgba(10, 16, 30, 0.7); border-left: 3px solid #fbbf24; padding: 0.75rem;">
+              <strong style="color: #fbbf24;">🔢 數值計算範例：商環多項式乘法與負循環折疊</strong>
+              <br>設多項式度數 <span class="word-eq">N = 4</span>，係數模數 <span class="word-eq">q = 13</span>，商環為 <span class="word-eq">ℛ₁₃ = ℤ₁₃[X]/(X⁴ + 1)</span>。
+              <br>給定兩多項式：<span class="word-eq">a(X) = 2X³ + 4X</span>，<span class="word-eq">b(X) = 3X² + 5</span>。
+              <br><strong>第一步：普通多項式乘法展開</strong>
+              <br>• <span class="word-eq">a(X) · b(X) = (2X³ + 4X)(3X² + 5)</span>
+              <br>• <span class="word-eq">= 2X³ · 3X² + 2X³ · 5 + 4X · 3X² + 4X · 5</span>
+              <br>• <span class="word-eq">= 6X⁵ + 10X³ + 12X³ + 20X = 6X⁵ + 22X³ + 20X</span>
+              <br><strong>第二步：係數對模數 q = 13 取模</strong>
+              <br>• 6 mod 13 = 6
+              <br>• 22 mod 13 = 9
+              <br>• 20 mod 13 = 7
+              <br>• 中間多項式：<span class="word-eq">6X⁵ + 9X³ + 7X</span>
+              <br><strong>第三步：利用 X⁴ ≡ -1 執行負循環折疊</strong>
+              <br>• 最高次項 <span class="word-eq">X⁵ = X⁴ · X ≡ (-1) · X = -X</span>
+              <br>• 因此：<span class="word-eq">6X⁵ ≡ 6 · (-X) = -6X ≡ (13 - 6)X = 7X (mod 13)</span>
+              <br>• 合併同類項：<span class="word-eq">9X³ + (7X + 7X) = 9X³ + 14X ≡ 9X³ + 1X (mod 13)</span>
+              <br>• 最終結果：<span class="word-eq">c(X) = 9X³ + X ∈ ℛ₁₃</span>。維度不增長，結果精確閉合！
+            </div>
+          </li>
+
+          <li><strong>【2.3 有限體 𝔽<sub>p</sub> 在門檻秘密分享中的不可或缺性】</strong>：
+            <br>• <strong>為什麼 Shamir 門檻秘密分享不能在一般合數模數下運作？</strong>
+            Shamir 門檻秘密分享的核心是 Lagrange 多項式插值公式：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              L<sub>i</sub>(0) = ∏<sub>j ≠ i</sub> ( -x<sub>j</sub> ) · ( x<sub>i</sub> - x<sub>j</sub> )⁻¹
+            </div>
+            公式中包含分母 <span class="word-eq">(x<sub>i</sub> - x<sub>j</sub>)⁻¹</span>。若模數不是質數（例如合數 12），當兩個節點的編號差值為 2、3、4 或 6 時，分母與 12 不互質，乘法反元素根本不存在（無法除法），秘密重構立即崩潰！
+            <br>• 唯有在<strong>有限體 𝔽<sub>p</sub></strong> 中，所有非零元素均嚴格保證存在乘法反元素，無論任意挑選哪 <span class="word-eq">t</span> 個節點，插值多項式永遠具備唯一且必然存在的解。
+          </li>
+        </ul>
+      </div>
+
+      <!-- 第三單元：線性代數與幾何向量空間 -->
+      <div class="card" id="fd-linalg" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>3. 線性代數與幾何向量空間 (Linear Algebra &amp; Vector Spaces)</span>
+          <span class="badge badge-purple">基礎單元三</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【3.1 向量內積與矩陣乘法的幾何本質】</strong>：
+            <br>• <strong>向量內積 (Inner Product)</strong>：設向量 <span class="word-eq">a, s ∈ ℤ<sub>q</sub><sup>n</sup></span>，其內積為對應分量相乘後求和：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ⟨a, s⟩ = a<sup>T</sup> · s = ∑<sub>i=1</sub><sup>n</sup> a<sub>i</sub> · s<sub>i</sub> (mod q)
+            </div>
+            在幾何上，內積等於向量長度乘以兩向量夾角餘弦，反映了投影重合程度。在 LWE 密文中，內積 <span class="word-eq">⟨a, s⟩</span> 代表由公鑰遮罩 <span class="word-eq">a</span> 與私鑰 <span class="word-eq">s</span> 共同交織出的「偽隨機掩碼」。
+            <br>• <strong>矩陣向量乘法</strong>：設矩陣 <span class="word-eq">A ∈ ℤ<sub>q</sub><sup>m × n</sup></span>，向量 <span class="word-eq">s ∈ ℤ<sub>q</sub><sup>n</sup></span>，乘積 <span class="word-eq">b = A · s</span> 代表將 <span class="word-eq">m</span> 個不同的公共投影向量同時與私鑰 <span class="word-eq">s</span> 作內積。
+          </li>
+
+          <li><strong>【3.2 向量範數 (Vector Norms) 與雜訊溢位黃金準則】</strong>：
+            <br>密碼學中使用「範數」來量化雜訊大小或私鑰長度。對於向量 <span class="word-eq">v = [v₁, v₂, …, v<sub>n</sub>] ∈ ℝ<sup>n</sup></span>，三種最重要的範數為：
+            <br>• <strong>L₁ 範數（Manhattan Norm）</strong>：各元素絕對值總和：<span class="word-eq">‖v‖₁ = ∑<sub>i=1</sub><sup>n</sup> |v<sub>i</sub>|</span>。常用於約束三元私鑰（Ternary Key）中的非零個數（Hamming Weight）。
+            <br>• <strong>L₂ 範數（Euclidean Norm）</strong>：標準幾何長度：<span class="word-eq">‖v‖₂ = √( ∑<sub>i=1</sub><sup>n</sup> v<sub>i</sub>² )</span>。代表歐幾里得空間中最直觀的直線距離，是晶格最短向量問題（SVP）的標尺。
+            <br>• <strong>L<sub>∞</sub> 範數（Infinity / Max Norm）</strong>：最大分量絕對值：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ‖v‖<sub>∞</sub> = max<sub>1 ≤ i ≤ n</sub> |v<sub>i</sub>|
+            </div>
+            <div class="example-box" style="margin-top: 0.5rem; background: rgba(10, 16, 30, 0.7); border-left: 3px solid #c084fc; padding: 0.75rem;">
+              <strong style="color: #c084fc;">🔢 數值範例：為什麼 L<sub>∞</sub> 範數是同態加密解密的黃金準則？</strong>
+              <br>設某密文的解密殘留雜訊向量為 <span class="word-eq">e = [2, -5, 1, -3] ∈ ℤ⁴</span>：
+              <br>• <span class="word-eq">‖e‖₁ = |2| + |-5| + |1| + |-3| = 2 + 5 + 1 + 3 = 11</span>
+              <br>• <span class="word-eq">‖e‖₂ = √(2² + (-5)² + 1² + (-3)²) = √(4 + 25 + 1 + 9) = √39 ≈ 6.24</span>
+              <br>• <span class="word-eq">‖e‖<sub>∞</sub> = max(2, 5, 1, 3) = 5</span>
+              <br><strong>解密判定準則</strong>：在 LWE / BFV 解密時，明文縮放步距為 <span class="word-eq">Δ = ⌊q / t⌉</span>。若密文模數 <span class="word-eq">q = 64</span>，二進位明文空間 <span class="word-eq">t = 2</span>，則 <span class="word-eq">Δ = 32</span>，臨界解密容許邊界為 <span class="word-eq">Δ / 2 = 16</span>。
+              <br>只要向量中<strong>任何一個分量的絕對值超過 16</strong>，該分量在除以 <span class="word-eq">Δ</span> 捨入時就會進位溢位，導致解密明文翻轉出錯！
+              <br>因為 <span class="word-eq">‖e‖<sub>∞</sub> = 5 &lt; 16</span>，最大分量仍在安全門檻內，解密保證 100% 正確。因此，<strong>L<sub>∞</sub> 範數是評估同態加密正確性的唯一絕對安全標尺！</strong>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 第四單元：幾何晶格理論基礎 -->
+      <div class="card" id="fd-lattice" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>4. 幾何晶格理論基礎 (Lattice Geometry Fundamentals)</span>
+          <span class="badge badge-blue">基礎單元四</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【4.1 幾何晶格 (Lattice) 的嚴格數學定義】</strong>：
+            <br>• 設 <span class="word-eq">B = {b₁, b₂, …, b<sub>n</sub>} ⊂ ℝ<sup>m</sup></span> 為一組線性獨立的 <span class="word-eq">m</span> 維幾何向量（<span class="word-eq">m ≥ n</span>）。由該基底生成的幾何晶格 <span class="word-eq">Λ(B)</span> 定義為所有<strong>整數係數線性組合</strong>構成的離散點陣空間：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Λ(B) = { ∑<sub>i=1</sub><sup>n</sup> z<sub>i</sub> · b<sub>i</sub>  |  z<sub>i</sub> ∈ ℤ } = { B · z  |  z ∈ ℤ<sup>n</sup> }
+            </div>
+            • <strong>本質特徵：離散性（Discreteness）</strong>。晶格是 <span class="word-eq">ℝ<sup>m</sup></span> 空間中的離散加法子群。任意兩格點之間的距離存在一個嚴格大於 0 的下界，格點之間絕不存在連續逼近的極限點。
+          </li>
+
+          <li><strong>【4.2 基本並行多面體與晶格行列式】</strong>：
+            <br>• <strong>基本並行多面體 𝒫(B)</strong>：由基底向量張成的半開半閉多面體：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              𝒫(B) = { ∑<sub>i=1</sub><sup>n</sup> x<sub>i</sub> · b<sub>i</sub>  |  0 ≤ x<sub>i</sub> &lt; 1,  x<sub>i</sub> ∈ ℝ }
+            </div>
+            整個 <span class="word-eq">ℝ<sup>n</sup></span> 空間可由無窮多個 𝒫(B) 完美無縫鋪滿（Tessellation）。
+            <br>• <strong>晶格行列式 det(Λ)</strong>：多面體的幾何體積 <span class="word-eq">det(Λ) = |det(B)|</span>。
+            雖然同一個晶格可以由無窮多組不同的基底向量生成（例如將某基底加上另一基底的整數倍），但<strong>所有合法基底圍成的體積完全相等！</strong>晶格行列式是晶格固有不變量，其倒數 <span class="word-eq">1 / det(Λ)</span> 代表格點在空間中的全域平均分佈密度。
+          </li>
+
+          <li><strong>【4.3 經典幾何難題：SVP 與 CVP】</strong>：
+            <br>• <strong>最短向量問題 (SVP, Shortest Vector Problem)</strong>：給定晶格基底 <span class="word-eq">B</span>，找出格中歐氏長度最小的非零向量 <span class="word-eq">v ∈ Λ(B) ∖ {0}</span>，使得 <span class="word-eq">‖v‖₂ = λ₁(Λ)</span>。
+            <br>• <strong>最近向量問題 (CVP, Closest Vector Problem)</strong>：給定空間中任意一個非格點目標 <span class="word-eq">t ∈ ℝ<sup>m</sup></span>，找出距離 <span class="word-eq">t</span> 最近的格點 <span class="word-eq">v ∈ Λ</span>。
+            <br>• <strong>抗量子本質剖析</strong>：在低維空間（如 2 維、3 維），高斯約化演算法能在幾微秒內解出 SVP。但在高維空間（如 <span class="word-eq">n = 1024</span>），幾何維度災難（Curse of Dimensionality）使得格點搜尋空間呈指數級爆炸。量子演算法無法利用阿貝爾群的週期傅立葉變換破解晶格，目前最強的格篩法（Sieve Algorithms）仍需耗費 <span class="word-eq">2<sup>0.292 · n</sup></span> 的指數時間，奠定了抗量子與 FHE 的堅實安全基礎！
+          </li>
+        </ul>
+      </div>
+
+      <!-- 第五單元：機率統計與離散高斯分佈 -->
+      <div class="card" id="fd-prob" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>5. 機率統計與離散高斯分佈 (Probability &amp; Discrete Gaussian)</span>
+          <span class="badge badge-green">基礎單元五</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【5.1 均勻隨機分佈 vs. 離散高斯分佈】</strong>：
+            <br>• <strong>均勻隨機分佈 𝒰(ℤ<sub>q</sub>)</strong>：在模數空間內每個數值被抽中的機率皆嚴格相等為 <span class="word-eq">1/q</span>。資訊熵最大，用於一次性密鑰遮罩與 LWE 公共矩陣 <span class="word-eq">A</span>。
+            <br>• <strong>離散高斯分佈 𝒟<sub>ℤ, σ</sub></strong>：連續常態分佈在整數格點上的離散化。其機率質量函數與中心點距離的平方呈指數衰減：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Pr[X = x]  ∝  exp( -x² / (2σ²) )
+            </div>
+            其中 <span class="word-eq">σ</span> 為標準差。數值極高機率聚集在 0 附近，遠離 0 的機率迅速衰減為 0。
+            <br>• <strong>為什麼晶格加密必須使用高斯分佈？</strong>
+            奧德·雷格夫（Oded Regev）在 2005 年證明的<strong>最差情況至平均情況量子歸約定理</strong>中，必須利用連續傅立葉轉換將晶格映射到對偶格（Dual Lattice）。在數學上，高斯函數是唯一傅立葉轉換後仍然保持高斯形式的函數（自身特徵函數）！若使用均勻雜訊，對偶格邊界會產生嚴重的 Gibbs 振盪，導致數學安全證明完全失效。
+          </li>
+
+          <li><strong>【5.2 雜訊方差疊加定律與中心極限定理】</strong>：
+            <br>• <strong>獨立雜訊相加方差疊加</strong>：設 <span class="word-eq">e₁ ∼ 𝒟<sub>σ₁</sub></span> 與 <span class="word-eq">e₂ ∼ 𝒟<sub>σ₂</sub></span> 為兩筆相互獨立的高斯隨機變數，其和 <span class="word-eq">e<sub>sum</sub> = e₁ + e₂</span> 依然近似服從高斯分佈，且<strong>方差嚴格相加</strong>：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              σ<sub>sum</sub>² = σ₁² + σ₂²  ⟹  σ<sub>sum</sub> = √(σ₁² + σ₂²)
+            </div>
+            • <strong>在門檻解密中的應用</strong>：若 <span class="word-eq">N</span> 個節點各自在部分解密份額中注入獨立雜訊 <span class="word-eq">e<sub>i</sub> ∼ 𝒟<sub>σ</sub></span>，則聚合後的總雜訊標準差將放大為 <span class="word-eq">√(N) · σ</span>。設計參數時必須預留足夠的模數容量以容納這項統計增長。
+          </li>
+
+          <li><strong>【5.3 高斯尾端界限 (Gaussian Tail Bound) 與除錯無溢位保證】</strong>：
+            <br>• 根據離散高斯尾端界限定理，高斯變數偏離中心超出 <span class="word-eq">c · σ</span> 的機率滿足：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Pr[ |X| &gt; c · σ ]  ≤  2 · exp( -c² / 2 )
+            </div>
+            <br>• <strong>數值安全量化</strong>：
+            <br>&nbsp;&nbsp;當 <span class="word-eq">c = 6</span> 時：<span class="word-eq">2 · exp(-18) ≈ 3.0 · 10⁻⁸ ≈ 2⁻²⁵</span>（千億分之一出界率）。
+            <br>&nbsp;&nbsp;當 <span class="word-eq">c = 12</span> 時：<span class="word-eq">2 · exp(-72) ≈ 1.1 · 10⁻³¹ ≈ 2⁻¹⁰³</span>（出界機率小於宇宙中原子總數逆元）。
+            <br>• <strong>工程結論</strong>：同態加密密碼庫在設定參數時，只要將明文間距設定為 <span class="word-eq">Δ / 2 ≥ 12 · σ<sub>max</sub></span>，便能在百萬次同態運算與解密中達到零解密錯誤（Decryption Failure Rate <span class="word-eq">&lt; 2⁻¹⁰⁰</span>）！
+          </li>
+        </ul>
+      </div>
+
+      <!-- 第六單元：計算複雜度、可忽略函數與可證明安全基石 -->
+      <div class="card" id="fd-complexity">
+        <div class="card-title">
+          <span>6. 計算複雜度、可忽略函數與可證明安全基石 (Computational Complexity &amp; Provable Security)</span>
+          <span class="badge badge-yellow">基礎單元六</span>
+        </div>
+        <ul class="bg-module-list">
+          <li><strong>【6.1 漸近複雜度與多項式時間 (Polynomial Time)】</strong>：
+            <br>• <strong>安全參數 λ (Security Parameter)</strong>：衡量系統安全強度的標尺（現代密碼學通常要求 <span class="word-eq">λ = 128</span> 位元安全）。
+            <br>• <strong>多項式時間 poly(λ)</strong>：誠實參與者（加密、解密、同態評估）的演算法執行時間必須嚴格受限於安全參數的多項式函數（例如 <span class="word-eq">O(λ²), O(λ³)</span>），確保實用性。
+            <br>• <strong>指數級攻擊開銷 2<sup>Ω(λ)</sup></strong>：任何敵手破譯密文或偽造證明的演算法開銷必須是指數級，使得暴力破解在現實宇宙年齡內絕對不可行。
+          </li>
+
+          <li><strong>【6.2 可忽略函數 (Negligible Function negl(λ))】</strong>：
+            <br>• <strong>嚴格數學定義</strong>：若一個函數 <span class="word-eq">f: ℕ → ℝ</span> 滿足：對於任意給定的正多項式 <span class="word-eq">p(λ)</span>，皆存在一個常數 <span class="word-eq">λ₀</span>，使得對於所有 <span class="word-eq">λ &gt; λ₀</span>，恆有：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              f(λ)  &lt;  1 / p(λ)
+            </div>
+            則稱 <span class="word-eq">f(λ)</span> 為<strong>可忽略函數（Negligible Function）</strong>，通常記為 <span class="word-eq">negl(λ)</span>。
+            <br>• <strong>直觀理解</strong>：可忽略函數比任何多項式倒數衰減得都要快！典型代表為 <span class="word-eq">2<sup>-λ</sup></span> 或 <span class="word-eq">λ<sup>-log λ</sup></span>。在現代密碼學中，若敵手猜中私鑰、偽造 ZKP 證明、或區分兩種密文的優勢小於 <span class="word-eq">negl(λ)</span>，則該系統在數學上即被認定為「絕對不可破譯」。
+          </li>
+
+          <li><strong>【6.3 遊戲式安全模型 (Game-based Security) 與敵手優勢 (Advantage)】</strong>：
+            <br>• <strong>博弈架構</strong>：密碼學安全性透過「挑戰者（Challenger）」與多項式時間「敵手（Adversary 𝒜）」之間的嚴格博弈遊戲來定義。
+            <br>• <strong>優勢（Advantage）定義</strong>：敵手在遊戲中獲勝的機率相較於隨機純猜測（機率 1/2）的超額差距：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              Adv<sub>𝒜</sub>(λ) = | 2 · Pr[𝒜 Wins] - 1 |
+            </div>
+            若對於所有多項式時間敵手 𝒜，其優勢皆滿足 <span class="word-eq">Adv<sub>𝒜</sub>(λ) ≤ negl(λ)</span>，則證明該密碼機制達到了該安全等級（如 IND-CPA、IND-CCA）。
+          </li>
+
+          <li><strong>【6.4 隨機預言機模型 (Random Oracle Model, ROM) 與 Fiat-Shamir 啟發式轉換】</strong>：
+            <br>• <strong>ROM 理想黑盒</strong>：假設存在一個全域共享的理想隨機黑盒（Random Oracle）。任何實體向它輸入查詢字串 <span class="word-eq">x</span>，黑盒均回傳一個完全隨機且一致的均勻輸出 <span class="word-eq">H(x)</span>。
+            <br>• <strong>Fiat-Shamir 轉換</strong>：在主動安全零知識證明（ZKP）中，傳統交互式協議需要「證明者發送承諾 ⟶ 驗證者發布隨機挑戰 ⟶ 證明者回應」。藉由 Fiat-Shamir 啟發式轉換，證明者直接利用密碼學雜湊函數計算挑戰 <span class="word-eq">c = H(公開陳述, 承諾值)</span>，將多輪交互式協議壓縮為<strong>單輪非交互式零知識證明（NIZK）</strong>，成為現代區塊鏈與門檻同態加密實現抗惡意節點的核心引擎！
+          </li>
+        </ul>
+      </div>
+
+      <!-- 頁面切換導覽 -->
+      <div class="bg-nav-pager" style="margin-top: 1.5rem;">
+        <button type="button" class="btn-pager" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">進入背景知識第一主題：一、LWE 晶格加密基礎 →</button>
+      </div>
+    </section>
+
+
+    <!-- ===================================================================== -->
+    <!-- TAB BG-1: LWE 晶格加密基礎、底層幾何難題與矩陣向量算式範例                 -->
+    <!-- ===================================================================== -->
     <section id="tab-bg-lwe" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
         <h2 class="lab-hero-title">背景知識 (一) — LWE 晶格加密基礎、幾何數學難題與矩陣運算範例</h2>
         <div class="lab-hero-sub">幾何晶格理論、SVP / SIVP / CVP 難題、Regev 最差至平均歸約、LWE/RLWE 加密體系與 4×3 矩陣向量數值範例</div>
         <div class="lab-hero-actions">
+          <button type="button" class="btn-lab-manual" onclick="switchTab('foundations', document.getElementById('sidebar-btn-foundations'))">← 前往基礎知識閱讀：底層數學與密碼基石</button>
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-homomorphic', document.getElementById('sidebar-btn-bg-homomorphic'))">下一主題：二、同態運算與雜訊控制 →</button>
         </div>
       </div>
@@ -3465,7 +3889,7 @@
       <!-- 頁面切換導覽 -->
       <div class="bg-nav-pager">
         <button type="button" class="btn-pager" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：五、主動防線與零知識證明</button>
-        <button type="button" class="btn-pager" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：七、全域控制與評測指標 →</button>
+        <button type="button" class="btn-pager" onclick="switchTab('eval-params', document.getElementById('sidebar-btn-eval-params'))">進入實驗與評測：全域參數與評測指標導覽 →</button>
       </div>
     </section>
 
@@ -3473,12 +3897,13 @@
     <!-- ===================================================================== -->
     <!-- TAB BG-6: 全域實驗控制面板與 7 階段評測指標對照導覽 (解耦獨立教學版)    -->
     <!-- ===================================================================== -->
-    <section id="tab-bg-params" class="tab-content">
-      <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
-        <h2 class="lab-hero-title">背景知識 (六) — 全域實驗控制面板與 7 階段評測指標對照導覽</h2>
-        <div class="lab-hero-sub">同軌公平基準理念、四大全域實驗控制參數剖析、七大端到端評測計時階段與競技場圖表解讀指南</div>
+    <section id="tab-eval-params" class="tab-content">
+      <div class="lab-hero-header" style="border-color: rgba(59, 130, 246, 0.45); background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(16, 185, 129, 0.08));">
+        <h2 class="lab-hero-title">實驗與評測導覽 — 全域實驗控制面板與 7 階段評測指標指南</h2>
+        <div class="lab-hero-sub">同軌公平基準理念、四大全域實驗控制參數深度剖析、七大端到端評測計時階段與競技場圖表解讀指南</div>
         <div class="lab-hero-actions">
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">← 上一主題：六、威脅模型與安全概念</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">← 返回背景知識：六、威脅模型與安全概念</button>
+          <button type="button" class="btn-lab-manual" onclick="switchTab('ccs25', document.getElementById('sidebar-btn-ccs25'))">前往獨立論文實驗室 (CCS 2025) →</button>
           <button type="button" class="btn-lab-manual" onclick="switchTab('arena', document.getElementById('sidebar-btn-arena'))">前往論文評測競技場 →</button>
         </div>
       </div>
@@ -5289,6 +5714,7 @@
 
     function switchTab(tabId, btnEl) {
       if (tabId === 'background') tabId = 'bg-lwe';
+      if (tabId === 'bg-params') tabId = 'eval-params';
 
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.sidebar-nav-btn, .nav-btn').forEach(el => el.classList.remove('active'));
@@ -5300,16 +5726,24 @@
       if (sideBtn) sideBtn.classList.add('active');
       if (btnEl && btnEl.classList) btnEl.classList.add('active');
 
+      // 實驗室控制面板：僅在實驗室、評測競技場或實驗參數導覽頁面顯示；在基礎閱讀或背景知識閱讀中隱藏
+      const headerControls = document.getElementById('global-header-controls');
+      if (headerControls) {
+        const isExp = ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'arena', 'eval-params'].includes(tabId);
+        headerControls.style.display = isExp ? 'flex' : 'none';
+      }
+
       const pill = document.getElementById('header-view-pill');
       if (pill) {
         const titles = {
+          foundations: '基礎知識閱讀 — 數學與密碼底層基石',
           'bg-lwe': '背景知識 — LWE 晶格加密基礎與矩陣運算',
           'bg-homomorphic': '背景知識 — 同態運算、雜訊增長與重線性化技術',
           'bg-secretsharing': '背景知識 — 門檻秘密分享機制',
           'bg-noise': '背景知識 — 部分解密雜訊與 4 大隔離路線',
           'bg-zkp': '背景知識 — 主動安全防線與零知識證明',
           'bg-security': '背景知識 — 威脅模型與安全概念',
-          'bg-params': '背景知識 — 全域實驗面板與 7 階段評測',
+          'eval-params': '實驗與評測 — 全域實驗控制面板與 7 階段評測指標',
           ccs25: 'CCS 2025 實驗室',
           noah: 'Noah\'s Ark 實驗室',
           pelta: 'PELTA 實驗室',
@@ -5320,7 +5754,8 @@
         };
         pill.innerText = titles[tabId] || '實驗室';
         const isBg = tabId.startsWith('bg-') || tabId === 'background';
-        pill.className = 'view-indicator ' + (tabId === 'arena' ? 'arena-view' : (isBg ? 'bg-view' : ''));
+        const isFoundation = tabId === 'foundations';
+        pill.className = 'view-indicator ' + (tabId === 'arena' ? 'arena-view' : (isFoundation ? 'foundation-view' : (isBg ? 'bg-view' : '')));
       }
     }
 
@@ -7172,6 +7607,14 @@
           if (sidebar) sidebar.classList.add('collapsed');
         }
       } catch (e) {}
+      
+      const activeTab = document.querySelector('.tab-content.active');
+      const activeId = activeTab ? activeTab.id.replace('tab-', '') : 'ccs25';
+      const headerControls = document.getElementById('global-header-controls');
+      if (headerControls) {
+        const isExp = ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax', 'arena', 'eval-params'].includes(activeId);
+        headerControls.style.display = isExp ? 'flex' : 'none';
+      }
       syncEnvironmentUI(true);
       onPaperFilterChange();
     });

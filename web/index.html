@@ -173,6 +173,24 @@
     .tab-content { display: none; animation: fadeIn 0.25s ease; }
     .tab-content.active { display: block; }
 
+    /* =========================================================================
+       HQ-FS 臨時隱藏樣式 (暫時隱藏 HQ-FS 實驗室與相關內容，保留程式碼結構以便隨時還原)
+       ========================================================================= */
+    .hqfs-hidden,
+    .col-hqfs,
+    .legend-hqfs,
+    .bar-hqfs,
+    #chip-label-hqfs,
+    #sidebar-btn-hqfs,
+    #tab-hqfs,
+    #btn-preset-ccs,
+    #btn-preset-noah,
+    #btn-preset-pelta,
+    #btn-preset-ot25,
+    #btn-preset-ajax {
+      display: none !important;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
@@ -1661,7 +1679,7 @@
         <div class="brand-logo">Th</div>
         <div>
           <div class="brand-title">ThFHE Cryptographic Benchmark Lab</div>
-          <div class="brand-sub">CCS 2025 • Noah's Ark • PELTA • HQ-FS (Our Work) 門檻同態加密與抗惡意評測平台</div>
+          <div class="brand-sub">CCS 2025 • Noah's Ark • PELTA<span class="hqfs-hidden"> • HQ-FS (Our Work)</span> • OT25 • Ajax 門檻同態加密與抗惡意評測平台</div>
         </div>
       </div>
 
@@ -1790,7 +1808,7 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-label">獨立論文實驗室 (6 大論文專屬實驗室)</div>
+        <div class="nav-section-label">獨立論文實驗室 (<span class="hqfs-hidden">6 大論文專屬實驗室</span><span class="hqfs-visible-note">5 大論文專屬實驗室</span>)</div>
 
         <button class="sidebar-nav-btn active" id="sidebar-btn-ccs25" onclick="switchTab('ccs25', this)">
           <div class="nav-text-group">
@@ -1813,7 +1831,7 @@
           </div>
         </button>
 
-        <button class="sidebar-nav-btn" id="sidebar-btn-hqfs" onclick="switchTab('hqfs', this)">
+        <button class="sidebar-nav-btn hqfs-hidden" id="sidebar-btn-hqfs" onclick="switchTab('hqfs', this)">
           <div class="nav-text-group">
             <span class="nav-title">HQ-FS 實驗室</span>
             <span class="nav-desc">Our Work (Homomorphic Quotient Proofs)</span>
@@ -3487,7 +3505,7 @@
     <!-- ===================================================================== -->
     <!-- TAB 3: HQ-FS (Our Work: RNS-GLWE + Homomorphic Quotient Proofs + BFS) -->
     <!-- ===================================================================== -->
-    <section id="tab-hqfs" class="tab-content">
+    <section id="tab-hqfs" class="tab-content hqfs-hidden">
       <!-- Lab Hero Title Banner -->
       <div class="lab-hero-header">
         <h2 class="lab-hero-title">HQ-FS 實驗室</h2>
@@ -3947,12 +3965,12 @@
               <span style="font-size: 0.74rem; color: var(--text-muted); font-weight: normal;">(勾選方案動態切換直方圖柱狀與數據表欄位)</span>
             </div>
             <div class="filter-quick-btns">
-              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (All 6)</button>
-              <button type="button" class="btn-filter-tag" id="btn-preset-ccs" onclick="selectPapersPreset('ours_vs_ccs')">本論文 vs CCS 2025</button>
-              <button type="button" class="btn-filter-tag" id="btn-preset-noah" onclick="selectPapersPreset('ours_vs_noah')">本論文 vs Noah's Ark</button>
-              <button type="button" class="btn-filter-tag" id="btn-preset-pelta" onclick="selectPapersPreset('ours_vs_pelta')">本論文 vs PELTA</button>
-              <button type="button" class="btn-filter-tag" id="btn-preset-ot25" onclick="selectPapersPreset('ours_vs_ot25')">本論文 vs OT25</button>
-              <button type="button" class="btn-filter-tag" id="btn-preset-ajax" onclick="selectPapersPreset('ours_vs_ajax')">本論文 vs Ajax</button>
+              <button type="button" class="btn-filter-tag active" id="btn-preset-all" onclick="selectPapersPreset('all')">全部論文 (<span class="hqfs-hidden">All 6</span>5 大論文)</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ccs" onclick="selectPapersPreset('ours_vs_ccs')">本論文 vs CCS 2025</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-noah" onclick="selectPapersPreset('ours_vs_noah')">本論文 vs Noah's Ark</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-pelta" onclick="selectPapersPreset('ours_vs_pelta')">本論文 vs PELTA</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ot25" onclick="selectPapersPreset('ours_vs_ot25')">本論文 vs OT25</button>
+              <button type="button" class="btn-filter-tag hqfs-hidden" id="btn-preset-ajax" onclick="selectPapersPreset('ours_vs_ajax')">本論文 vs Ajax</button>
             </div>
           </div>
 
@@ -3982,8 +4000,8 @@
             </label>
 
             <!-- Chip 4: HQ-FS (Our Work) -->
-            <label class="paper-chip-label active" id="chip-label-hqfs">
-              <input type="checkbox" id="paper-check-hqfs" checked onchange="onPaperFilterChange()">
+            <label class="paper-chip-label hqfs-hidden" id="chip-label-hqfs">
+              <input type="checkbox" id="paper-check-hqfs" onchange="onPaperFilterChange()">
               <span class="chip-color-dot" style="background: #f59e0b;"></span>
               <span class="chip-title">HQ-FS (Our Work)</span>
               <span class="chip-sub">[RNS-GLWE + HQ-FS ZKP]</span>
@@ -4026,7 +4044,7 @@
                 <div class="legend-color" style="background: #10b981;"></div>
                 <span>PELTA (Chatel et al. EPFL)</span>
               </div>
-              <div class="legend-item legend-hqfs">
+              <div class="legend-item legend-hqfs hqfs-hidden">
                 <div class="legend-color" style="background: #f59e0b;"></div>
                 <span><strong>HQ-FS (Our Work: RNS-GLWE + HQ-FS ZKP)</strong></span>
               </div>
@@ -4847,12 +4865,13 @@
 
     function selectPapersPreset(preset) {
       const checks = {
-        all: ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'],
-        ours_vs_ccs: ['ccs25', 'hqfs'],
-        ours_vs_noah: ['noah', 'hqfs'],
-        ours_vs_pelta: ['pelta', 'hqfs'],
-        ours_vs_ot25: ['ot25', 'hqfs'],
-        ours_vs_ajax: ['ajax', 'hqfs']
+        all: ['ccs25', 'noah', 'pelta', 'ot25', 'ajax'],
+        all_with_hqfs: ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'],
+        ours_vs_ccs: ['ccs25'],
+        ours_vs_noah: ['noah'],
+        ours_vs_pelta: ['pelta'],
+        ours_vs_ot25: ['ot25'],
+        ours_vs_ajax: ['ajax']
       };
       const selected = checks[preset] || checks['all'];
       ['ccs25', 'noah', 'pelta', 'hqfs', 'ot25', 'ajax'].forEach(p => {
@@ -6267,7 +6286,7 @@
         if (btnLocal) btnLocal.classList.remove('active');
         if (btnDist) btnDist.classList.add('active');
         if (descEl) {
-          descEl.innerHTML = `<span class="badge badge-purple" style="font-size: 0.7rem;">實體 Sockets 模式</span> <span>真實驗證：動態綁定 N 個實體 TCP Ports | HQ-FS 啟用 19 個 RNS 質數 (6Q+13P) | 串流式極低記憶體 (< 10MB)</span>`;
+          descEl.innerHTML = `<span class="badge badge-purple" style="font-size: 0.7rem;">實體 Sockets 模式</span> <span>真實驗證：動態綁定 N 個實體 TCP Ports <span class="hqfs-hidden">| HQ-FS 啟用 19 個 RNS 質數 (6Q+13P)</span> | 串流式極低記憶體 (< 10MB)</span>`;
         }
       } else {
         if (btnLocal) btnLocal.classList.add('active');
@@ -7382,12 +7401,12 @@
 
           <div class="tutorial-section">
             <div class="tutorial-section-title">🎯 論文選取晶片與快速預設組合 (Filter Chips & Presets)</div>
-            <p>您可透過勾選/取消各論文的彩色晶片標籤（CCS 2025 藍、Noah's Ark 紅、PELTA 綠、HQ-FS 琥珀黃、OT25 青、Ajax 粉紅）動態過濾對比目標，亦可直接點擊預設按鈕：</p>
+            <p>您可透過勾選/取消各論文的彩色晶片標籤（CCS 2025 藍、Noah's Ark 紅、PELTA 綠、<span class="hqfs-hidden">HQ-FS 琥珀黃、</span>OT25 青、Ajax 粉紅）動態過濾對比目標，亦可直接點擊預設按鈕：</p>
             <ul>
-              <li><strong>全部論文</strong>：一次性檢視全部 6 篇論文的完整橫向對比。</li>
-              <li><strong>本論文 vs PELTA</strong>：聚焦於主動安全 ZKP 方案的效能與驗證延遲優勢（HQ-FS 比 PELTA 快 3.58 倍）。</li>
-              <li><strong>本論文 vs CCS 2025</strong>：聚焦於 RNS 緊湊密文與 MPC Rounding 之架構取捨。</li>
-              <li><strong>本論文 vs Ajax</strong>：對比零密文疊加與 Mask-Then-Open 之線上延遲與電路隱私防禦。</li>
+              <li><strong>全部論文</strong>：一次性檢視全部<span class="hqfs-hidden"> 6 篇</span> 5 大論文方案的完整橫向對比。</li>
+              <li class="hqfs-hidden"><strong>本論文 vs PELTA</strong>：聚焦於主動安全 ZKP 方案的效能與驗證延遲優勢（HQ-FS 比 PELTA 快 3.58 倍）。</li>
+              <li class="hqfs-hidden"><strong>本論文 vs CCS 2025</strong>：聚焦於 RNS 緊湊密文與 MPC Rounding 之架構取捨。</li>
+              <li class="hqfs-hidden"><strong>本論文 vs Ajax</strong>：對比零密文疊加與 Mask-Then-Open 之線上延遲與電路隱私防禦。</li>
             </ul>
           </div>
 
@@ -7416,7 +7435,7 @@
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">Stage 6: Decrypt / ZKP 部分解密與證明驗證</div>
-                <div class="tutorial-step-desc">核心指標！展示 HQ-FS 小基線商數證明與 BFS 快篩相較傳統大模數 ZKP 的大幅效能躍升。</div>
+                <div class="tutorial-step-desc">核心指標！展示商數證明與快篩相較傳統大模數 ZKP 的大幅效能躍升。<span class="hqfs-hidden">（HQ-FS 小基線商數證明與 BFS 快篩）</span></div>
               </div>
               <div class="tutorial-step-item">
                 <div class="tutorial-step-head">Stage 7: Aggregation 聚合重構與還原</div>
@@ -7428,7 +7447,7 @@
           <div class="tutorial-section">
             <div class="tutorial-section-title">📋 兩大對比表格查驗指南</div>
             <p>1. <strong>安全性與架構特性比較表 (Table II)</strong>：查閱底層困難問題（LWE / RLWE / GLWE）、敵手模型（半誠實 vs 主動惡意）、私鑰雜訊防護、主動攻擊防禦手段、電路隱私與抗 CPA^D 能力。<br>
-            2. <strong>量化基準指標表 (Table III)</strong>：對照論文刊載之標準證明產生時間（HQ-FS 1.176 ms）、證明驗證時間（0.968 ms）與主動防禦總延遲（642.76 ms），驗證實測數據的一致性。</p>
+            2. <strong>量化基準指標表 (Table III)</strong>：對照論文刊載之標準證明產生時間<span class="hqfs-hidden">（HQ-FS 1.176 ms）</span>、證明驗證時間（0.968 ms）與主動防禦總延遲（642.76 ms），驗證實測數據的一致性。</p>
           </div>
         `
       },

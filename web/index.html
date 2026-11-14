@@ -2460,25 +2460,255 @@
     <!-- ===================================================================== -->
     <!-- TAB FD-LATTICE: 幾何晶格理論基礎 (基礎知識閱讀 第四單元)                  -->
     <!-- ===================================================================== -->
+    <!-- ===================================================================== -->
+    <!-- TAB FD-LATTICE: 幾何晶格理論基礎 (基礎知識閱讀 第四單元 - 圖文詳解版)     -->
+    <!-- ===================================================================== -->
     <section id="tab-fd-lattice" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(59, 130, 246, 0.45); background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(168, 85, 247, 0.08));">
         <h2 class="lab-hero-title">基礎知識閱讀 (四) — 幾何晶格理論基礎 (Lattice Geometry)</h2>
-        <div class="lab-hero-sub">高維離散格點空間、基本並行多面體、晶格行列式與 SVP / CVP 抗量子幾何難題</div>
+        <div class="lab-hero-sub">高維離散格點空間、基本並行多面體密鋪、良基與惡基對比、SVP / CVP 難題與 LWE 解密幾何圖文詳解</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('fd-linalg', document.getElementById('sidebar-btn-fd-linalg'))">← 上一模組：三、線性代數與範數度量</button>
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('fd-prob', document.getElementById('sidebar-btn-fd-prob'))">下一模組：五、機率與離散高斯分佈 →</button>
         </div>
       </div>
 
-      <!-- 4.1 幾何晶格的嚴格定義 -->
+      <!-- 全景向量圖示 -->
+      <div class="diagram-wrapper" style="margin: 1.25rem 0; text-align: center; overflow-x: auto;">
+  <svg viewBox="0 0 940 460" width="100%" height="auto" style="max-width: 940px; background: #0b1120; border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <defs>
+      <!-- Arrow markers -->
+      <marker id="arr-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8"/>
+      </marker>
+      <marker id="arr-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#34d399"/>
+      </marker>
+      <marker id="arr-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#fbbf24"/>
+      </marker>
+      <marker id="arr-red" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f87171"/>
+      </marker>
+      <marker id="arr-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c084fc"/>
+      </marker>
+      <!-- Parallelogram pattern -->
+      <pattern id="grid-dots" width="20" height="20" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="0.8" fill="rgba(148, 163, 184, 0.2)"/>
+      </pattern>
+    </defs>
+
+    <!-- Global Title Banner -->
+    <rect x="0" y="0" width="940" height="42" fill="rgba(15, 23, 42, 0.95)"/>
+    <text x="470" y="26" text-anchor="middle" fill="#38bdf8" font-size="14" font-weight="700" letter-spacing="1">圖 1：高維幾何晶格理論全景直觀 — 點陣密鋪、良基惡基對比與 SVP / CVP 解密收斂</text>
+    <line x1="0" y1="42" x2="940" y2="42" stroke="rgba(56, 189, 248, 0.25)" stroke-width="1"/>
+
+    <!-- =================================================================== -->
+    <!-- PANEL 1: 晶格點陣與基本並行多面體密鋪 (Left: x 15~305)               -->
+    <!-- =================================================================== -->
+    <rect x="15" y="52" width="290" height="395" rx="8" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(56, 189, 248, 0.2)"/>
+    <text x="160" y="75" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">模組 4.1 &amp; 4.2：點陣與多面體密鋪</text>
+    
+    <!-- Subtitle explanation -->
+    <text x="160" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">整數線性組合 Λ(B) = { z₁b₁ + z₂b₂ | z_i ∈ ℤ }</text>
+
+    <!-- Lattice Grid Drawing Area (Center ~ (140, 240)) -->
+    <g transform="translate(130, 230)">
+      <!-- Background tiled parallelograms (dashed) -->
+      <!-- Parallelogram at (0,0): (0,0) -> (70, 20) -> (90, -50) -> (20, -70) -->
+      <!-- Tile -1, 0 -->
+      <polygon points="-70,-20 0,0 -50,-70 -120,-90" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.15)" stroke-dasharray="2,2"/>
+      <!-- Tile 0, -1 -->
+      <polygon points="20,-70 90,-50 110,-120 40,-140" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.15)" stroke-dasharray="2,2"/>
+      <!-- Tile -1, 1 -->
+      <polygon points="-50,50 20,70 40,0 -30,-20" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.15)" stroke-dasharray="2,2"/>
+      <!-- Tile 0, 1 -->
+      <polygon points="0,0 70,20 90,90 20,70" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.15)" stroke-dasharray="2,2"/>
+      <!-- Main Fundamental Parallelepiped P(B) at origin -->
+      <polygon points="0,0 70,20 90,-50 20,-70" fill="rgba(16, 185, 129, 0.22)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="45" y="-22" text-anchor="middle" fill="#34d399" font-size="11" font-weight="700">𝒫(B)</text>
+      <text x="45" y="-8" text-anchor="middle" fill="#a7f3d0" font-size="9">體積 = det(Λ)</text>
+
+      <!-- Basis vectors arrows -->
+      <!-- b1: (0,0) -> (70, 20) -->
+      <line x1="0" y1="0" x2="68" y2="19" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arr-blue)"/>
+      <text x="45" y="32" fill="#38bdf8" font-size="11" font-weight="700">b₁ = [3, 1]</text>
+      <!-- b2: (0,0) -> (20, -70) -->
+      <line x1="0" y1="0" x2="19" y2="-68" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#arr-amber)"/>
+      <text x="-35" y="-45" fill="#fbbf24" font-size="11" font-weight="700">b₂ = [1, 2]</text>
+
+      <!-- Draw Lattice Grid Points (dots) -->
+      <!-- z1: -1..2, z2: -2..1 -->
+      <!-- (0,0) -->
+      <circle cx="0" cy="0" r="4.5" fill="#ffffff" stroke="#38bdf8" stroke-width="2"/>
+      <text x="-12" y="14" fill="#ffffff" font-size="10" font-weight="700">0</text>
+      <!-- (70, 20) -->
+      <circle cx="70" cy="20" r="3.5" fill="#38bdf8"/>
+      <!-- (20, -70) -->
+      <circle cx="20" cy="-70" r="3.5" fill="#fbbf24"/>
+      <!-- (90, -50) = b1 + b2 -->
+      <circle cx="90" cy="-50" r="3.5" fill="#34d399"/>
+      <!-- (-70, -20) = -b1 -->
+      <circle cx="-70" cy="-20" r="3" fill="#94a3b8"/>
+      <!-- (-20, 70) = -b2 -->
+      <circle cx="-20" cy="70" r="3" fill="#94a3b8"/>
+      <!-- (-50, 50) = -b1 - b2 -->
+      <circle cx="-50" cy="50" r="3" fill="#94a3b8"/>
+      <!-- (50, -90) = -b1 + b2 -->
+      <circle cx="-90" cy="50" r="3" fill="#94a3b8"/>
+      <!-- other points -->
+      <circle cx="-50" cy="-90" r="3" fill="#94a3b8"/>
+      <circle cx="40" cy="-140" r="3" fill="#94a3b8"/>
+      <circle cx="110" cy="-120" r="3" fill="#94a3b8"/>
+      <circle cx="-120" cy="-40" r="3" fill="#94a3b8"/>
+      <circle cx="20" cy="70" r="3" fill="#94a3b8"/>
+      <circle cx="90" cy="90" r="3" fill="#94a3b8"/>
+      <circle cx="-70" cy="120" r="3" fill="#94a3b8"/>
+    </g>
+
+    <!-- Bottom Feature Callout 1 -->
+    <rect x="25" y="340" width="270" height="95" rx="6" fill="rgba(10, 16, 30, 0.85)" stroke="rgba(56, 189, 248, 0.25)"/>
+    <text x="35" y="358" fill="#38bdf8" font-size="10.5" font-weight="700">💡 空間無縫密鋪 (Tessellation) 幾何定律：</text>
+    <text x="35" y="375" fill="#cbd5e1" font-size="9.5">• 整個空間 ℝ² 可由 𝒫(B) 無重疊平移無縫填滿</text>
+    <text x="35" y="392" fill="#cbd5e1" font-size="9.5">• 體積 det(Λ) = |3×2 - 1×1| = 5 是固有不變量</text>
+    <text x="35" y="409" fill="#34d399" font-size="9.5">• 格點在空間的平均分佈密度為 1/det(Λ) = 0.2</text>
+    <text x="35" y="424" fill="#94a3b8" font-size="9">（無論基底如何變換，體積與密度恆定相等）</text>
+
+    <!-- =================================================================== -->
+    <!-- PANEL 2: 良基 vs. 惡基 幾何對比 (Middle: x 320~620)                 -->
+    <!-- =================================================================== -->
+    <rect x="320" y="52" width="295" height="395" rx="8" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(245, 158, 11, 0.25)"/>
+    <text x="467" y="75" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">模組 4.2：良基 (私鑰) vs. 惡基 (公鑰)</text>
+    <text x="467" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">相同點陣空間，正交度與長度的巨大鴻溝</text>
+
+    <!-- Sub-panel A: Good Basis (Short & Nearly Orthogonal) -->
+    <rect x="330" y="105" width="275" height="150" rx="6" fill="rgba(16, 185, 129, 0.08)" stroke="rgba(16, 185, 129, 0.3)"/>
+    <text x="340" y="123" fill="#34d399" font-size="11" font-weight="700">🟢 良基 (Good Basis) — 秘密陷門私鑰 (Trapdoor SK)</text>
+    <g transform="translate(420, 195)">
+      <!-- Short orthogonal basis -->
+      <polygon points="0,0 45,0 45,-45 0,-45" fill="rgba(16, 185, 129, 0.25)" stroke="#34d399" stroke-width="1.5"/>
+      <line x1="0" y1="0" x2="43" y2="0" stroke="#34d399" stroke-width="2.5" marker-end="url(#arr-green)"/>
+      <line x1="0" y1="0" x2="0" y2="-43" stroke="#34d399" stroke-width="2.5" marker-end="url(#arr-green)"/>
+      <circle cx="0" cy="0" r="3.5" fill="#ffffff"/>
+      <circle cx="45" cy="0" r="3" fill="#34d399"/>
+      <circle cx="0" cy="-45" r="3" fill="#34d399"/>
+      <circle cx="45" cy="-45" r="3" fill="#34d399"/>
+      <circle cx="-45" cy="0" r="2.5" fill="#94a3b8"/>
+      <circle cx="0" cy="45" r="2.5" fill="#94a3b8"/>
+      <!-- Right angle mark -->
+      <path d="M 0,-10 L 10,-10 L 10,0" fill="none" stroke="#34d399" stroke-width="1"/>
+      <text x="60" y="-18" fill="#a7f3d0" font-size="9.5">夾角 ≈ 90°</text>
+      <text x="60" y="-5" fill="#a7f3d0" font-size="9.5">向量短、極接近正交</text>
+    </g>
+    <text x="340" y="246" fill="#cbd5e1" font-size="9.5">• Babai 演算法可在 O(n²) 瞬時找到最近格點（輕鬆解密）</text>
+
+    <!-- Sub-panel B: Bad Basis (Long & Heavily Skewed) -->
+    <rect x="330" y="265" width="275" height="170" rx="6" fill="rgba(239, 68, 68, 0.08)" stroke="rgba(239, 68, 68, 0.3)"/>
+    <text x="340" y="283" fill="#f87171" font-size="11" font-weight="700">🔴 惡基 (Bad Basis) — 對外公開公鑰 (Public Key PK)</text>
+    <g transform="translate(370, 360)">
+      <!-- Long skewed basis -->
+      <polygon points="0,0 120,-10 140,-50 20,-40" fill="rgba(239, 68, 68, 0.2)" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="0" y1="0" x2="117" y2="-9" stroke="#f87171" stroke-width="2" marker-end="url(#arr-red)"/>
+      <line x1="0" y1="0" x2="19" y2="-38" stroke="#f87171" stroke-width="2" marker-end="url(#arr-red)"/>
+      <circle cx="0" cy="0" r="3.5" fill="#ffffff"/>
+      <circle cx="120" cy="-10" r="3" fill="#f87171"/>
+      <circle cx="20" cy="-40" r="3" fill="#f87171"/>
+      <circle cx="140" cy="-50" r="3" fill="#f87171"/>
+      <text x="45" y="-18" fill="#fca5a5" font-size="9">夾角極小 ≈ 12°</text>
+      <text x="45" y="-6" fill="#fca5a5" font-size="9">向量極長、高度傾斜平行</text>
+    </g>
+    <text x="340" y="405" fill="#cbd5e1" font-size="9.5">• 張成完全相同的晶格點陣！但基底形狀極為扭曲</text>
+    <text x="340" y="422" fill="#fca5a5" font-size="9.5">• 缺乏良基者求解 CVP 需耗費 2<sup>Ω(n)</sup> 指數時間暴力搜索</text>
+
+    <!-- =================================================================== -->
+    <!-- PANEL 3: SVP 與 CVP / LWE 容錯解密 (Right: x 630~925)               -->
+    <!-- =================================================================== -->
+    <rect x="630" y="52" width="295" height="395" rx="8" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(168, 85, 247, 0.25)"/>
+    <text x="777" y="75" text-anchor="middle" fill="#c084fc" font-size="12" font-weight="700">模組 4.3：SVP 與 CVP / LWE 解密幾何</text>
+    <text x="777" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">最近向量問題與 Voronoi 解密收斂胞腔</text>
+
+    <g transform="translate(777, 215)">
+      <!-- Voronoi cell of center point c (Hexagon) -->
+      <polygon points="0,-75 65,-37 65,37 0,75 -65,37 -65,-37" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="4,3"/>
+      <text x="40" y="-60" fill="#38bdf8" font-size="9.5">Voronoi 胞腔 (安全容錯解密區)</text>
+
+      <!-- Center Lattice Point c (Plaintext Codeword) -->
+      <circle cx="0" cy="0" r="5" fill="#34d399" stroke="#ffffff" stroke-width="2"/>
+      <text x="-48" y="5" fill="#34d399" font-size="11" font-weight="700">格點 c</text>
+      <text x="-70" y="18" fill="#a7f3d0" font-size="8.5">(真實明文位置)</text>
+
+      <!-- Neighbor Lattice Points -->
+      <circle cx="110" cy="-65" r="4" fill="#64748b"/>
+      <circle cx="110" cy="65" r="4" fill="#64748b"/>
+      <circle cx="0" cy="130" r="4" fill="#64748b"/>
+      <circle cx="-110" cy="65" r="4" fill="#64748b"/>
+      <circle cx="-110" cy="-65" r="4" fill="#64748b"/>
+      <circle cx="0" cy="-130" r="4" fill="#64748b"/>
+
+      <!-- SVP Shortest Vector lambda_1(Lambda) -->
+      <line x1="0" y1="0" x2="108" y2="-64" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <text x="45" y="-42" fill="#c084fc" font-size="9.5" font-weight="700">λ₁(Λ)</text>
+
+      <!-- Safe Noise Target Point t = c + e (Inside Voronoi Cell) -->
+      <line x1="0" y1="0" x2="28" y2="-28" stroke="#fbbf24" stroke-width="2" marker-end="url(#arr-amber)"/>
+      <circle cx="30" cy="-30" r="4" fill="#fbbf24" stroke="#ffffff" stroke-width="1.5"/>
+      <text x="36" y="-32" fill="#fbbf24" font-size="10.5" font-weight="700">密文 t = c + e</text>
+      <!-- Snap back arrow -->
+      <path d="M 26,-24 Q 10,-10 4,-3" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="2,2" marker-end="url(#arr-green)"/>
+      <text x="8" y="-12" fill="#34d399" font-size="8.5">吸附回 c ✓</text>
+
+      <!-- Excessive Noise Target Point t_bad (Spilling Out) -->
+      <line x1="0" y1="0" x2="80" y2="48" stroke="#f87171" stroke-width="1.5" stroke-dasharray="2,2"/>
+      <circle cx="82" cy="50" r="4" fill="#f87171" stroke="#ffffff" stroke-width="1.5"/>
+      <text x="88" y="55" fill="#f87171" font-size="9.5">超標密文 t'</text>
+      <!-- Wrong snap arrow -->
+      <path d="M 85,52 L 105,62" fill="none" stroke="#f87171" stroke-width="1.8" marker-end="url(#arr-red)"/>
+      <text x="75" y="72" fill="#f87171" font-size="8">誤吸附至鄰格 ✗</text>
+    </g>
+
+    <!-- Bottom Feature Callout 3 -->
+    <rect x="640" y="340" width="275" height="95" rx="6" fill="rgba(10, 16, 30, 0.85)" stroke="rgba(168, 85, 247, 0.25)"/>
+    <text x="650" y="358" fill="#c084fc" font-size="10.5" font-weight="700">🎯 CVP 幾何解密容錯原理：</text>
+    <text x="650" y="375" fill="#cbd5e1" font-size="9.5">• 密文 t 落在連續空間，是格點 c 疊加微小雜訊 e</text>
+    <text x="650" y="392" fill="#34d399" font-size="9.5">• 若 ‖e‖ &lt; λ₁/2，t 嚴格落在 c 的胞腔內，捨入 100% 正確</text>
+    <text x="650" y="409" fill="#f87171" font-size="9.5">• 若雜訊超出胞腔邊界，捨入演算法將誤跳至鄰近錯誤格點</text>
+    <text x="650" y="424" fill="#94a3b8" font-size="9">（這就是為什麼同態加密必須嚴格控制雜訊上限！）</text>
+  </svg>
+</div>
+
+      <!-- 圖解導讀指南 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>4.1 幾何晶格 (Lattice) 的嚴格定義與離散性本質</span>
-          <span class="badge badge-blue">幾何空間根基</span>
+          <span>4.1 圖解導讀：從二維幾何直觀透視高維晶格世界</span>
+          <span class="badge badge-blue">向量圖示核心解析</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          在實數空間 <span class="word-eq">ℝ<sup>m</sup></span> 中，任意兩個實數之間存在無窮多個實數（稠密性）；但晶格不同，它是一組規律排列的離散點陣。
+          高維幾何晶格（如 <span class="word-eq">n = 1024</span> 維）超越了人類肉眼的三維想像，但其底層代數與幾何運作規律與上方<strong>圖 1</strong> 所示的二維模型完全同構：
         </p>
+        <ul class="bg-module-list">
+          <li><strong>【圖 1 左側：點陣生成與基本多面體密鋪 (Tessellation)】</strong>：
+            <br>• <strong>幾何晶格 Λ(B)</strong> 不是一條線或連續平面，而是在空間中依照固定基底向量 <span class="word-eq">b₁, b₂</span> 延伸出的<strong>無限離散點陣</strong>。
+            <br>• 由基底圍成的綠色平行四邊形稱為<strong>基本並行多面體 𝒫(B)</strong>。整個二維平面可以被無窮多個 𝒫(B) 完美密鋪，既無任何縫隙，也無任何重疊！
+            <br>• <strong>體積不變量</strong>：四邊形的面積等於行列式 <span class="word-eq">det(Λ)</span>。無論挑選哪一組合法基底，圍出的平行多面體形狀雖然會變，但<strong>面積恆定等於 5</strong>，其倒數 <span class="word-eq">1 / det(Λ) = 0.2</span> 嚴格代表了空間中格點的全域分佈密度。
+          </li>
+          <li><strong>【圖 1 中間：良基 (私鑰陷門) vs. 惡基 (公開公鑰)】</strong>：
+            <br>• <strong>綠色良基 (Good Basis)</strong>：向量短、彼此接近垂直（夾角接近 90°）。若持有良基，演算法能輕易判定空間中的任意點最靠近哪一個格點，這正是<strong>解密私鑰（Trapdoor）</strong>的核心！
+            <br>• <strong>紅色惡基 (Bad Basis)</strong>：向量極長、彼此極度傾斜平行（夾角可能僅 12°）。惡基生成的晶格點陣與良基<strong>完全一模一樣</strong>，但若只給攻擊者惡基，尋找最近格點將退化為極度複雜的指數窮舉難題，這正是<strong>加密公鑰（Public Key）</strong>的精髓！
+          </li>
+          <li><strong>【圖 1 右側：SVP 最短向量與 CVP / LWE 容錯解密幾何】</strong>：
+            <br>• <strong>最短向量問題 (SVP)</strong>：尋找距離原點最近的非零格點 <span class="word-eq">λ₁(Λ)</span>（如圖中紫色虛線標示）。
+            <br>• <strong>最近向量問題 (CVP) 與 Voronoi 胞腔</strong>：每個晶格點周圍都存在一個藍色虛線所示的「引力範圍」（稱為 Voronoi 胞腔，半徑為 <span class="word-eq">Δ/2</span>）。密文 <span class="word-eq">t = c + e</span> 是一個帶有微小雜訊的實數點。只要雜訊向量 <span class="word-eq">e</span> 夠小，<span class="word-eq">t</span> 就會穩穩落在明文格點 <span class="word-eq">c</span> 的胞腔內，被解密演算法「自動吸附」還原回正確明文（綠色箭頭）；若雜訊超出邊界，則會誤吸附到相鄰格點導致解密損毀（紅色箭頭）！
+          </li>
+        </ul>
+      </div>
+
+      <!-- 4.2 幾何晶格嚴格數學定義 -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>4.2 幾何晶格 (Lattice) 的嚴格數學定義與離散性本質</span>
+          <span class="badge badge-green">幾何空間根基</span>
+        </div>
         <ul class="bg-module-list">
           <li><strong>【定義】</strong>：
             設 <span class="word-eq">B = {b₁, b₂, …, b<sub>n</sub>} ⊂ ℝ<sup>m</sup></span> 為一組由 <span class="word-eq">n</span> 個線性獨立的 <span class="word-eq">m</span> 維幾何向量所組成的基底矩陣（<span class="word-eq">m ≥ n</span>）。由該基底生成的幾何晶格 <span class="word-eq">Λ(B)</span> 定義為所有<strong>整數線性組合</strong>構成的離散點陣空間：
@@ -2494,42 +2724,62 @@
             </div>
             格點之間絕不存在連續逼近的極限點，這為幾何搜索難題提供了根本保證。
           </li>
+          <li><strong>【基本並行多面體與晶格行列式】</strong>：
+            由基底向量張成的半開半閉多面體空間為 <span class="word-eq">𝒫(B) = { ∑ x<sub>i</sub> · b<sub>i</sub> | 0 ≤ x<sub>i</sub> &lt; 1, x<sub>i</sub> ∈ ℝ }</span>。
+            其體積等於基底矩陣行列式的絕對值：<span class="word-eq">det(Λ) = √det(B<sup>T</sup> · B)</span>。
+            同一個晶格可以由無窮多組不同的基底生成，但<strong>所有合法基底圍成的多面體體積恆定相等</strong>，其倒數 <span class="word-eq">1 / det(Λ)</span> 代表格點在空間中的全域平均分佈密度。
+          </li>
         </ul>
       </div>
 
-      <!-- 4.2 基本並行多面體與晶格行列式 -->
+      <!-- 4.3 具體數值範例推導 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>4.2 基本並行多面體 𝒫(B) 與晶格行列式 det(Λ)</span>
-          <span class="badge badge-green">幾何不變量</span>
+          <span>4.3 具體數值範例：晶格生成、行列式計算與 CVP 解密容錯收斂</span>
+          <span class="badge badge-purple">實測數值推導</span>
         </div>
-        <ul class="bg-module-list">
-          <li><strong>【基本並行多面體 (Fundamental Parallelepiped)】</strong>：
-            由基底向量 <span class="word-eq">B</span> 張成的半開半閉多面體空間：
-            <div class="word-eq-block" style="margin: 0.35rem 0;">
-              𝒫(B) = { ∑<sub>i=1</sub><sup>n</sup> x<sub>i</sub> · b<sub>i</sub>  |  0 ≤ x<sub>i</sub> &lt; 1,  x<sub>i</sub> ∈ ℝ }
-            </div>
-            <strong>空間密鋪性質</strong>：以所有晶格點為原點將 𝒫(B) 平移，能夠<strong>完美無縫隙、無重疊地鋪滿（Tessellate）整個空間</strong>。空間中的任何一個實數向量都可以唯一分解為「一個晶格點 + 多面體內的一個偏差向量」。
-          </li>
-          <li><strong>【晶格行列式 det(Λ) 的幾何不變量】</strong>：
-            基本並行多面體的幾何體積等於基底矩陣行列式的絕對值：<span class="word-eq">det(Λ) = √det(B<sup>T</sup> · B)</span>。
-            同一個晶格可以由無窮多組不同的基底生成（例如對基底進行初等整數行變換），但<strong>所有合法基底圍成的多面體體積恆定相等！</strong>晶格行列式是晶格與生俱來的不變量，其倒數 <span class="word-eq">1 / det(Λ)</span> 代表格點在空間中的全域平均分佈密度。
-          </li>
-        </ul>
+        <div class="example-box" style="background: rgba(10, 16, 30, 0.75); border-left: 3px solid #38bdf8; padding: 0.85rem;">
+          <strong style="color: #38bdf8;">🔢 逐步推導範例：圖 1 的二維晶格數值演算</strong>
+          <br>給定二維基底向量：<span class="word-eq">b₁ = [3, 1]<sup>T</sup></span>，<span class="word-eq">b₂ = [1, 2]<sup>T</sup></span>。
+          <br><br><strong>第一步：計算晶格行列式與空間點密度</strong>
+          <br>基底矩陣為 <span class="word-eq">B = [ [3, 1], [1, 2] ]</span>。
+          <br>計算行列式：<span class="word-eq">det(Λ) = |det(B)| = |3 · 2 - 1 · 1| = 6 - 1 = 5</span>。
+          <br>這代表：基本平行多面體 𝒫(B) 的幾何面積嚴格等於 5，空間中晶格點的平均密度為 <span class="word-eq">1 / 5 = 0.2</span> 個點 / 單位平方。
+          <br><br><strong>第二步：整數線性組合生成明文格點 c</strong>
+          <br>設明文編碼為整數座標 <span class="word-eq">z = [2, 1]<sup>T</sup> ∈ ℤ²</span>。
+          <br>對應的晶格碼字向量為：
+          <br>&nbsp;&nbsp;<span class="word-eq">c = B · z = 2 · [3, 1]<sup>T</sup> + 1 · [1, 2]<sup>T</sup> = [6 + 1,  2 + 2]<sup>T</sup> = [7, 4]<sup>T</sup></span>。
+          <br><br><strong>第三步：注入加密雜訊生成連續空間密文 t</strong>
+          <br>在傳輸或加密時，注入微小高斯雜訊向量 <span class="word-eq">e = [0.3, -0.4]<sup>T</sup></span>（雜訊長度 <span class="word-eq">‖e‖₂ = √(0.3² + (-0.4)²) = √0.25 = 0.5</span>）。
+          <br>生成的密文目標點為：
+          <br>&nbsp;&nbsp;<span class="word-eq">t = c + e = [7 + 0.3,  4 - 0.4]<sup>T</sup> = [7.3,  3.6]<sup>T</sup> ∈ ℝ²</span>。
+          <br><br><strong>第四步：CVP 解密吸附（Babai 最近格點捨入）</strong>
+          <br>接收方使用私鑰基底 <span class="word-eq">B</span> 求解連續座標：
+          <br>&nbsp;&nbsp;<span class="word-eq">B⁻¹ = (1/5) · [ [2, -1], [-1, 3] ]</span>
+          <br>&nbsp;&nbsp;<span class="word-eq">z' = B⁻¹ · t = (1/5) · [ 2 · 7.3 - 1 · 3.6,  -1 · 7.3 + 3 · 3.6 ]<sup>T</sup></span>
+          <br>&nbsp;&nbsp;<span class="word-eq">z' = (1/5) · [ 14.6 - 3.6,  -7.3 + 10.8 ]<sup>T</sup> = (1/5) · [ 11.0,  3.5 ]<sup>T</sup> = [ 2.2,  0.7 ]<sup>T</sup></span>
+          <br>執行四捨五入捨入函數：<span class="word-eq">⌊z'⌉ = [ ⌊2.2⌉,  ⌊0.7⌉ ]<sup>T</sup> = [ 2,  1 ]<sup>T</sup> = z</span>！
+          <br>乘回基底重建格點：<span class="word-eq">c' = B · [2, 1]<sup>T</sup> = [7, 4]<sup>T</sup> = c</span>。
+          <br><strong>成功判定</strong>：雜訊 <span class="word-eq">e</span> 被完美完全濾除，100% 精準還原原始明文！
+          <br><br><strong>第五步：反例推導 — 雜訊超標導致解密翻轉</strong>
+          <br>若同態乘法使雜訊累積膨脹至 <span class="word-eq">e_bad = [1.8, 1.2]<sup>T</sup></span>，則密文漂移至 <span class="word-eq">t' = [8.8, 5.2]<sup>T</sup></span>。
+          <br>計算連續座標：<span class="word-eq">z'' = B⁻¹ · t' = (1/5) · [ 2 · 8.8 - 1 · 5.2,  -1 · 8.8 + 3 · 5.2 ]<sup>T</sup> = (1/5) · [ 12.4,  6.8 ]<sup>T</sup> = [ 2.48,  1.36 ]<sup>T</sup></span>。
+          <br>捨入結果：<span class="word-eq">⌊z''⌉ = [ 2,  1 ]<sup>T</sup></span>？若雜訊再略增大至 <span class="word-eq">e = [2.0, 1.5]</span>，則 <span class="word-eq">z'' = [2.5, 1.5]</span> 發生進位翻轉為 <span class="word-eq">[3, 2]<sup>T</sup></span>，導致解密錯誤！
+        </div>
       </div>
 
-      <!-- 4.3 經典幾何晶格難題 -->
+      <!-- 4.4 經典幾何難題與抗量子本質 -->
       <div class="card">
         <div class="card-title">
-          <span>4.3 經典幾何難題：最短向量問題 (SVP) 與最近向量問題 (CVP)</span>
-          <span class="badge badge-yellow">抗量子本質</span>
+          <span>4.4 經典幾何難題 (SVP &amp; CVP) 與對抗量子電腦的本質</span>
+          <span class="badge badge-yellow">後量子屏障</span>
         </div>
         <ul class="bg-module-list">
           <li><strong>【最短向量問題 (SVP, Shortest Vector Problem)】</strong>：
-            給定晶格基底 <span class="word-eq">B</span>，找出晶格中歐式長度最短的非零向量 <span class="word-eq">v ∈ Λ(B) ∖ {0}</span>，使得 <span class="word-eq">‖v‖₂ = λ₁(Λ)</span>。
+            給定晶格基底 <span class="word-eq">B</span>，找出晶格中歐氏長度最小的非零向量 <span class="word-eq">v ∈ Λ(B) ∖ {0}</span>，使得 <span class="word-eq">‖v‖₂ = λ₁(Λ)</span>。
           </li>
           <li><strong>【最近向量問題 (CVP, Closest Vector Problem)】</strong>：
-            給定空間中任意一個目標點（通常不是格點）<span class="word-eq">t ∈ ℝ<sup>m</sup></span>，找出格中距離 <span class="word-eq">t</span> 最近的晶格點 <span class="word-eq">v ∈ Λ(B)</span>。LWE 的解密本質上就是求解 CVP 難題！
+            給定空間中任意一個目標點 <span class="word-eq">t ∈ ℝ<sup>m</sup></span>，找出格中距離 <span class="word-eq">t</span> 最近的晶格點 <span class="word-eq">v ∈ Λ(B)</span>。上述第四步的解密正是求解 CVP 難題。
           </li>
           <li><strong>【為什麼量子電腦無法破解高維晶格難題？】</strong>：
             在低維空間（如 2 維、3 維），高斯約化演算法能在幾微秒內解出 SVP。
@@ -2549,88 +2799,296 @@
     <!-- ===================================================================== -->
     <!-- TAB FD-PROB: 機率統計與離散高斯分佈 (基礎知識閱讀 第五單元)               -->
     <!-- ===================================================================== -->
+    <!-- ===================================================================== -->
+    <!-- TAB FD-PROB: 機率統計與離散高斯分佈 (基礎知識閱讀 第五單元 - 圖文詳解版)   -->
+    <!-- ===================================================================== -->
     <section id="tab-fd-prob" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(236, 72, 153, 0.45); background: linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(56, 189, 248, 0.08));">
         <h2 class="lab-hero-title">基礎知識閱讀 (五) — 機率統計與離散高斯分佈 (Discrete Gaussian)</h2>
-        <div class="lab-hero-sub">均勻分佈、離散高斯測度、獨立方差相加定律與 12σ 尾端無溢位安全邊界</div>
+        <div class="lab-hero-sub">均勻分佈、離散高斯鐘形對稱性、獨立方差相加定律、12σ 尾端邊界與雜訊淹沒 (Smudging) 圖文詳解</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('fd-lattice', document.getElementById('sidebar-btn-fd-lattice'))">← 上一模組：四、幾何晶格理論基礎</button>
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('fd-complexity', document.getElementById('sidebar-btn-fd-complexity'))">下一模組：六、複雜度與可證明安全 →</button>
         </div>
       </div>
 
-      <!-- 5.1 均勻隨機分佈 vs. 離散高斯分佈 -->
+      <!-- 全景向量圖示 -->
+      <div class="diagram-wrapper" style="margin: 1.25rem 0; text-align: center; overflow-x: auto;">
+  <svg viewBox="0 0 940 460" width="100%" height="auto" style="max-width: 940px; background: #0b1120; border: 1px solid rgba(236, 72, 153, 0.35); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <defs>
+      <marker id="garr-pink" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f472b6"/>
+      </marker>
+      <marker id="garr-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8"/>
+      </marker>
+      <marker id="garr-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#34d399"/>
+      </marker>
+      <!-- Gradient for Bell Curve Area -->
+      <linearGradient id="bell-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(244, 114, 182, 0.45)"/>
+        <stop offset="100%" stop-color="rgba(244, 114, 182, 0.0)"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Global Title Banner -->
+    <rect x="0" y="0" width="940" height="42" fill="rgba(15, 23, 42, 0.95)"/>
+    <text x="470" y="26" text-anchor="middle" fill="#f472b6" font-size="14" font-weight="700" letter-spacing="1">圖 2：機率統計與離散高斯分佈全景直觀 — 鐘形對稱性、尾端 12σ 邊界與雜訊淹沒 (Smudging)</text>
+    <line x1="0" y1="42" x2="940" y2="42" stroke="rgba(244, 114, 182, 0.25)" stroke-width="1"/>
+
+    <!-- =================================================================== -->
+    <!-- PANEL 1: 均勻分佈 vs 離散高斯分佈 (Left: x 15~305)                  -->
+    <!-- =================================================================== -->
+    <rect x="15" y="52" width="290" height="395" rx="8" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(244, 114, 182, 0.25)"/>
+    <text x="160" y="75" text-anchor="middle" fill="#f472b6" font-size="12" font-weight="700">模組 5.1：均勻分佈 vs. 離散高斯</text>
+    <text x="160" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">為什麼 LWE 雜訊絕不能用方波均勻分佈？</text>
+
+    <!-- Sub-panel 1A: Uniform Distribution -->
+    <rect x="25" y="105" width="270" height="105" rx="6" fill="rgba(15, 23, 42, 0.8)" stroke="rgba(56, 189, 248, 0.2)"/>
+    <text x="35" y="123" fill="#38bdf8" font-size="10.5" font-weight="700">🔲 均勻分佈 𝒰(ℤ_q) — 平坦無聚集</text>
+    <g transform="translate(45, 180)">
+      <!-- Axis -->
+      <line x1="0" y1="0" x2="225" y2="0" stroke="#64748b" stroke-width="1"/>
+      <!-- Flat bars across 9 points -->
+      <rect x="10" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="35" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="60" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="85" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="110" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="135" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="160" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <rect x="185" y="-35" width="12" height="35" fill="rgba(56, 189, 248, 0.6)"/>
+      <line x1="5" y1="-35" x2="205" y2="-35" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="212" y="-32" fill="#38bdf8" font-size="9">1/q</text>
+    </g>
+    <text x="35" y="202" fill="#94a3b8" font-size="9">特性：資訊熵最大，但對偶格產生致命 Gibbs 振盪</text>
+
+    <!-- Sub-panel 1B: Discrete Gaussian Distribution -->
+    <rect x="25" y="220" width="270" height="120" rx="6" fill="rgba(15, 23, 42, 0.8)" stroke="rgba(244, 114, 182, 0.25)"/>
+    <text x="35" y="238" fill="#f472b6" font-size="10.5" font-weight="700">🔔 離散高斯 𝒟_σ — 鐘形對稱指数衰減</text>
+    <g transform="translate(160, 315)">
+      <!-- Axis -->
+      <line x1="-120" y1="0" x2="120" y2="0" stroke="#64748b" stroke-width="1"/>
+      <line x1="0" y1="5" x2="0" y2="-65" stroke="#64748b" stroke-width="1"/>
+      <!-- Discrete Spikes at x = -4..4 -->
+      <!-- x = 0 (peak) -->
+      <line x1="0" y1="0" x2="0" y2="-60" stroke="#f472b6" stroke-width="5" stroke-linecap="round"/>
+      <!-- x = 1, -1 -->
+      <line x1="25" y1="0" x2="25" y2="-45" stroke="#f472b6" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="-25" y1="0" x2="-25" y2="-45" stroke="#f472b6" stroke-width="4.5" stroke-linecap="round"/>
+      <!-- x = 2, -2 -->
+      <line x1="50" y1="0" x2="50" y2="-20" stroke="#f472b6" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-50" y1="0" x2="-50" y2="-20" stroke="#f472b6" stroke-width="3.5" stroke-linecap="round"/>
+      <!-- x = 3, -3 -->
+      <line x1="75" y1="0" x2="75" y2="-6" stroke="#f472b6" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-75" y1="0" x2="-75" y2="-6" stroke="#f472b6" stroke-width="3" stroke-linecap="round"/>
+      <!-- Continuous curve overlay -->
+      <path d="M -90,-2 Q -50,-15 -25,-45 Q 0,-65 25,-45 Q 50,-15 90,-2" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="2,2"/>
+      <text x="0" y="14" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">0</text>
+      <text x="25" y="14" text-anchor="middle" fill="#94a3b8" font-size="8.5">+1σ</text>
+      <text x="-25" y="14" text-anchor="middle" fill="#94a3b8" font-size="8.5">-1σ</text>
+      <text x="50" y="14" text-anchor="middle" fill="#94a3b8" font-size="8.5">+2σ</text>
+      <text x="-50" y="14" text-anchor="middle" fill="#94a3b8" font-size="8.5">-2σ</text>
+    </g>
+    <text x="35" y="333" fill="#94a3b8" font-size="9">機率 Pr[x] ∝ exp(-x² / 2σ²)，集中原點</text>
+
+    <!-- Bottom Callout 1 -->
+    <rect x="25" y="350" width="270" height="85" rx="6" fill="rgba(10, 16, 30, 0.85)" stroke="rgba(244, 114, 182, 0.2)"/>
+    <text x="35" y="368" fill="#f472b6" font-size="10" font-weight="700">👑 雷格夫 (Regev) 歸約定理的數學底層：</text>
+    <text x="35" y="384" fill="#cbd5e1" font-size="9">• 高斯函數是傅立葉轉換的唯一自特徵函數</text>
+    <text x="35" y="399" fill="#34d399" font-size="9">• 映射到對偶格依然保持完美高斯平滑</text>
+    <text x="35" y="414" fill="#cbd5e1" font-size="9">• 保證 LWE 難題與幾何最壞情況 SVP 完全等價！</text>
+
+    <!-- =================================================================== -->
+    <!-- PANEL 2: 高斯尾端界限與解密門檻 (Middle: x 320~620)                 -->
+    <!-- =================================================================== -->
+    <rect x="320" y="52" width="295" height="395" rx="8" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(56, 189, 248, 0.25)"/>
+    <text x="467" y="75" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">模組 5.3：高斯尾端界限與解密門檻</text>
+    <text x="467" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">6σ (百萬次) 與 12σ (密碼學零錯誤) 安全邊界</text>
+
+    <!-- Big Bell Curve with Shaded Zones -->
+    <g transform="translate(467, 230)">
+      <!-- Horizontal Axis -->
+      <line x1="-135" y1="0" x2="135" y2="0" stroke="#64748b" stroke-width="1.5"/>
+      <line x1="0" y1="5" x2="0" y2="-120" stroke="#64748b" stroke-width="1" stroke-dasharray="2,2"/>
+
+      <!-- Shaded 12σ boundary (full curve base) -->
+      <path d="M -130,0 C -100,0 -80,-3 -60,-25 C -40,-55 -20,-110 0,-110 C 20,-110 40,-55 60,-25 C 80,-3 100,0 130,0 Z" fill="url(#bell-grad)"/>
+
+      <!-- Shaded 3σ zone (Green: -40 to 40) -->
+      <path d="M -40,0 C -30,-30 -15,-105 0,-105 C 15,-105 30,-30 40,0 Z" fill="rgba(16, 185, 129, 0.25)"/>
+      <text x="0" y="-45" text-anchor="middle" fill="#34d399" font-size="10" font-weight="700">3σ 區間 (99.7%)</text>
+
+      <!-- Bell curve stroke -->
+      <path d="M -130,0 C -100,0 -80,-3 -60,-25 C -40,-55 -20,-110 0,-110 C 20,-110 40,-55 60,-25 C 80,-3 100,0 130,0" fill="none" stroke="#f472b6" stroke-width="2.5"/>
+
+      <!-- 6σ Boundary Lines (Cyan) -->
+      <line x1="-70" y1="5" x2="-70" y2="-45" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="70" y1="5" x2="70" y2="-45" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="70" y="-50" text-anchor="middle" fill="#38bdf8" font-size="8.5">6σ</text>
+      <text x="-70" y="-50" text-anchor="middle" fill="#38bdf8" font-size="8.5">-6σ</text>
+
+      <!-- 12σ Boundary Lines (Purple) -->
+      <line x1="-105" y1="5" x2="-105" y2="-25" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="105" y1="5" x2="105" y2="-25" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="105" y="-30" text-anchor="middle" fill="#c084fc" font-size="8.5">12σ</text>
+      <text x="-105" y="-30" text-anchor="middle" fill="#c084fc" font-size="8.5">-12σ</text>
+
+      <!-- Plaintext Decoding Threshold Δ/2 (Amber solid lines) -->
+      <line x1="-120" y1="15" x2="-120" y2="-125" stroke="#fbbf24" stroke-width="2"/>
+      <line x1="120" y1="15" x2="120" y2="-125" stroke="#fbbf24" stroke-width="2"/>
+      <text x="120" y="-130" text-anchor="middle" fill="#fbbf24" font-size="9.5" font-weight="700">+Δ/2 臨界解密門檻</text>
+      <text x="-120" y="-130" text-anchor="middle" fill="#fbbf24" font-size="9.5" font-weight="700">-Δ/2</text>
+
+      <text x="0" y="16" text-anchor="middle" fill="#ffffff" font-size="9.5">原點 0</text>
+    </g>
+
+    <!-- Probability Table Callout -->
+    <rect x="330" y="325" width="275" height="110" rx="6" fill="rgba(10, 16, 30, 0.85)" stroke="rgba(56, 189, 248, 0.25)"/>
+    <text x="340" y="343" fill="#38bdf8" font-size="10.5" font-weight="700">📊 高斯尾端出界率實測量化表：</text>
+    <text x="340" y="361" fill="#34d399" font-size="9.5">• 偏離 &gt; 3σ：機率 ≈ 0.27% (千分之三，常見於未優化電路)</text>
+    <text x="340" y="378" fill="#38bdf8" font-size="9.5">• 偏離 &gt; 6σ：機率 ≤ 2 · exp(-18) ≈ 2⁻²⁵ (三千萬分之一)</text>
+    <text x="340" y="395" fill="#c084fc" font-size="9.5">• 偏離 &gt; 12σ：機率 ≤ 2 · exp(-72) ≈ 2⁻¹⁰³ (小於宇宙原子逆元)</text>
+    <text x="340" y="412" fill="#fbbf24" font-size="9.5">• 黃金準則：只要設定 Δ/2 ≥ 12σ_max，即達解密 100% 零錯誤！</text>
+
+    <!-- =================================================================== -->
+    <!-- PANEL 3: 門檻方差相加與雜訊淹沒 (Right: x 630~925)                 -->
+    <!-- =================================================================== -->
+    <rect x="630" y="52" width="295" height="395" rx="8" fill="rgba(15, 23, 42, 0.65)" stroke="rgba(52, 211, 153, 0.25)"/>
+    <text x="777" y="75" text-anchor="middle" fill="#34d399" font-size="12" font-weight="700">模組 5.2 &amp; 5.4：門檻方差相加與雜訊淹沒</text>
+    <text x="777" y="93" text-anchor="middle" fill="#94a3b8" font-size="10">多方聚合方差放大定律與私鑰洗白機制</text>
+
+    <!-- Sub-panel 3A: Variance expansion in threshold FHE -->
+    <rect x="640" y="105" width="275" height="120" rx="6" fill="rgba(15, 23, 42, 0.8)" stroke="rgba(52, 211, 153, 0.25)"/>
+    <text x="650" y="123" fill="#34d399" font-size="10.5" font-weight="700">📈 門檻聚合方差膨脹定律：σ_total = √(N) · σ</text>
+    <g transform="translate(777, 190)">
+      <line x1="-120" y1="0" x2="120" y2="0" stroke="#64748b" stroke-width="1"/>
+      <!-- Curve 1: Single node noise (tall and narrow, green) -->
+      <path d="M -50,0 C -30,0 -15,-45 0,-45 C 15,-45 30,0 50,0" fill="none" stroke="#34d399" stroke-width="2"/>
+      <text x="-45" y="-30" fill="#34d399" font-size="8.5">單節點 σ</text>
+
+      <!-- Curve 2: Sum of N nodes noise (short and wide, blue) -->
+      <path d="M -110,0 C -70,0 -40,-22 0,-22 C 40,-22 70,0 110,0" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3,2"/>
+      <text x="55" y="-15" fill="#38bdf8" font-size="8.5">N 節點 √(N)·σ</text>
+    </g>
+    <text x="650" y="215" fill="#94a3b8" font-size="9">節點數 N 由 10 擴展至 1000 時，雜訊標準差擴大 √100 ≈ 10 倍</text>
+
+    <!-- Sub-panel 3B: Noise Smudging (Flooding) -->
+    <rect x="640" y="235" width="275" height="135" rx="6" fill="rgba(15, 23, 42, 0.8)" stroke="rgba(245, 158, 11, 0.25)"/>
+    <text x="650" y="253" fill="#fbbf24" font-size="10.5" font-weight="700">🌊 雜訊淹沒 (Noise Smudging) 消除私鑰痕跡</text>
+    <g transform="translate(777, 320)">
+      <line x1="-120" y1="0" x2="120" y2="0" stroke="#64748b" stroke-width="1"/>
+      <!-- Shifted curve by secret e_sk (Blue) -->
+      <path d="M -105,0 C -70,0 -35,-25 5,-25 C 45,-25 80,0 115,0" fill="rgba(56, 189, 248, 0.15)" stroke="#38bdf8" stroke-width="1.8"/>
+      <!-- Pure flood curve centered at 0 (Amber dashed) -->
+      <path d="M -110,0 C -75,0 -40,-25 0,-25 C 40,-25 75,0 110,0" fill="rgba(251, 191, 36, 0.15)" stroke="#fbbf24" stroke-width="1.8" stroke-dasharray="2,2"/>
+      <line x1="0" y1="5" x2="0" y2="-28" stroke="#fbbf24" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="5" y1="5" x2="5" y2="-28" stroke="#38bdf8" stroke-width="1"/>
+      <text x="8" y="-32" fill="#38bdf8" font-size="8">位移 e_sk</text>
+    </g>
+    <text x="650" y="348" fill="#cbd5e1" font-size="9">• 注入龐大淹沒雜訊 σ_flood ≫ 2^λ · B_sk</text>
+    <text x="650" y="362" fill="#34d399" font-size="9">• 兩分佈統計距離 SD &lt; 2⁻¹²⁸，私鑰細微位移被徹底淹沒！</text>
+
+    <!-- Bottom Feature Callout 3 -->
+    <rect x="640" y="380" width="275" height="55" rx="6" fill="rgba(10, 16, 30, 0.85)" stroke="rgba(52, 211, 153, 0.25)"/>
+    <text x="650" y="398" fill="#34d399" font-size="10" font-weight="700">🛡️ 統計不可區分性保證：</text>
+    <text x="650" y="414" fill="#cbd5e1" font-size="9">部分解密發布時，外部敵手無法由雜訊偏差反推私鑰份額！</text>
+  </svg>
+</div>
+
+      <!-- 圖解導讀指南 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>5.1 均勻隨機分佈 vs. 離散高斯分佈 (Uniform vs. Discrete Gaussian)</span>
-          <span class="badge badge-pink">隨機分佈對比</span>
+          <span>5.1 圖解導讀：從鐘形曲線透視同態加密雜訊的統計生命線</span>
+          <span class="badge badge-pink">向量圖示核心解析</span>
         </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          在晶格密碼中，雜訊不是「計算失誤」，而是<strong>主動注入的保護盾牌</strong>。上方<strong>圖 2</strong> 揭示了三大核心統計機理：
+        </p>
         <ul class="bg-module-list">
-          <li><strong>【均勻隨機分佈 𝒰(ℤ<sub>q</sub>)】</strong>：
-            模數空間內每個整數被抽中的機率完全相等為 <span class="word-eq">1 / q</span>。資訊熵最大，具備無條件不可預測性。在晶格密碼中用於生成一次性隨機密鑰遮罩與公共隨機矩陣 <span class="word-eq">A</span>。
+          <li><strong>【圖 2 左側：均勻分佈 vs. 離散高斯分佈的形態對比】</strong>：
+            <br>• <strong>均勻分佈 𝒰(ℤ_q)</strong> 呈現完全平坦的柱狀，每個整數出現機率均為 <span class="word-eq">1/q</span>。它適合用來生成公共隨機矩陣 <span class="word-eq">A</span>，但<strong>絕對不能用來抽樣 LWE 雜訊</strong>！若使用方波狀的均勻分佈，映射到對偶格時邊緣會發生嚴重的 Gibbs 振盪，導致雷格夫歸約定理崩潰。
+            <br>• <strong>離散高斯 𝒟_σ</strong> 呈現完美對稱的鐘形曲線，雜訊數值極高機率群聚在原點 0 附近。高斯函數在連續傅立葉轉換下形式保持自同構，是維繫抗量子格難題證明的唯一數學測度。
           </li>
-          <li><strong>【離散高斯分佈 𝒟<sub>ℤ, σ</sub>】</strong>：
-            連續常態分佈在整數格點上的離散化。其機率質量函數以 0 為中心對稱，且與數值平方呈指數衰減：
-            <div class="word-eq-block" style="margin: 0.35rem 0;">
-              Pr[X = x]  ∝  exp( -x² / (2σ²) )  =  exp( -x² / (2σ²) ) / ∑<sub>z ∈ ℤ</sub> exp( -z² / (2σ²) )
-            </div>
-            數值極高機率落在原點附近的小區間內，遠離原點的數值出現機率幾近於零。
+          <li><strong>【圖 2 中間：高斯尾端界限與解密容錯門檻 Δ/2】</strong>：
+            <br>• <strong>3σ 區間 (綠色區域)</strong>：涵蓋了 99.7% 的雜訊樣本。一般電路雜訊通常在 3σ 內浮動。
+            <br>• <strong>6σ 邊界 (藍色虛線)</strong>：偏離超出 6σ 的機率小於 <span class="word-eq">2 · exp(-18) ≈ 2⁻²⁵</span>（約三千萬分之一）。
+            <br>• <strong>12σ 邊界 (紫色虛線)</strong>：偏離超出 12σ 的機率小於 <span class="word-eq">2 · exp(-72) ≈ 2⁻¹⁰³</span>，小於宇宙中原子總數之逆元！
+            <br>• <strong>金科玉律</strong>：只要明文間距門檻滿足 <span class="word-eq">Δ / 2 ≥ 12 · σ<sub>max</sub></span>（黃色實線），便能保證在百萬次同態運算與解密中達到 100% 絕對零解密錯誤！
           </li>
-          <li><strong>【為什麼晶格加密必須採用高斯分佈，不能用均勻分佈？】</strong>：
-            奧德·雷格夫（Oded Regev）在 2005 年證明的<strong>最差情況至平均情況量子歸約定理（LWE Reduction）</strong>中，必須將離散晶格轉換為對偶格（Dual Lattice）。在高等分析數學中，<strong>高斯函數是唯一傅立葉轉換後形式完全不變的函數（Eigenfunction of Fourier Transform）</strong>！
-            若使用方波狀的均勻分佈抽樣雜訊，對偶格邊界會產生嚴重的 Gibbs 振盪現象，導致晶格幾何難題歸約證明徹底失效。
+          <li><strong>【圖 2 右側：門檻方差膨脹與雜訊淹沒 (Noise Smudging)】</strong>：
+            <br>• <strong>門檻聚合方差擴展</strong>：當 <span class="word-eq">N</span> 個節點共同解密時，各節點注入的獨立雜訊在求和時方差疊加，鐘形曲線變矮變寬，標準差擴大為 <span class="word-eq">√(N) · σ</span>。
+            <br>• <strong>雜訊淹沒 (Smudging / Flooding)</strong>：為了防止敵手從解密份額微小的雜訊偏差中反推私鑰份額，系統主動注入一個龐大的淹沒雜訊 <span class="word-eq">σ<sub>flood</sub> ≫ 2<sup>λ</sup> · B<sub>sk</sub></span>。藍色微偏曲線被黃色大曲線徹底覆蓋，兩分佈的統計距離 <span class="word-eq">SD &lt; 2⁻¹²⁸</span>，私鑰痕跡被徹底洗白！
           </li>
         </ul>
       </div>
 
-      <!-- 5.2 獨立雜訊方差疊加定律 -->
+      <!-- 5.2 離散高斯與方差疊加數學定義 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>5.2 獨立雜訊方差疊加定律與中心極限定理</span>
-          <span class="badge badge-purple">方差增長規律</span>
+          <span>5.2 離散高斯分佈與獨立方差相加定律</span>
+          <span class="badge badge-purple">機率統計定律</span>
         </div>
         <ul class="bg-module-list">
-          <li><strong>【獨立隨機變數方差相加】</strong>：
-            設 <span class="word-eq">e₁ ∼ 𝒟<sub>σ₁</sub></span> 與 <span class="word-eq">e₂ ∼ 𝒟<sub>σ₂</sub></span> 為兩筆相互獨立的離散高斯雜訊變數，則其和 <span class="word-eq">e<sub>sum</sub> = e₁ + e₂</span> 依然近似服從離散高斯分佈，且<strong>方差嚴格相加</strong>：
+          <li><strong>【離散高斯機率質量函數】</strong>：
+            對於整數 <span class="word-eq">x ∈ ℤ</span>，其抽樣機率嚴格遵循：
             <div class="word-eq-block" style="margin: 0.35rem 0;">
-              Var(e<sub>sum</sub>) = Var(e₁) + Var(e₂)  ⟹  σ<sub>sum</sub>² = σ₁² + σ₂²  ⟹  σ<sub>sum</sub> = √(σ₁² + σ₂²)
+              Pr[X = x] = exp( -x² / (2σ²) ) / ∑<sub>z ∈ ℤ</sub> exp( -z² / (2σ²) )
             </div>
+            其中標準差 <span class="word-eq">σ</span> 控制鐘形曲線的胖瘦。
           </li>
-          <li><strong>【門檻分散式解密中的方差膨脹】</strong>：
-            在 <span class="word-eq">N</span> 個節點參與的門檻協同解密協議中，若各節點各自注入標準差為 <span class="word-eq">σ</span> 的獨立雜訊，則聚合還原後的總解密雜訊標準差將放大為：
+          <li><strong>【獨立隨機變數方差相加定律】</strong>：
+            若 <span class="word-eq">e₁ ∼ 𝒟<sub>σ₁</sub></span> 與 <span class="word-eq">e₂ ∼ 𝒟<sub>σ₂</sub></span> 獨立，則其和依然近似服從離散高斯，且方差嚴格相加：
             <div class="word-eq-block" style="margin: 0.35rem 0;">
-              σ<sub>total</sub> = √( ∑<sub>i=1</sub><sup>N</sup> σ² ) = √(N) · σ
+              σ<sub>sum</sub>² = σ₁² + σ₂²  ⟹  σ<sub>sum</sub> = √(σ₁² + σ₂²)
             </div>
-            這項統計規律指導了門檻密碼系統在參數選擇時，必須隨參與方數量 <span class="word-eq">N</span> 的擴展預留對應比例的模數餘裕。
+            在 <span class="word-eq">N</span> 方門檻協議中，總雜訊標準差增長為 <span class="word-eq">√(N) · σ</span>。
           </li>
-        </ul>
-      </div>
-
-      <!-- 5.3 高斯尾端界限與除錯溢位率 -->
-      <div class="card">
-        <div class="card-title">
-          <span>5.3 高斯尾端界限 (Gaussian Tail Bound) 與除錯無溢位保證</span>
-          <span class="badge badge-yellow">實務工程準則</span>
-        </div>
-        <ul class="bg-module-list">
-          <li><strong>【高斯尾端界限定理】</strong>：
-            根據離散高斯測度的尾端衰減性質，高斯隨機變數絕對值偏離中心超出 <span class="word-eq">c · σ</span> 的機率滿足指數界限：
+          <li><strong>【高斯尾端衰減指數界限】</strong>：
+            對任意正常數 <span class="word-eq">c &gt; 0</span>，高斯變數絕對值超出 <span class="word-eq">c · σ</span> 的機率滿足：
             <div class="word-eq-block" style="margin: 0.35rem 0;">
               Pr[ |X| &gt; c · σ ]  ≤  2 · exp( -c² / 2 )
             </div>
           </li>
-          <li><strong>【實務數值安全量化】</strong>：
-            <br>• 當 <span class="word-eq">c = 6</span> 時：<span class="word-eq">2 · exp(-18) ≈ 3.0 · 10⁻⁸ ≈ 2⁻²⁵</span>（出界率約三千萬分之一）。
-            <br>• 當 <span class="word-eq">c = 12</span> 時：<span class="word-eq">2 · exp(-72) ≈ 1.1 · 10⁻³¹ ≈ 2⁻¹⁰³</span>（出界率遠小於宇宙中原子總數之逆元！）。
-          </li>
-          <li><strong>【同態加密工程設計金科玉律】</strong>：
-            密碼庫在設定密文模數 <span class="word-eq">q</span> 與明文縮放步距 <span class="word-eq">Δ</span> 時，只要確保最大可能累積雜訊標準差滿足：
-            <div class="word-eq-block" style="margin: 0.35rem 0;">
-              Δ / 2  ≥  12 · σ<sub>max</sub>
-            </div>
-            便能在百萬次同態運算與解密中達到<strong>完全零解密錯誤（Decryption Failure Rate &lt; 2⁻¹⁰⁰）</strong>，同時兼顧最高的運算效率。
-          </li>
         </ul>
+      </div>
+
+      <!-- 5.3 具體數值範例推導 -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>5.3 具體數值範例：門檻方差相加、12σ 邊界安全驗證與雜訊淹沒演算</span>
+          <span class="badge badge-green">實測數值推導</span>
+        </div>
+        <div class="example-box" style="background: rgba(10, 16, 30, 0.75); border-left: 3px solid #f472b6; padding: 0.85rem;">
+          <strong style="color: #f472b6;">🔢 逐步推導範例：圖 2 的離散高斯與門檻參數數值演算</strong>
+          <br>設單節點 LWE 密鑰的初始高斯雜訊標準差為 <span class="word-eq">σ = 3.2</span>。
+          <br><br><strong>第一步：離散高斯機率質量分佈計算</strong>
+          <br>分母常數歸一化權重 <span class="word-eq">S ≈ √(2π) · σ ≈ 2.5066 · 3.2 ≈ 8.02</span>。
+          <br>• <span class="word-eq">x = 0</span> 處機率：<span class="word-eq">Pr[0] ≈ exp(0) / 8.02 = 1 / 8.02 ≈ 12.47%</span>。
+          <br>• <span class="word-eq">x = ±1</span> 處機率：<span class="word-eq">exp(-1 / (2 · 3.2²)) / 8.02 = exp(-0.0488) / 8.02 ≈ 0.952 / 8.02 ≈ 11.87%</span>。
+          <br>• <span class="word-eq">x = ±3</span> 處機率：<span class="word-eq">exp(-9 / 20.48) / 8.02 = exp(-0.439) / 8.02 ≈ 0.644 / 8.02 ≈ 8.03%</span>。
+          <br>• <span class="word-eq">x = ±10</span> 處機率：<span class="word-eq">exp(-100 / 20.48) / 8.02 ≈ exp(-4.88) / 8.02 ≈ 0.0076 / 8.02 ≈ 0.09%</span>。
+          <br>數值證明：雜訊被牢牢約束在 0 附近，超過 10 的機率已低於千分之一。
+          <br><br><strong>第二步：門檻解密 N = 16 節點聚合方差相加</strong>
+          <br>設門檻系統包含 <span class="word-eq">N = 16</span> 個參與節點，各節點各自提交帶有 <span class="word-eq">σ = 3.2</span> 雜訊的部分解密份額。
+          <br>聚合總雜訊標準差為：
+          <br>&nbsp;&nbsp;<span class="word-eq">σ<sub>total</sub> = √( 16 · 3.2² ) = √(16) · 3.2 = 4 · 3.2 = 12.8</span>。
+          <br><br><strong>第三步：檢查 12σ 邊界與解密安全判定</strong>
+          <br>設明文空間為二進位 <span class="word-eq">t = 2</span>，若選用密文模數 <span class="word-eq">q = 512</span>：
+          <br>• 縮放步距為：<span class="word-eq">Δ = ⌊q / t⌉ = 512 / 2 = 256</span>。
+          <br>• 臨界解密邊界為：<span class="word-eq">Δ / 2 = 128</span>。
+          <br>• 計算 12σ 最大偏離極限：<span class="word-eq">12 · σ<sub>total</sub> = 12 · 12.8 = 153.6</span>。
+          <br>• <strong>安全性警訊</strong>：此時 <span class="word-eq">12σ = 153.6 &gt; 128</span>！這代表在百萬次同態運算中，雜訊有非零機率突破 128 邊界造成解密溢位！
+          <br>• <strong>工程修復</strong>：將模數提升至 <span class="word-eq">q = 800</span>，此時 <span class="word-eq">Δ = 400</span>，容許邊界為 <span class="word-eq">Δ / 2 = 200 &gt; 153.6</span>，解密出界率被成功壓制在 <span class="word-eq">&lt; 2⁻¹⁰³</span>，達到實務零錯誤！
+          <br><br><strong>第四步：雜訊淹沒 (Noise Smudging) 數值演算</strong>
+          <br>在部分解密中，私鑰殘留偏差最大為 <span class="word-eq">B<sub>sk</sub> = 2</span>。
+          <br>為了達到 40-bit 統計安全性（<span class="word-eq">λ = 40</span>），系統注入淹沒雜訊標準差：
+          <br>&nbsp;&nbsp;<span class="word-eq">σ<sub>flood</sub> = 2<sup>40</sup> · B<sub>sk</sub> = 2⁴⁰ · 2 ≈ 2.2 · 10¹²</span>。
+          <br>計算兩分佈的統計距離（Total Variation Distance）：
+          <br>&nbsp;&nbsp;<span class="word-eq">SD ≤ 2 · B<sub>sk</sub> / σ<sub>flood</sub> = 2 · 2 / (2⁴¹ · 2) = 2⁻⁴⁰ &lt; 10⁻¹²</span>。
+          <br>數值證明：敵手面對發布的份額，無法用任何統計檢定區分出私鑰偏差，徹底杜絕金鑰洩漏！
+        </div>
       </div>
 
       <!-- 頁面切換導覽 -->

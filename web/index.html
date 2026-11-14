@@ -2119,13 +2119,13 @@
     </section>
 
 
-    <!-- ===================================================================== -->
+<!-- ===================================================================== -->
     <!-- TAB BG-2: 同態運算、雜訊增長機制與兩大雜訊控制路線 (TFHE vs RNS-NTT)        -->
     <!-- ===================================================================== -->
     <section id="tab-bg-homomorphic" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(59, 130, 246, 0.45); background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(168, 85, 247, 0.08));">
         <h2 class="lab-hero-title">背景知識 (二) — 同態運算、雜訊增長與兩大雜訊控制機制：TFHE 盲旋轉自舉 vs. RNS-NTT 模數切換鏈</h2>
-        <div class="lab-hero-sub">同態加法與乘法幾何相乘展開、RLK 重線性化降維、TFHE 盲旋轉雜訊重置與 RNS-NTT 模數切換全剖析</div>
+        <div class="lab-hero-sub">同態加法與乘法幾何相乘展開、RLK 重線性化降維、TFHE 盲旋轉雜訊重置與 RNS-NTT 模數切換各階段詳細數值範例全剖析</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">← 上一主題：一、LWE 晶格加密基礎</button>
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">下一主題：三、門檻秘密分享機制 →</button>
@@ -2180,7 +2180,7 @@
         </div>
       </div>
 
-      <!-- 2.2 密文重線性化技術 (Relinearization & Evaluation Keys, RLK) -->
+      <!-- 2.2 密文重線性化技術 (每一步詳細數值推導) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
           <span>2.2 密文重線性化技術 (Relinearization &amp; Evaluation Keys, RLK)</span>
@@ -2194,41 +2194,72 @@
           <li><strong>【工具定義：重線性化金鑰 (Evaluation Key / RLK)】</strong>：
             公鑰生成端預先對私鑰張量外積 <span class="word-eq">s ⊗ s</span> 進行加密，產出針對二次項的特殊公鑰集合：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              RLK<sub>i,j</sub> = Enc<sub>s</sub>( s<sub>i</sub> · s<sub>j</sub> ) = ( a<sub>i,j</sub>,  ⟨a<sub>i,j</sub>, s⟩ + e<sub>i,j</sub> + P · s<sub>i</sub> s<sub>j</sub> ) mod (P · q)
+              RLK<sub>k</sub> = ( a<sub>k</sub>,  b<sub>k</sub> = a<sub>k</sub> · s + e<sub>k</sub> + B<sup>k</sup> · s² mod q )
             </div>
-            其中 <span class="word-eq">P</span> 為大輔助模數或基底分解基數（Gadget Matrix Base），用以壓制金鑰同態替換過程中的雜訊膨脹。
+            其中 <span class="word-eq">B</span> 為數位基底分解基數（Gadget Matrix Base），用以防止金鑰替換時乘數過大導致雜訊被放大。
           </li>
-          <li><strong>【運作過程：數位基底分解 (Gadget Base Decomposition)】</strong>：
-            <br>① <strong>數位切片</strong>：為避免直接將大係數 <span class="word-eq">c₂</span> 乘以 RLK 導致誤差被放大 <span class="word-eq">q</span> 倍，將二次項係數依小基底 <span class="word-eq">B = 2<sup>w</sup></span> 切分為低位元整數向量：
+          <li><strong>【運作過程：六步降階全流程】</strong>：
+            <br>• <strong>步驟 ① 生成二次密文</strong>：兩密文乘積展開為三元組 <span class="word-eq">(c₀, c₁, c₂)</span>，其解密關係滿足 <span class="word-eq">c₀ − c₁·s − c₂·s² ≈ Δ·m mod q</span>。
+            <br>• <strong>步驟 ② 數位基底切片 (Digit Slicing)</strong>：將大係數 <span class="word-eq">c₂</span> 依基底 <span class="word-eq">B</span> 切分為微小整數向量：<span class="word-eq">c₂ = ∑ d<sub>k</sub> · B<sup>k</sup></span>（其中 <span class="word-eq">|d<sub>k</sub>| &lt; B</span>）。
+            <br>• <strong>步驟 ③ 評估金鑰內積</strong>：利用各權重階層的 <span class="word-eq">RLK<sub>k</sub> = (a<sub>k</sub>, b<sub>k</sub>)</span> 與切片係數 <span class="word-eq">d<sub>k</sub></span> 進行加權線性組合：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              c₂ = ∑<sub>k=0</sub><sup>d-1</sup> c₂<sup>(k)</sup> · B<sup>k</sup>  (其中 |c₂<sup>(k)</sup>| &lt; B / 2)
+              Δa = ∑ d<sub>k</sub> · a<sub>k</sub> mod q,   Δb = ∑ d<sub>k</sub> · b<sub>k</sub> mod q
             </div>
-            <br>② <strong>同態替換降維</strong>：利用對應小基底的 RLK 分量進行加權內積求和：
+            <br>• <strong>步驟 ④ 維度折疊 (Folding)</strong>：將高階分量折疊回一次密文：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              c<sub>relin</sub> = (c₀, c₁) + ∑<sub>k=0</sub><sup>d-1</sup> c₂<sup>(k)</sup> · RLK<sup>(k)</sup> mod q
+              c₀' = c₀ − Δb mod q,   c₁' = c₁ − Δa mod q
             </div>
-            將原本需要由二次私鑰 <span class="word-eq">(1, s, s²)</span> 解密的密文，重新轉化為僅需一次私鑰 <span class="word-eq">(1, s)</span> 即可正確解密的標準兩分量密文！
+            <br>• <strong>步驟 ⑤ 一次解密驗證</strong>：持一次私鑰計算 <span class="word-eq">c₀' − c₁'·s mod q = Δ·m + e<sub>new</sub></span>，成功由三元組降維回標準二元組！
           </li>
           <li><strong>【優點與缺點】</strong>：
             <br>• <strong>優點</strong>：將密文維度恆定約束在 <span class="word-eq">n + 1</span>，使得任意深度的乘法電路在空間複雜度上具備可行性。
-            <br>• <strong>缺點</strong>：RLK 金鑰尺寸極度龐大（通常為數十 MB 至數百 MB），且重線性化過程本身會引入基底分解雜訊增益 <span class="word-eq">B · √d · σ</span>。
+            <br>• <strong>缺點</strong>：RLK 金鑰尺寸龐大（需儲存多階金鑰），且會引入小幅度的基底分解雜訊 <span class="word-eq">B · √d · σ</span>。
           </li>
         </ul>
 
         <div class="example-box">
-          <div class="example-title">🔢 具體算式範例：基底 B=10 數位分解與 RLK 降維數值推導演練</div>
-          <p style="font-size: 0.84rem; line-height: 1.7;">
-            設二次密文待消除之二次項係數為 <span class="word-eq">c₂ = 735</span>，模數 <span class="word-eq">q = 1000</span>。
-            <br>• <strong>基底選定</strong>：選取十進位數位分解基底 <span class="word-eq">B = 10</span>，分解階數為 3（<span class="word-eq">10⁰, 10¹, 10²</span>）。
-            <br>• <strong>數位切片</strong>：將 735 展開為低位元向量：<span class="word-eq">735 = 5 · 10⁰ + 3 · 10¹ + 7 · 10²</span> ⟹ 係數向量為 <span class="word-eq">[5, 3, 7]</span>，最大係數僅為 7！
-            <br>• <strong>降階求和</strong>：解密端不直接計算 <span class="word-eq">735 · s²</span>，而是調用預先公佈的三組金鑰：
-            <br><span class="word-eq">c<sub>relin</sub> = (c₀, c₁) + 5 · RLK⁽⁰⁾ + 3 · RLK⁽¹⁾ + 7 · RLK⁽²⁾ mod 1000</span>。
-            <br>由於每個乘數最大僅為 7，RLK 內部的高斯雜訊被放大的倍數不超過 7 倍，成功將雜訊增長完全控制在極微小的安全邊界內！
+          <div class="example-title">🔢 具體算式範例：重線性化（RLK）每一步詳細數值推導演練</div>
+          <p style="font-size: 0.84rem; line-height: 1.8;">
+            <strong>【第一步：選定參數與初始二次密文】</strong>
+            <br>設模數 <span class="word-eq">q = 97</span>，縮放步距 <span class="word-eq">Δ = 49</span>，私鑰標量 <span class="word-eq">s = 5</span>（其平方為 <span class="word-eq">s² = 5² = 25</span>）。
+            <br>兩密文乘法展開後，產生的二次三元組密文為：
+            <br><span class="word-eq">c₀ = 42,  c₁ = 15,  c₂ = 18</span>（二次項係數待消除）。
+            <br>驗證原始二次相位：<span class="word-eq">phase = 42 − 15·(5) − 18·(25) = 42 − 75 − 450 = −483 ≡ 2 mod 97</span>（因 <span class="word-eq">−483 + 5·97 = 2</span>，明文為 0，初始雜訊為 +2）。
+            <br><br>
+            <strong>【第二步：數位基底切片 (Digit Slicing)】</strong>
+            <br>選取基底 <span class="word-eq">B = 4</span>。將待消除係數 <span class="word-eq">c₂ = 18</span> 依權重 <span class="word-eq">[4⁰, 4¹, 4²] = [1, 4, 16]</span> 切片：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              18 = 2 · 4⁰ + 0 · 4¹ + 1 · 4² = 2 · (1) + 0 · (4) + 1 · (16)
+            </div>
+            切片係數向量為 <span class="word-eq">[d₀, d₁, d₂] = [2, 0, 1]</span>，每個分量均極小（最大僅為 2），徹底防止大係數乘法！
+            <br><br>
+            <strong>【第三步：公開重線性化評估金鑰 RLK 組成】</strong>
+            <br>系統預先公佈對應 3 個權重階層的 RLK（設定雜訊 <span class="word-eq">e<sub>k</sub> = 1</span>）：
+            <br>• <span class="word-eq">k = 0 (權重 1)</span>：採樣 <span class="word-eq">a₀ = 10</span> ⟹ <span class="word-eq">b₀ = 10·(5) + 1 + 1·(25) = 76 mod 97</span> ⟹ <span class="word-eq">RLK⁽⁰⁾ = (10, 76)</span>
+            <br>• <span class="word-eq">k = 1 (權重 4)</span>：採樣 <span class="word-eq">a₁ = 20</span> ⟹ <span class="word-eq">b₁ = 20·(5) + 1 + 4·(25) = 201 ≡ 7 mod 97</span> ⟹ <span class="word-eq">RLK⁽¹⁾ = (20, 7)</span>
+            <br>• <span class="word-eq">k = 2 (權重 16)</span>：採樣 <span class="word-eq">a₂ = 30</span> ⟹ <span class="word-eq">b₂ = 30·(5) + 1 + 16·(25) = 551 ≡ 66 mod 97</span> ⟹ <span class="word-eq">RLK⁽²⁾ = (30, 66)</span>
+            <br><br>
+            <strong>【第四步：同態加權內積求和】</strong>
+            <br>使用切片係數 <span class="word-eq">[2, 0, 1]</span> 計算金鑰加權累積量：
+            <br>• <span class="word-eq">Δa = 2·(10) + 0·(20) + 1·(30) = 20 + 30 = 50 mod 97</span>
+            <br>• <span class="word-eq">Δb = 2·(76) + 0·(7) + 1·(66) = 152 + 66 = 218 ≡ 24 mod 97</span> (因 <span class="word-eq">218 − 2·97 = 24</span>)
+            <br><br>
+            <strong>【第五步：折疊降維產出全新一次密文】</strong>
+            <br>• <span class="word-eq">c₀' = c₀ − Δb = 42 − 24 = 18 mod 97</span>
+            <br>• <span class="word-eq">c₁' = c₁ − Δa = 15 − 50 = −35 ≡ 62 mod 97</span> (因 <span class="word-eq">−35 + 97 = 62</span>)
+            <br>產出降階後的一次標準密文二元組：<span class="word-eq">c' = (c₀', c₁') = (18, 62)</span>，二次項 <span class="word-eq">c₂</span> 被完美消除！
+            <br><br>
+            <strong>【第六步：使用一次私鑰 s 進行解密驗證】</strong>
+            <br>計算降階密文的解密相位：
+            <br><span class="word-eq">phase' = c₀' − c₁' · s = 18 − 62·(5) = 18 − 310 = −292 mod 97</span>
+            <br>化簡模 97：<span class="word-eq">−292 + 3·97 = −292 + 291 = −1 ≡ 96 mod 97</span>。
+            <br>以中心對稱區間 <span class="word-eq">[−48, +48]</span> 視角檢驗：殘存相位為 <span class="word-eq">−1</span>，絕對值僅為 1，遠小於容許臨界半徑 24.5！
+            <br>四捨五入商數：<span class="word-eq">μ' = ⌊ −1 / 49 ⌉ = 0</span>，<strong>精確還原原始明文 0，降維圓滿成功！</strong>
           </p>
         </div>
       </div>
 
-      <!-- 2.3 雜訊控制機制一：TFHE 盲旋轉自舉 -->
+      <!-- 2.3 雜訊控制機制一：TFHE 盲旋轉自舉 (每一步詳細數值推導) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
           <span>2.3 雜訊控制機制一：TFHE / FHEW 盲旋轉自舉 (Blind Rotation Bootstrapping)</span>
@@ -2242,28 +2273,62 @@
           <li><strong>【工具定義：TFHE 盲旋轉 (Blind Rotation)】</strong>：
             將 LWE 密文相位 <span class="word-eq">phase = b − ⟨a, s⟩</span> 作為環多項式單項式 <span class="word-eq">X<sup>−phase</sup></span> 的幾何旋轉角度，利用 GSW / RGSW 外積乘法同態旋轉環累加器多項式（Accumulator Poly），在密文內部盲查表（Programmable Bootstrapping, PBS）。
           </li>
-          <li><strong>【運作過程：自舉三階段流水線】</strong>：
-            <br>① <strong>模數切換降維 (Modulus Switching to 2N)</strong>：
-            將大模數 <span class="word-eq">q</span> 下的密文 <span class="word-eq">(a, b)</span> 線性縮放至小維度環模數 <span class="word-eq">2N</span>（如 <span class="word-eq">N = 1024</span>）：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              ã = ⌊ (2N / q) · a ⌉ ∈ ℤ₂<sub>N</sub><sup>n</sup>,  b̃ = ⌊ (2N / q) · b ⌉ ∈ ℤ₂<sub>N</sub>
-            </div>
-            <br>② <strong>盲旋轉累加器查表 (CMux &amp; Blind Rotation)</strong>：
-            以查表多項式 <span class="word-eq">v(X) ∈ R<sub>Q</sub></span> 為初始累加器（設定前 <span class="word-eq">N</span> 個係數為 <span class="word-eq">+Δ/2</span>，後 <span class="word-eq">N</span> 個為 <span class="word-eq">−Δ/2</span>）。透過自舉金鑰（BSK）進行連續 <span class="word-eq">n</span> 輪受控多項式單項式外積相乘（CMux 閘）：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              ACC = ACC · X<sup>−b̃</sup> · ∏<sub>i=1</sub><sup>n</sup> [ 1 + (X<sup>ã<sub>i</sub></sup> − 1) · BSK<sub>i</sub> ] ∈ R<sub>Q</sub>
-            </div>
-            <br>③ <strong>金鑰提取 (Sample Extract)</strong>：
-            從盲旋轉完畢的多項式提取常數項係數，得到全新的 LWE 密文。此時<strong>舊密文累積的所有雜訊在模數切換與查表中被徹底抹去</strong>，新密文僅包含單次金鑰提取的小雜訊！
+          <li><strong>【運作過程：五步自舉流水線】</strong>：
+            <br>• <strong>步驟 ① 檢測高雜訊密文</strong>：輸入密文累積雜訊接近臨界邊界，隨時面臨解密溢位風險。
+            <br>• <strong>步驟 ② 模數切換降維至 2N</strong>：將密文從大模數 <span class="word-eq">q</span> 等比例縮放至分圓環維度 <span class="word-eq">2N</span>：<span class="word-eq">ã = ⌊(2N/q)·a⌉,  b̃ = ⌊(2N/q)·b⌉</span>。
+            <br>• <strong>步驟 ③ 裝載查表測試多項式 (LUT)</strong>：在反對稱多項式環 <span class="word-eq">R<sub>Q</sub> = ℤ<sub>Q</sub>[X]/(X<sup>N</sup> + 1)</span> 構造累加器，將明文函數關係預先編碼進係數陣列。
+            <br>• <strong>步驟 ④ 步進式盲旋轉求值 (CMux &amp; BSK)</strong>：累加器先旋轉公開項 <span class="word-eq">X<sup>−b̃</sup></span>，再以自舉金鑰 BSK 控制依次乘上私鑰項 <span class="word-eq">X<sup>ã<sub>i</sub>·s<sub>i</sub></sup></span>，最終整體旋轉角度恰好等於 <span class="word-eq">X<sup>−phase</sup></span>！
+            <br>• <strong>步驟 ⑤ 常數項提取 (Sample Extract)</strong>：提取旋轉後多項式的常數項係數，舊密文累積的所有歷史雜訊在查表中被徹底擦除，重置為全新常數雜訊！
           </li>
           <li><strong>【優點與缺點】</strong>：
             <br>• <strong>優點</strong>：支援<strong>無限深度</strong>（True FHE），單次自舉延遲在數十毫秒以內，可任意求值各類非線性活化函數（ReLU、Sigmoid、階躍函數）。
             <br>• <strong>缺點</strong>：單個密文通常僅打包 1 個或少數幾個位元（Boolean/Integer），不擅長數千資料槽的大規模 SIMD 並行吞吐。
           </li>
         </ul>
+
+        <div class="example-box">
+          <div class="example-title">🔢 具體算式範例：TFHE 盲旋轉自舉（Bootstrapping）每一步數值演算</div>
+          <p style="font-size: 0.84rem; line-height: 1.8;">
+            <strong>【第一步：高雜訊密文狀態】</strong>
+            <br>設密文模數 <span class="word-eq">q = 1000</span>，環維度 <span class="word-eq">N = 4</span>（模數切換空間 <span class="word-eq">2N = 8</span>），明文空間 <span class="word-eq">t = 2</span>，步距 <span class="word-eq">Δ = 500</span>。
+            <br>私鑰為 <span class="word-eq">s = 1</span>，輸入密文 <span class="word-eq">(a = 350, b = 860)</span>。
+            <br>原始解密相位：<span class="word-eq">phase = 860 − 350·(1) = 510 = 500 · (1) + 10</span>。
+            <br>此時雜訊高達 <span class="word-eq">e = 10</span>，若再執行乘法雜訊必將爆表破壞明文，必須啟動盲旋轉自舉將雜訊重置歸零！
+            <br><br>
+            <strong>【第二步：模數切換至小維度空間 2N = 8】</strong>
+            <br>縮放比例：<span class="word-eq">2N / q = 8 / 1000 = 0.008</span>。
+            <br>• <span class="word-eq">ã = ⌊ 0.008 · 350 ⌉ = ⌊ 2.8 ⌉ = 3 ∈ ℤ₈</span>
+            <br>• <span class="word-eq">b̃ = ⌊ 0.008 · 860 ⌉ = ⌊ 6.88 ⌉ = 7 ∈ ℤ₈</span>
+            <br>縮放後的相位差：<span class="word-eq">b̃ − ã · s = 7 − 3·(1) = 4 ∈ ℤ₈</span>（精確對應明文 1 在 <span class="word-eq">ℤ₈</span> 的半周期相位偏移 <span class="word-eq">2N / 2 = 4</span>！）。
+            <br><br>
+            <strong>【第三步：初始化查表多項式 (Test Polynomial / Accumulator)】</strong>
+            <br>在商環 <span class="word-eq">ℤ<sub>Q</sub>[X] / (X⁴ + 1)</span> 中設定查表測試多項式 <span class="word-eq">v(X)</span>，將單位元明文的步距值編碼為：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              v(X) = 250 − 250·X − 250·X² − 250·X³
+            </div>
+            <br>
+            <strong>【第四步：盲旋轉多項式累加器 (Monomial Rotation)】</strong>
+            <br>① 首先同態乘以公開偏移量 <span class="word-eq">X<sup>−b̃</sup> = X<sup>−7</sup></span>：
+            <br>因在反對稱環中滿足 <span class="word-eq">X⁴ = −1 ⟹ X⁸ = +1</span>，故 <span class="word-eq">X<sup>−7</sup> = X¹</span>。
+            <br><span class="word-eq">ACC₀ = v(X) · X¹ = 250·X − 250·X² − 250·X³ − 250·X⁴</span>。
+            <br>代入 <span class="word-eq">X⁴ = −1</span> 化簡：<span class="word-eq">ACC₀ = 250 + 250·X − 250·X² − 250·X³</span>。
+            <br>② 接著以自舉金鑰（BSK）調用 CMux 閘同態乘以未知私鑰項 <span class="word-eq">X<sup>ã·s</sup> = X<sup>3·(1)</sup> = X³</span>：
+            <br><span class="word-eq">ACC₁ = ACC₀ · X³ = 250·X³ + 250·X⁴ − 250·X⁵ − 250·X⁶</span>。
+            <br>代入環關係 <span class="word-eq">X⁴ = −1, X⁵ = −X, X⁶ = −X²</span>：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              ACC₁ = −250 + 250·X + 250·X² + 250·X³
+            </div>
+            累加器多項式整體旋轉的角度剛好為 <span class="word-eq">X<sup>−(b̃ − ã·s)</sup> = X<sup>−4</sup> = −1</span>！
+            <br><br>
+            <strong>【第五步：常數項金鑰提取 (Sample Extract) 與雜訊重置】</strong>
+            <br>提取旋轉完成之多項式 <span class="word-eq">ACC₁</span> 的常數項係數：
+            <br><span class="word-eq">c<sub>fresh</sub> = Coeff₀(ACC₁) = −250 ≡ +250 mod 500</span>。
+            <br>檢驗新密文：其明文值精確等於 1，而舊密文累積的所有雜訊（<span class="word-eq">e = 10</span>）在查表與旋轉中被<strong>100% 徹底消除</strong>，新密文僅帶有極小的常數提取雜訊 <span class="word-eq">e<sub>fresh</sub> ≈ 0</span>！自舉刷新圓滿完成！
+          </p>
+        </div>
       </div>
 
-      <!-- 2.4 雜訊控制機制二：RNS-NTT 批次模數鏈與模數切換 -->
+      <!-- 2.4 雜訊控制機制二：RNS-NTT 批次模數鏈與模數切換 (每一步詳細數值推導) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
           <span>2.4 雜訊控制機制二：RNS-NTT 批次模數鏈與模數切換 (Leveled FHE)</span>
@@ -2281,20 +2346,12 @@
             </div>
             密文初始位於最高層級 <span class="word-eq">Q<sub>L</sub></span>。
           </li>
-          <li><strong>【運作過程：模數切換除法 (Modulus Switching &amp; Rescaling)】</strong>：
-            <br>① 每執行一層同態乘法後，密文雜訊隨乘積擴大至 <span class="word-eq">e · q<sub>l</sub></span>。
-            <br>② 此時直接將密文在代數上除以最末端的質數 <span class="word-eq">q<sub>l</sub></span>，將密文空間切換至下一層模數 <span class="word-eq">Q<sub>l-1</sub></span>：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              c' = ⌊ (Q<sub>l-1</sub> / Q<sub>l</sub>) · c ⌉ = ⌊ c / q<sub>l</sub> ⌉ mod Q<sub>l-1</sub>
-            </div>
-            <br>③ <strong>雜訊同步等比例縮小</strong>：由於整個密文除以 <span class="word-eq">q<sub>l</sub></span>，雜訊亦被除以 <span class="word-eq">q<sub>l</sub></span>：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              e' ≈ (e / q<sub>l</sub>) + e<sub>round</sub>
-            </div>
-            原本乘法造成的雜訊膨脹被瞬間「壓制回基準大小」！
-          </li>
-          <li><strong>【NTT 與 SIMD 批次槽並行加速】</strong>：
-            每個質數 <span class="word-eq">q<sub>i</sub></span> 均選取為 NTT-friendly 素數（滿足 <span class="word-eq">q<sub>i</sub> ≡ 1 mod 2N</span>），配合數論變換在 <span class="word-eq">O(N log N)</span> 時間完成多項式乘法，並可同時在單一密文中打包高達 <span class="word-eq">N = 8192</span> 個獨立明文槽執行批次 SIMD 計算！
+          <li><strong>【運作過程：五步模數切換縮放流水線】</strong>：
+            <br>• <strong>步驟 ① 初始雙層模數鏈</strong>：設定頂層乘法模數 <span class="word-eq">Q₁ = q₀ · q₁</span> 與底層模數 <span class="word-eq">Q₀ = q₀</span>。
+            <br>• <strong>步驟 ② 頂層同態相乘</strong>：兩密文在 <span class="word-eq">Q₁</span> 下相乘，交乘項導致雜訊隨乘積擴大至 <span class="word-eq">e · q₁</span>。
+            <br>• <strong>步驟 ③ 模數切換縮放除法 (Rescaling)</strong>：將密文全體係數直接除以最末端的質數通道 <span class="word-eq">q₁</span>：<span class="word-eq">c' = ⌊ c / q₁ ⌉ mod q₀</span>。
+            <br>• <strong>步驟 ④ 雜訊等比例縮小</strong>：由於全體除以 <span class="word-eq">q₁</span>，膨脹的雜訊同步被縮小 <span class="word-eq">q₁</span> 倍：<span class="word-eq">e' ≈ ⌊ e / q₁ ⌉ + e<sub>round</sub></span>！
+            <br>• <strong>步驟 ⑤ 底層解密還原</strong>：密文成功降至 <span class="word-eq">Q₀</span>，明文無損保持，而雜訊被重新壓制回基準大小！
           </li>
           <li><strong>【優點與缺點】</strong>：
             <br>• <strong>優點</strong>：單槽平攤計算時間小於 1 微秒，吞吐量驚人，矩陣相乘與張量機器學習推論效能無與倫比。
@@ -2303,20 +2360,44 @@
         </ul>
 
         <div class="example-box">
-          <div class="example-title">🔢 具體算式範例：模數切換除法雜訊縮減數值演練</div>
-          <p style="font-size: 0.84rem; line-height: 1.7;">
-            設目前層級模數 <span class="word-eq">Q₁ = q₀ · q₁ = 100 · 11 = 1100</span>，目標縮小至 <span class="word-eq">Q₀ = q₀ = 100</span>。
-            <br>密文經歷乘法後，其解密相位值膨脹為 <span class="word-eq">phase = 2244</span>（其中明文項為 <span class="word-eq">2200</span>，膨脹雜訊為 <span class="word-eq">e = 44</span>）。
-            <br>• <strong>模數切換除以 q₁ = 11</strong>：
-            <br><span class="word-eq">phase' = ⌊ 2244 / 11 ⌉ = 204</span>。
-            <br>• <strong>在模數 Q₀ = 100 下解構</strong>：
-            <br><span class="word-eq">phase' = 200 + 4 = 100 · 2 + 4</span>。
-            <br>明文倍數精確維持為 2，而<strong>雜訊從 44 驟降至 4</strong>（整整縮小了 11 倍），成功消除乘法膨脹，延續同態計算生命力！
+          <div class="example-title">🔢 具體算式範例：模數切換（Modulus Switching / Rescaling）每一步數值演練</div>
+          <p style="font-size: 0.84rem; line-height: 1.8;">
+            <strong>【第一步：建立兩層質數模數鏈與明文空間】</strong>
+            <br>• 明文模數 <span class="word-eq">t = 2</span>（二進位運算空間）。
+            <br>• 底層基底質數：<span class="word-eq">q₀ = 101</span>。
+            <br>• 頂層乘法質數：<span class="word-eq">q₁ = 11</span>。
+            <br>• 頂層複合模數：<span class="word-eq">Q₁ = q₀ · q₁ = 101 · 11 = 1111</span>。
+            <br>• 頂層縮放步距：<span class="word-eq">Δ₁ = ⌊ 1111 / 2 ⌉ = 556</span>。底層縮放步距：<span class="word-eq">Δ₀ = ⌊ 101 / 2 ⌉ = 51</span>。
+            <br><br>
+            <strong>【第二步：在頂層 Q₁ 執行同態相乘與雜訊膨脹追蹤】</strong>
+            <br>設兩密文明文均為 1（乘積預期為 <span class="word-eq">1 · 1 = 1</span>）：
+            <br>• 密文 1 相位：<span class="word-eq">phase₁ = 556·(1) + 2 = 558</span>（初始小雜訊 <span class="word-eq">e₁ = 2</span>）。
+            <br>• 密文 2 相位：<span class="word-eq">phase₂ = 556·(1) + 3 = 559</span>（初始小雜訊 <span class="word-eq">e₂ = 3</span>）。
+            <br>同態乘積交乘項展開（在除以 <span class="word-eq">Δ₁</span> 前）：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              phase<sub>prod</sub> = Δ₁ · (m₁ · m₂) + (m₁e₂ + m₂e₁) · q₁ = 556 · (1) + (1·3 + 1·2) · 11 = 556 + 55 = 611
+            </div>
+            此時雜訊膨脹至 <span class="word-eq">e<sub>prod</sub> = 55</span>！若繼續運算，雜訊將迅速淹沒明文空間！
+            <br><br>
+            <strong>【第三步：模數切換縮放除法 (Rescaling by q₁ = 11)】</strong>
+            <br>系統將密文從層級 <span class="word-eq">Q₁ = 1111</span> 切換至底層 <span class="word-eq">Q₀ = 101</span>，直接將係數除以質數 <span class="word-eq">q₁ = 11</span> 並四捨五入：
+            <div class="word-eq-block" style="margin: 0.35rem 0;">
+              phase' = ⌊ phase<sub>prod</sub> / q₁ ⌉ = ⌊ 611 / 11 ⌉ = ⌊ 55.545 ⌉ = 56
+            </div>
+            <br>
+            <strong>【第四步：精確雜訊縮減量化】</strong>
+            <br>在底層模數 <span class="word-eq">Q₀ = 101</span> 下，標準明文項為 <span class="word-eq">Δ₀ · (m₁·m₂) = 51 · 1 = 51</span>。
+            <br>• 殘餘雜訊為：<span class="word-eq">e' = phase' − 51 = 56 − 51 = 5</span>。
+            <br>• <strong>雜訊縮減對比</strong>：原本的乘法膨脹雜訊 <span class="word-eq">55</span> 經除以 <span class="word-eq">q₁ = 11</span> 後，<strong>整整縮小了 11 倍（55 / 11 = 5）</strong>！
+            <br><br>
+            <strong>【第五步：在底層 Q₀ 下解密驗證】</strong>
+            <br>四捨五入商數：<span class="word-eq">μ' = ⌊ 56 / 51 ⌉ = ⌊ 1.098 ⌉ = 1</span>！
+            <br><strong>明文 1 毫髮無損，而乘法雜訊被微秒級除法精確抹平</strong>，證明了模數切換技術在無自舉開銷下的極致高吞吐威力！
           </p>
         </div>
       </div>
 
-      <!-- 2.5 兩大機制深度橫向對比表 (Architecture Tradeoff Matrix) -->
+      <!-- 2.5 兩大機制深度橫向對比表 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
           <span>2.5 兩大機制深度橫向對比矩陣 (TFHE Bootstrapping vs. Leveled RNS-NTT)</span>
@@ -2837,24 +2918,188 @@
     <!-- ===================================================================== -->
     <!-- TAB BG-5: 威脅模型與正式安全概念 (解耦獨立教學版 + 4大視覺圖解)         -->
     <!-- ===================================================================== -->
+    <!-- TAB BG-6: 威脅模型與正式安全概念 (IND-CPA/CCA/CCA2、CPA^D、FuncCPA、UC)   -->
+    <!-- ===================================================================== -->
     <section id="tab-bg-security" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
-        <h2 class="lab-hero-title">背景知識 (六) — 威脅模型與正式安全概念：CPA<sup>D</sup>、FuncCPA 與 UC 安全</h2>
-        <div class="lab-hero-sub">配合架構與流程圖解，深入解析半誠實與不誠實多數界限、解密預言機探測防禦、電路隱私與通用可組合 UC 模擬安全</div>
+        <h2 class="lab-hero-title">背景知識 (六) — 威脅模型與正式安全概念：IND-CPA/CCA2、CPA<sup>D</sup>、FuncCPA 與 UC 安全</h2>
+        <div class="lab-hero-sub">配合 5 大架構與流程圖解，深入解析不可區分性階層、同態可塑性衝突、半誠實與惡意界限、解密預言機防禦、電路隱私與 UC 模擬安全</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：五、主動防線與零知識證明</button>
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：七、全域控制與評測指標 →</button>
         </div>
       </div>
 
-      <!-- 6.1 威脅模型全景矩陣 (配合圖 1) -->
+      <!-- 6.1 密碼學經典安全階層：IND-CPA、IND-CCA1 與 IND-CCA2 (配合圖 1) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>5.1 敵手威脅模型全景矩陣 (Threat Models &amp; Corruption Boundaries)</span>
-          <span class="badge badge-red">信任邊界劃分</span>
+          <span>6.1 密碼學經典不可區分性安全階層：IND-CPA、IND-CCA1 與 IND-CCA2</span>
+          <span class="badge badge-blue">密碼學階層基石</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          在分散式密碼學中，威脅模型定義了系統能夠抵禦何種能力的敵手。以下圖解直觀展示了「行為模式（半誠實 vs. 主動惡意）」與「容錯門檻（誠實多數 vs. 不誠實多數）」兩大維度所構成的四大象限：
+          在現代公鑰密碼學中，安全性透過攻擊者（Adversary）與挑戰者（Challenger）之間的<strong>不可區分性博弈遊戲（Indistinguishability Game）</strong>嚴格定義。依據敵手獲得的「預言機權限」，安全強度呈現遞增階梯：
+        </p>
+
+        <div style="width: 100%; overflow-x: auto; margin: 1rem 0;">
+  <svg viewBox="0 0 880 440" style="width: 100%; min-width: 780px; height: auto; display: block; background: rgba(10, 16, 30, 0.85); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.25); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <defs>
+      <linearGradient id="grad-cpa" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(59, 130, 246, 0.25)" />
+        <stop offset="100%" stop-color="rgba(15, 23, 42, 0.65)" />
+      </linearGradient>
+      <linearGradient id="grad-cca1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(245, 158, 11, 0.22)" />
+        <stop offset="100%" stop-color="rgba(15, 23, 42, 0.65)" />
+      </linearGradient>
+      <linearGradient id="grad-cca2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(239, 68, 68, 0.22)" />
+        <stop offset="100%" stop-color="rgba(15, 23, 42, 0.65)" />
+      </linearGradient>
+      <linearGradient id="grad-exploit" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(168, 85, 247, 0.18)" />
+        <stop offset="100%" stop-color="rgba(239, 68, 68, 0.15)" />
+      </linearGradient>
+    </defs>
+
+    <!-- 主標題 -->
+    <text x="440" y="32" text-anchor="middle" fill="#93c5fd" font-size="16" font-weight="700" letter-spacing="1">圖 1：密碼學經典安全階層演進與博弈流程 — IND-CPA ➔ IND-CCA1 ➔ IND-CCA2 與同態可塑性衝突</text>
+
+    <!-- 卡片 1: IND-CPA -->
+    <rect x="30" y="58" width="260" height="200" rx="10" fill="url(#grad-cpa)" stroke="rgba(59, 130, 246, 0.45)" stroke-width="1.5" />
+    <rect x="42" y="70" width="86" height="22" rx="6" fill="rgba(59, 130, 246, 0.35)" />
+    <text x="85" y="85" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="700">基礎被動防禦</text>
+    <text x="42" y="112" fill="#93c5fd" font-size="14" font-weight="700">① IND-CPA (選擇明文安全)</text>
+    <text x="42" y="133" fill="#cbd5e1" font-size="11.5">• 預言機權限：僅加密預言機 O_Enc</text>
+    <text x="42" y="151" fill="#94a3b8" font-size="11">  (公鑰體系天然對外公開加密功能)</text>
+    <text x="42" y="171" fill="#cbd5e1" font-size="11.5">• 博弈規則：提交 (m₀, m₁)，隨機擲幣 b</text>
+    <text x="42" y="189" fill="#cbd5e1" font-size="11.5">  獲得挑戰密文 c* = Enc(m_b)</text>
+    <text x="42" y="209" fill="#cbd5e1" font-size="11.5">• 敵手目標：猜測 b'，要求優勢不可忽略</text>
+    <rect x="42" y="223" width="236" height="24" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="rgba(16, 185, 129, 0.4)" />
+    <text x="160" y="239" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">✓ 標準 FHE 天然可滿足 IND-CPA</text>
+
+    <!-- 卡片 2: IND-CCA1 -->
+    <rect x="310" y="58" width="260" height="200" rx="10" fill="url(#grad-cca1)" stroke="rgba(245, 158, 11, 0.45)" stroke-width="1.5" />
+    <rect x="322" y="70" width="98" height="22" rx="6" fill="rgba(245, 158, 11, 0.35)" />
+    <text x="371" y="85" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">午餐時間攻擊安全</text>
+    <text x="322" y="112" fill="#fbbf24" font-size="14" font-weight="700">② IND-CCA1 (非適應密文)</text>
+    <text x="322" y="133" fill="#cbd5e1" font-size="11.5">• 預言機權限：獲取挑戰 c* 之前</text>
+    <text x="322" y="151" fill="#fde68a" font-size="11">  可任意次數查詢解密預言機 O_Dec</text>
+    <text x="322" y="171" fill="#cbd5e1" font-size="11.5">• 關鍵轉折：一旦收到挑戰密文 c*</text>
+    <text x="322" y="189" fill="#f87171" font-size="11">  解密預言機立即永久關閉！</text>
+    <text x="322" y="209" fill="#cbd5e1" font-size="11.5">• 防禦情境：金鑰洩漏前的系統離線防線</text>
+    <rect x="322" y="223" width="236" height="24" rx="6" fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.4)" />
+    <text x="440" y="239" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="600">★ 門檻解密協議需具備防禦能力</text>
+
+    <!-- 卡片 3: IND-CCA2 -->
+    <rect x="590" y="58" width="260" height="200" rx="10" fill="url(#grad-cca2)" stroke="rgba(239, 68, 68, 0.45)" stroke-width="1.5" />
+    <rect x="602" y="70" width="98" height="22" rx="6" fill="rgba(239, 68, 68, 0.35)" />
+    <text x="651" y="85" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">黃金適應性標準</text>
+    <text x="602" y="112" fill="#f87171" font-size="14" font-weight="700">③ IND-CCA2 (適應性密文)</text>
+    <text x="602" y="133" fill="#cbd5e1" font-size="11.5">• 預言機權限：挑戰 c* 發布前後</text>
+    <text x="602" y="151" fill="#f87171" font-size="11">  均可自由呼叫解密預言機 O_Dec</text>
+    <text x="602" y="171" fill="#cbd5e1" font-size="11.5">• 唯一博弈約束：禁止直接查詢 c*</text>
+    <text x="602" y="189" fill="#94a3b8" font-size="11">  (可查詢任何微調衍生密文 c' ≠ c*)</text>
+    <text x="602" y="209" fill="#cbd5e1" font-size="11.5">• 傳統密碼：RSA-OAEP, Cramer-Shoup</text>
+    <rect x="602" y="223" width="236" height="24" rx="6" fill="rgba(239, 68, 68, 0.2)" stroke="rgba(239, 68, 68, 0.4)" />
+    <text x="720" y="239" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="700">⚠️ 任何純 FHE 均無法達成 CCA2！</text>
+
+    <!-- 下方剖析橫幅: 同態可塑性與 IND-CCA2 的衝突攻擊機制 -->
+    <rect x="30" y="274" width="820" height="148" rx="10" fill="url(#grad-exploit)" stroke="rgba(239, 68, 68, 0.4)" stroke-width="1.5" />
+    <text x="48" y="298" fill="#f87171" font-size="13" font-weight="700">⚡ 核心密碼學衝突：為什麼「全同態加密 (FHE)」在數學上必然無法達到 IND-CCA2？</text>
+
+    <!-- 攻擊 4 步流程框 -->
+    <g transform="translate(48, 312)">
+      <!-- 步驟 1 -->
+      <rect x="0" y="0" width="180" height="88" rx="8" fill="rgba(15, 23, 42, 0.7)" stroke="rgba(148, 163, 184, 0.3)" />
+      <text x="90" y="20" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700">步驟 1：獲取挑戰</text>
+      <text x="10" y="42" fill="#cbd5e1" font-size="10.5">敵手給定 m₀, m₁</text>
+      <text x="10" y="60" fill="#cbd5e1" font-size="10.5">收到挑戰密文：</text>
+      <text x="10" y="78" fill="#60a5fa" font-size="10.5" font-weight="600">c* = Enc(m_b)</text>
+
+      <!-- 箭頭 1 -->
+      <path d="M 186 44 L 202 44" stroke="#f87171" stroke-width="2" />
+      <text x="194" y="36" text-anchor="middle" fill="#f87171" font-size="10">同態</text>
+
+      <!-- 步驟 2 -->
+      <rect x="208" y="0" width="180" height="88" rx="8" fill="rgba(15, 23, 42, 0.7)" stroke="rgba(248, 113, 113, 0.5)" />
+      <text x="298" y="20" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">步驟 2：利用同態可塑性篡改</text>
+      <text x="218" y="42" fill="#cbd5e1" font-size="10.5">敵手利用同態加法：</text>
+      <text x="218" y="60" fill="#fca5a5" font-size="10.5" font-weight="600">c' = c* ⊕ Enc(1)</text>
+      <text x="218" y="78" fill="#34d399" font-size="10.5">滿足 c' ≠ c*（合法查詢！）</text>
+
+      <!-- 箭頭 2 -->
+      <path d="M 394 44 L 410 44" stroke="#f87171" stroke-width="2" />
+      <text x="402" y="36" text-anchor="middle" fill="#f87171" font-size="10">查詢</text>
+
+      <!-- 步驟 3 -->
+      <rect x="416" y="0" width="180" height="88" rx="8" fill="rgba(15, 23, 42, 0.7)" stroke="rgba(245, 158, 11, 0.5)" />
+      <text x="506" y="20" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">步驟 3：預言機合法解密</text>
+      <text x="426" y="42" fill="#cbd5e1" font-size="10.5">將 c' 遞交 O_Dec(c')</text>
+      <text x="426" y="60" fill="#cbd5e1" font-size="10.5">預言機正常解密回傳：</text>
+      <text x="426" y="78" fill="#fbbf24" font-size="10.5" font-weight="600">m' = m_b + 1</text>
+
+      <!-- 箭頭 3 -->
+      <path d="M 602 44 L 618 44" stroke="#f87171" stroke-width="2" />
+      <text x="610" y="36" text-anchor="middle" fill="#f87171" font-size="10">破譯</text>
+
+      <!-- 步驟 4 -->
+      <rect x="624" y="0" width="158" height="88" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(52, 211, 153, 0.6)" />
+      <text x="703" y="20" text-anchor="middle" fill="#34d399" font-size="11" font-weight="700">步驟 4：100% 破譯 b</text>
+      <text x="634" y="42" fill="#cbd5e1" font-size="10.5">計算 m_b = m' − 1</text>
+      <text x="634" y="60" fill="#34d399" font-size="10.5" font-weight="700">優勢 Adv = 1.0！</text>
+      <text x="634" y="78" fill="#cbd5e1" font-size="10">IND-CCA2 瞬間瓦解</text>
+    </g>
+
+    <text x="48" y="414" fill="#94a3b8" font-size="11">結論：全同態必須具備「可塑性 (Malleability)」，而 CCA2 要求「完全不可塑 (Non-malleable)」；故門檻系統轉而依託 CPA^D 雜訊淹沒、MPC 捨入截斷或 ZKP 杜絕探測。</text>
+  </svg>
+</div>
+
+        <ul class="bg-module-list">
+          <li><strong>【階層一：選擇明文攻擊不可區分性 (IND-CPA)】</strong>：
+            <br>• <strong>【定義】</strong>：敵手可任意選取明文並獲得對應密文（在公鑰體系中，敵手持有公鑰可自行加密，等價於擁有無限次加密預言機 <span class="word-eq">𝒪<sub>Enc</sub></span> 存取權）。
+            <br>• <strong>【博弈流程】</strong>：敵手選定兩條等長明文 <span class="word-eq">(m₀, m₁)</span> 發送給挑戰者；挑戰者隨機均勻拋幣 <span class="word-eq">b ∈ {0, 1}</span>，回傳挑戰密文 <span class="word-eq">c* = Enc(pk, m<sub>b</sub>)</span>。敵手最終輸出猜測 <span class="word-eq">b'</span>。
+            <br>• <strong>【安全條件】</strong>：若任何多項式時間敵手的猜對優勢滿足不可忽略條件 <span class="word-eq">|Pr[b' = b] − 1/2| ≤ negl(λ)</span>，則稱該方案具備 IND-CPA 安全性。
+            <br>• <strong>【同態加密現狀】</strong>：標準的 LWE / RLWE / CKKS / BGV 方案<strong>天生完全滿足 IND-CPA 安全性</strong>（基於 LWE 決策型難題）。
+          </li>
+          <li><strong>【階層二：非適應性選擇密文攻擊 (IND-CCA1 / Lunchtime Attack)】</strong>：
+            <br>• <strong>【定義】</strong>：又稱「午餐時間攻擊」。敵手在<strong>獲得挑戰密文 c* 之前</strong>，被允許無限制次數向真實解密預言機 <span class="word-eq">𝒪<sub>Dec</sub></span> 遞交任意密文並索取明文回傳值。
+            <br>• <strong>【關鍵限制】</strong>：一旦挑戰者發布了挑戰密文 <span class="word-eq">c*</span>，解密預言機立即<strong>永久切斷</strong>！敵手後續只能憑藉此前獲得的資訊進行猜測。
+          </li>
+          <li><strong>【階層三：適應性選擇密文攻擊 (IND-CCA2 / Full Adaptive CCA)】</strong>：
+            <br>• <strong>【定義】</strong>：公鑰加密的最高黃金標準。敵手在收到挑戰密文 <span class="word-eq">c*</span> <strong>之後</strong>，依然可以繼續調用解密預言機 <span class="word-eq">𝒪<sub>Dec</sub></span>。
+            <br>• <strong>【唯一博弈約束】</strong>：敵手僅被禁止直接將挑戰密文 <span class="word-eq">c*</span> 原封不動遞交給解密預言機（否則答案顯而易見），但<strong>允許遞交任何與 c* 不同的衍生密文 c' ≠ c*</strong>！
+          </li>
+          <li><strong>【核心衝突定理：為什麼任何全同態加密 (FHE) 在數學上絕不可能達到 IND-CCA2？】</strong>：
+            <br>• <strong>代數本質衝突</strong>：全同態加密的本質特徵在於<strong>密文具備可塑性（Homomorphic Malleability）</strong>——任何人持有公鑰都能在不解密的前提下，透過同態加法將密文運算為 <span class="word-eq">c' = c* ⊕ Enc(1)</span>。
+            <br>• <strong>秒殺攻擊通道</strong>：敵手取得挑戰密文 <span class="word-eq">c* = Enc(m<sub>b</sub>)</span> 後，直接計算 <span class="word-eq">c' = c* ⊕ Enc(1)</span>。此時 <span class="word-eq">c' ≠ c*</span> 完全合法！敵手將 <span class="word-eq">c'</span> 遞交解密預言機，獲得回傳明文 <span class="word-eq">m' = m<sub>b</sub> + 1</span>，接著計算 <span class="word-eq">m' − 1 = m<sub>b</sub></span>，直接以 <strong>100% 機率破譯 b</strong>！
+            <br>• <strong>架構解決之道</strong>：因為純 FHE 絕無可能達到 CCA2，在多方協同或雲端計算情境下，密碼學界發展出專屬防線——<strong>門檻分散式解密（Threshold Decryption）配合 CPA<sup>D</sup> 雜訊隔離、MPC Rounding 或零知識證明 (ZKP)</strong>，切斷敵手藉由解密回傳值探測秘密的通道！
+          </li>
+        </ul>
+
+        <div class="example-box">
+          <div class="example-title">🔢 具體算式範例：同態可塑性秒殺 IND-CCA2 破譯全過程</div>
+          <p style="font-size: 0.84rem; line-height: 1.8;">
+            設二進位明文空間 <span class="word-eq">t = 2</span>，敵手提交兩條挑戰明文：<span class="word-eq">m₀ = 0,  m₁ = 1</span>。
+            <br>• 挑戰者拋幣選中 <span class="word-eq">b = 1</span>，生成挑戰密文 <span class="word-eq">c* = Enc(m₁ = 1)</span> 並發給敵手。
+            <br>• 敵手自行加密明文 1：<span class="word-eq">c<sub>one</sub> = Enc(1)</span>。
+            <br>• 敵手利用同態加法計算新密文：<span class="word-eq">c' = c* + c<sub>one</sub> mod q</span>。
+            <br>幾何特徵：由於 <span class="word-eq">c'</span> 包含獨立新採樣雜訊，代數上滿足 <span class="word-eq">c' ≠ c*</span>，因此完全符合 IND-CCA2 的合法查詢條件！
+            <br>• 敵手向解密預言機查詢 <span class="word-eq">𝒪<sub>Dec</sub>(c')</span>。
+            <br>預言機解密運算：<span class="word-eq">m' = Dec(c') = (m<sub>b</sub> + 1) mod 2 = (1 + 1) mod 2 = 0</span>。
+            <br>• 敵手收到回傳值 <span class="word-eq">m' = 0</span>，直接推算：若當初 <span class="word-eq">b = 0</span> 則回傳應為 <span class="word-eq">0 + 1 = 1</span>；現回傳為 0，反推必為 <span class="word-eq">b = 1</span>！
+            <br><strong>敵手僅花費 1 次查詢，便以 100% 成功率攻破了挑戰，IND-CCA2 宣告徹底破滅！</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- 6.2 威脅模型全景矩陣 (配合圖 2) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>6.2 分散式密碼學威脅模型全景矩陣 (Threat Models Landscape)</span>
+          <span class="badge badge-purple">系統信任邊界</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          在門檻全同態加密（ThFHE）中，密鑰由 <span class="word-eq">N</span> 個節點共同持有。分散式協議的安全性取決於敵手對節點的腐化能力：
         </p>
 
         <div style="width: 100%; overflow-x: auto; margin: 1rem 0;">
@@ -2878,7 +3123,7 @@
       </linearGradient>
     </defs>
 
-    <text x="430" y="32" text-anchor="middle" fill="#93c5fd" font-size="16" font-weight="700" letter-spacing="1">圖 1：分散式密碼學威脅模型全景矩陣 (Threat Models Landscape)</text>
+    <text x="430" y="32" text-anchor="middle" fill="#93c5fd" font-size="16" font-weight="700" letter-spacing="1">圖 2：分散式密碼學威脅模型全景矩陣 (Threat Models Landscape)</text>
 
     <!-- Column Headers -->
     <rect x="130" y="55" width="340" height="32" rx="6" fill="rgba(30, 58, 138, 0.4)" stroke="rgba(59, 130, 246, 0.4)"/>
@@ -2929,26 +3174,30 @@
   </svg>
 </div>
 
-        <ul class="bg-module-list" style="margin-top: 1rem;">
-          <li><strong>【半誠實敵手 (Semi-Honest / Passive)】</strong>：敵手嚴格按照規定的演算法執行運算，只在暗地裡記錄並分析所有接收到的封包試圖破解隱私。防禦主要依賴代數隨機遮罩與秘密分享。</li>
-          <li><strong>【主動惡意敵手 (Active / Byzantine)】</strong>：敵手可任意竄改本地程式碼、發送畸形金鑰或假份額。防禦必須依賴零知識證明（ZKP）或訊息驗證碼（MAC）。</li>
-          <li><strong>【誠實多數 (Honest Majority)】</strong>：假設全體節點中超過半數（<span class="word-eq">t &lt; N/2</span>，或拜占庭容錯中的 <span class="word-eq">t &lt; N/3</span>）是完全誠實者。</li>
-          <li><strong>【不誠實多數 (Dishonest Majority / Anytrust: t = N − 1)】</strong>：
-            <strong>密碼學的黃金最高標準！</strong>允許全體 <span class="word-eq">N</span> 個節點中有高達 <span class="word-eq">N−1</span> 個節點被敵手入侵並串謀勾結！
-            全系統只要還存在 <strong>最後 1 位誠實節點</strong>，敵手就絕對無法破解任何密文或獲取金鑰；一旦發現作弊立即中止（Abort on Cheating）。
+        <ul class="bg-module-list">
+          <li><strong>【半誠實模型 (Semi-Honest / Honest-but-Curious / Passive)】</strong>：
+            <br>• <strong>【定義】</strong>：受腐化節點忠實按照協議規定的演算法執行運算、發送訊息，絕不竄改或捏造封包，但會暗中儲存所有接收到的協議副本，試圖推導出其他節點的私鑰或明文隱私。
+            <br>• <strong>【防禦重點】</strong>：依靠秘密分享的資訊理論隱私（完美保密性）與 PRF 隨機遮罩即可抵禦。
+          </li>
+          <li><strong>【主動惡意模型 (Malicious / Byzantine / Active)】</strong>：
+            <br>• <strong>【定義】</strong>：受腐化節點由全能敵手控制，可任意偏離協議執行：蓄意注入偽造的金鑰、故意回傳帶有毒化雜訊的解密份額、掉包密文，甚至靜默離線拒絕服務。
+            <br>• <strong>【防禦重點】</strong>：必須引入零知識證明（NIZK）、代數承諾（Commitment）或 Reed-Solomon 糾錯解碼，強制節點自證合法性。
+          </li>
+          <li><strong>【誠實多數 (Honest Majority) vs. 任意信任 (Anytrust / N−1 Malicious)】</strong>：
+            <br>• <strong>誠實多數 (t &lt; N/2)</strong>：假設全體節點中誠實者嚴格過半。優點是架構簡潔、通訊極快。
+            <br>• <strong>不誠實多數 / Anytrust (t = N − 1)</strong>：密碼學最嚴苛標準。允許至多 <span class="word-eq">N − 1</span> 個節點惡意串謀勾結，只要全網絡中<strong>僅剩 1 位誠實節點</strong>，明文隱私仍保證 100% 固若金湯！
           </li>
         </ul>
       </div>
 
-      <!-- 6.2 CPA^D 解密預言機安全 (配合圖 2) -->
+      <!-- 6.3 CPA^D 主動解密預言機探測防禦 (配合圖 3) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>6.2 CPA<sup>D</sup> 安全概念：選擇明文與解密預言機攻擊 (CPA with Decryption Queries)</span>
-          <span class="badge badge-yellow">解密預言機防護</span>
+          <span>6.3 CPA<sup>D</sup>：主動解密預言機私鑰探測防禦 (Chosen-Plaintext with Decryption Oracle)</span>
+          <span class="badge badge-yellow">邊界攻擊防線</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          在單方公鑰加密中，標準的 IND-CPA 遊戲嚴格禁止敵手接觸「解密伺服器」。
-          但在分散式門檻系統中，任何合法使用者都有權限發送密文請求門檻解密——如果敵手偽裝成使用者，刻意構造畸形密文，系統就直接向敵手開放了「解密預言機（Decryption Oracle）」：
+          在門檻解密服務中，惡意客戶端若能重複向伺服器提交精心構造的特異密文並取得解密結果，該解密服務即等價於一個「解密預言機（Decryption Oracle）」。CPA<sup>D</sup> 安全性保證即使存在此解密預言機，敵手也無法探測出私鑰分量：
         </p>
 
         <div style="width: 100%; overflow-x: auto; margin: 1rem 0;">
@@ -2962,7 +3211,7 @@
       </marker>
     </defs>
 
-    <text x="430" y="30" text-anchor="middle" fill="#f87171" font-size="16" font-weight="700" letter-spacing="1">圖 2：CPA 攻防對照 — 臨界解密預言機探測攻擊與雜訊隔離防禦流程</text>
+    <text x="430" y="30" text-anchor="middle" fill="#f87171" font-size="16" font-weight="700" letter-spacing="1">圖 3：CPA 攻防對照 — 臨界解密預言機探測攻擊與雜訊隔離防禦流程</text>
 
     <!-- Top: Attack Scenario -->
     <rect x="30" y="55" width="800" height="135" rx="8" fill="rgba(239, 68, 68, 0.08)" stroke="rgba(239, 68, 68, 0.3)"/>
@@ -3026,12 +3275,9 @@
   </svg>
 </div>
 
-        <ul class="bg-module-list" style="margin-top: 1rem;">
-          <li><strong>【工具概念定義：CPA<sup>D</sup> 安全性】</strong>：
-            要求門檻解密系統在面對擁有「解密預言機訪問權限」的敵手時，預言機回傳的任何數值（包含殘餘雜訊與成功/失敗狀態）在條件機率分佈上與私鑰向量 <span class="word-eq">s</span> <strong>嚴格統計獨立（Statistical Independence）</strong>。
-          </li>
-          <li><strong>【運作過程：臨界探測攻擊與防禦】</strong>：
-            <br>① <strong>攻擊流程</strong>：敵手將密文雜訊調整至臨界邊界 <span class="word-eq">Δ/2 − ε</span>。若未防護，捨入溢位機率與私鑰正負號微幅相關，敵手每次詢問穩定榨取 1 位元私鑰符號。
+        <ul class="bg-module-list">
+          <li><strong>【CPA<sup>D</sup> 臨界探測攻擊機制】</strong>：
+            <br>① <strong>攻擊流程</strong>：敵手構造一組特殊密文，將其解密相位刻意推向<strong>捨入臨界判定半徑 Δ/2</strong>（如 <span class="word-eq">phase ≈ Δ/2 − a · s</span>）。若私鑰分量為正，相位未溢位，解密回傳明文 0；若私鑰分量為負，相位溢位至相鄰區間，回傳明文 1！敵手藉由回傳的 0 或 1 即可逐位榨取私鑰資訊。
             <br>② <strong>防禦流程</strong>：門檻解密端在發布結果前，注入比原始雜訊大 <span class="word-eq">2<sup>λ</sup></span> 倍的統計洪水雜訊（Smudging），或在 MPC 算術黑盒內部直接完成捨入截斷，使回傳分佈與私鑰的統計距離滿足 <span class="word-eq">SD ≤ 2<sup>−λ</sup></span>，徹底截斷探測通道！
           </li>
           <li><strong>【優點與缺點】</strong>：
@@ -3052,10 +3298,10 @@
         </div>
       </div>
 
-      <!-- 6.3 IND-FuncCPA 電路隱私 (配合圖 3) -->
+      <!-- 6.4 IND-FuncCPA 電路隱私 (配合圖 4) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>6.3 IND-FuncCPA：電路隱私與專利演算法保護 (Circuit Privacy)</span>
+          <span>6.4 IND-FuncCPA：電路隱私與專利演算法保護 (Circuit Privacy)</span>
           <span class="badge badge-blue">計算拓樸保護</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
@@ -3073,7 +3319,7 @@
       </marker>
     </defs>
 
-    <text x="430" y="28" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="700" letter-spacing="1">圖 3：IND-FuncCPA 電路隱私攻防原理 — 消除專利計算拓樸指紋</text>
+    <text x="430" y="28" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="700" letter-spacing="1">圖 4：IND-FuncCPA 電路隱私攻防原理 — 消除專利計算拓樸指紋</text>
 
     <!-- Left: Server Evaluation Box -->
     <rect x="35" y="60" width="220" height="210" rx="8" fill="rgba(30, 58, 138, 0.25)" stroke="#38bdf8"/>
@@ -3109,30 +3355,29 @@
   </svg>
 </div>
 
-        <ul class="bg-module-list" style="margin-top: 1rem;">
-          <li><strong>【工具概念定義：IND-FuncCPA】</strong>：
-            計算後的同態密文在解密時，其所揭示的所有訊息<strong>僅取決於最終運算結果 <span class="word-eq">f(m)</span></strong>，而在數學上完全抹除有關評估電路 <span class="word-eq">C</span> 的拓樸結構、乘法層數與模型權重痕跡。
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：函數隱私 (IND-FuncCPA / Circuit Privacy)】</strong>：
+            對於任意兩個計算不同評估電路 <span class="word-eq">C₁</span> 與 <span class="word-eq">C₂</span>、但產出完全相同輸出結果（即 <span class="word-eq">C₁(m) = C₂(m)</span>）的同態計算過程，任何解密方獲得的最終密文分佈在統計上完全不可區分。
           </li>
-          <li><strong>【運作過程：零密文重隨機化 (Re-randomization via c<sub>zero</sub>)】</strong>：
-            <br>① 同態運算結束後，密文內部的雜訊包含了電路計算的痕跡。
-            <br>② 伺服器使用集體公鑰全新加密一個數值為 0 的新鮮密文：<span class="word-eq">c<sub>zero</sub> = Enc(PK, 0; e<sub>fresh</sub>)</span>。
-            <br>③ 將零密文同態疊加至運算密文上並注入適量淹沒雜訊，將舊雜訊特徵完全重設，達成與原電路完全無關的標準高斯分佈。
-          </li>
-          <li><strong>【優點與缺點】</strong>：
-            <br>• <strong>優點</strong>：百分之百保護伺服器專利模型不被逆向工程。
-            <br>• <strong>缺點</strong>：需要在評估最後增加一次零密文加密與同態加法運算。
+          <li><strong>【雜訊指紋洩漏與零密文重隨機化防禦】</strong>：
+            <br>• <strong>洩漏機制</strong>：同態相乘會使密文雜訊隨乘法深度與拓樸幾何幾何級膨脹。若伺服器直接將計算後的密文發給客戶端解密，客戶端透過測量解密相位中殘留的雜訊大小與協方差矩陣，就能如同分析「聲學指紋」般反推出模型深度與神經網路權重！
+            <br>• <strong>重隨機化防禦 (Rerandomization)</strong>：在完成電路求值後，伺服器在密文上疊加一個加密明文為 0 的獨立全新同態密文：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              c<sub>final</sub> = c<sub>eval</sub> + C<sub>zero</sub> mod Q
+            </div>
+            透過注入充分大標準差的高斯雜訊，將舊運算路徑遺留的細微雜訊特徵完全沖刷淹沒，達成統計意義上的電路隱私！
           </li>
         </ul>
       </div>
 
-      <!-- 6.4 通用可組合性 UC (配合圖 4) -->
-      <div class="card">
+      <!-- 6.5 通用可組合性 UC 模擬安全 (配合圖 5) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>6.4 通用可組合性 (Universal Composability, UC) 與理想功能模擬</span>
-          <span class="badge badge-purple">全域模組安全</span>
+          <span>6.5 通用可組合性 (UC, Universal Composability) 模擬安全框架</span>
+          <span class="badge badge-purple">黃金模組安全</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          由 Ran Canetti 提出的通用可組合（UC）框架，保證了密碼協議作為子模組嵌入到更龐大的區塊鏈、跨鏈橋或 MPC 系統中時，依然絕對安全不破防：
+          在複雜分散式系統（如區塊鏈、跨雲端安全多方計算）中，協議往往與無數其他未知網路應用同時運行。Ran Canetti 提出的<strong>通用可組合性（UC Framework）</strong>是密碼學中最高規格的安全證明典範：
         </p>
 
         <div style="width: 100%; overflow-x: auto; margin: 1rem 0;">
@@ -3143,7 +3388,7 @@
       </marker>
     </defs>
 
-    <text x="430" y="28" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="700" letter-spacing="1">圖 4：通用可組合性 (UC) 模擬安全框架 — 真實世界 vs. 理想世界模擬範式</text>
+    <text x="430" y="28" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="700" letter-spacing="1">圖 5：通用可組合性 (UC) 模擬安全框架 — 真實世界 vs. 理想世界模擬範式</text>
 
     <!-- Top Environment Entity Z -->
     <rect x="290" y="50" width="280" height="50" rx="8" fill="rgba(30, 41, 59, 0.9)" stroke="#c084fc" stroke-width="2"/>
@@ -3201,25 +3446,26 @@
   </svg>
 </div>
 
-        <ul class="bg-module-list" style="margin-top: 1rem;">
-          <li><strong>【工具概念定義：UC 模擬安全】</strong>：
-            若對於任何在真實世界中攻擊協議 <span class="word-eq">π</span> 的敵手 <span class="word-eq">𝒜</span>，都存在一個在理想世界中運行的多項式時間模擬器 <code>Sim</code>，使得任何外部環境實體 <span class="word-eq">𝒵</span> 都無法區分自己是在與真實世界還是在與理想世界交互，則稱協議 <span class="word-eq">π</span> 具備 UC 安全性。
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：UC 模擬安全範式 (Simulation-Based Security)】</strong>：
+            安全性透過對比兩個世界的行為來嚴密定義：
+            <br>• <strong>真實世界 (Real World)</strong>：各節點執行實體通訊協議 <span class="word-eq">Π</span>，其中部分節點受真實敵手 <span class="word-eq">𝒜</span> 腐化，可能作弊或窺探訊息。
+            <br>• <strong>理想世界 (Ideal World)</strong>：不存在實體通訊，所有節點將原始明文直接輸入給一個絕對誠實的<strong>理想算術黑盒功能 ℱ<sub>ABB</sub></strong>（Arithmetic Black Box）。黑盒在內部完成計算並將正確結果回傳給各方。
           </li>
-          <li><strong>【運作過程：理想功能 ℱ<sub>ABB</sub> 與模擬器視圖偽造】</strong>：
-            <br>① <strong>理想功能 ℱ<sub>ABB</sub></strong>：假設存在絕對安全的中立黑盒，各方將輸入送入黑盒，黑盒計算後輸出明文。
-            <br>② <strong>模擬器 Sim 的核心任務</strong>：<code>Sim</code> 在<strong>完全不知曉誠實節點私鑰</strong>的前提下，僅憑理想功能給出的輸出結果，利用隨機雜訊與假私鑰偽造出一組真假難辨的網路通訊視圖。
-            <br>③ 由於協議具備雜訊淹沒或 MPC 查表消噪，環境實體 <span class="word-eq">𝒵</span> 觀察到的真實視圖與假視圖統計不可區分，證明真實協議達到理想黑盒等級的安全。
-          </li>
-          <li><strong>【優點與缺點】</strong>：
-            <br>• <strong>優點</strong>：具備任意並行嵌套的可組合性保證，是現代密碼學的最高榮譽標準。
-            <br>• <strong>缺點</strong>：嚴格的 UC 證明通常要求共用隨機字串（CRS）或預處理設置。
+          <li><strong>【模擬器構造 (Simulator 𝒮) 與環境無差別性】</strong>：
+            <br>• <strong>【定義】</strong>：若對於真實世界中的任何敵手 <span class="word-eq">𝒜</span>，均存在一個理想世界中的多項式時間模擬器 <span class="word-eq">𝒮</span>，使得任意外部觀察者環境（Environment <span class="word-eq">𝒵</span>）無法分辨它究竟是與「真實世界協定」交互、抑或是與「理想功能黑盒 + 模擬器」交互：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              EXEC<sub>Π, 𝒜, 𝒵</sub>  ≈  EXEC<sub>ℱ<sub>ABB</sub>, 𝒮, 𝒵</sub>
+            </div>
+            <br>• <strong>【可組合性定理】</strong>：若協定在 UC 框架下被證明安全，則該協定可以作為黑盒模組<strong>任意嵌套進任何複雜系統、在任意網路延遲下無限次並行調用</strong>，其安全性絕對不會退化！
           </li>
         </ul>
+      </div>
 
-        <div class="bg-nav-pager">
-          <button type="button" class="btn-pager" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：五、主動防線與零知識證明</button>
-          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：七、全域控制與評測指標 →</button>
-        </div>
+      <!-- 頁面切換導覽 -->
+      <div class="bg-nav-pager">
+        <button type="button" class="btn-pager" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：五、主動防線與零知識證明</button>
+        <button type="button" class="btn-pager" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：七、全域控制與評測指標 →</button>
       </div>
     </section>
 

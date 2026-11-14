@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: thfhe-lab
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python web/serve.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9

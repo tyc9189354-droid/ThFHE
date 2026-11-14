@@ -7669,6 +7669,12 @@
             pm2: pm2Raw,
             hm1: hm1Raw,
             hm2: hm2Raw,
+            nm1: nm1Raw,
+            nm2: nm2Raw,
+            otm1: otm1Raw,
+            otm2: otm2Raw,
+            ajm1: ajm1Raw,
+            ajm2: ajm2Raw,
             bsm1: bsm1Raw,
             bsm2: bsm2Raw,
             psm1: psm1Raw,
@@ -7912,11 +7918,11 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1) document.getElementById('cipher-in-1').value = JSON.stringify(data.c1);
+        if (data.c2) document.getElementById('cipher-in-2').value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           document.getElementById('ccs-stat-setup').innerText = data.time_ms + ' ms';
-          if (data.c1) document.getElementById('cipher-in-1').value = JSON.stringify(data.c1);
-          if (data.c2) document.getElementById('cipher-in-2').value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: Setup 系統參數初始化]`);
           appendConsole(box, `  • 初始化模數 q = 2^${data.params.k}, 明文空間 T = 2^${data.params.m} = ${1 << data.params.m} (ℤ_${1 << data.params.m}: 0~${(1 << data.params.m) - 1}), 捨入基底 b = ${data.params.b}`);
           appendConsole(box, `  • 參與方規模 N = ${data.params.num_parties} Parties | 實測 Setup 耗時: ${data.time_ms} ms`);
@@ -7986,6 +7992,8 @@
       const mBits = getSelectedMBits();
       const c1 = parseCiphertextInput(document.getElementById('cipher-in-1').value);
       const c2 = parseCiphertextInput(document.getElementById('cipher-in-2').value);
+      const m1 = document.getElementById('plain-m1').value.trim() || '12';
+      const m2 = document.getElementById('plain-m2').value.trim() || '25';
       const opMode = document.getElementById('op-mode').value;
 
       try {
@@ -7993,7 +8001,7 @@
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            c1, c2,
+            c1, c2, m1, m2,
             m: mBits,
             simd_mode: SIMD_STATE.ccs25,
             op_mode: opMode,
@@ -8004,6 +8012,8 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1) document.getElementById('cipher-in-1').value = JSON.stringify(data.c1);
+        if (data.c2) document.getElementById('cipher-in-2').value = JSON.stringify(data.c2);
         renderDecryptionResult(data);
       } catch (e) {
         if (!LOCAL_CRYPTO.s.length || LOCAL_CRYPTO.num_parties !== numParties) {
@@ -8183,12 +8193,12 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+        if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           const el = document.getElementById('noah-stat-setup');
           if (el) el.innerText = data.time_ms + ' ms';
-          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
-          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: Noah's Ark Setup 統計雜訊淹沒參數初始化]`);
           appendConsole(box, `  • 模數 q = 2^${data.params.k || 64}, 明文空間 T = ${data.params.t || T}, 統計雜訊邊界 B_flood = ${data.params.B || '2^32'}`);
           appendConsole(box, `  • 參與方規模 N = ${data.params.num_parties} Parties | 實測 Setup 耗時: ${data.time_ms} ms`);
@@ -8332,11 +8342,11 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1) document.getElementById('pelta-cipher-in-1').value = JSON.stringify(data.c1);
+        if (data.c2) document.getElementById('pelta-cipher-in-2').value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           document.getElementById('pelta-stat-setup').innerText = data.time_ms + ' ms';
-          if (data.c1) document.getElementById('pelta-cipher-in-1').value = JSON.stringify(data.c1);
-          if (data.c2) document.getElementById('pelta-cipher-in-2').value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: PELTA Setup 多項式環與 CRS 初始化]`);
           appendConsole(box, `  • 多項式環 R_q = Z_${data.params.q}[X]/(X^${data.params.N_poly}+1), 明文空間 T = ${data.t_space} (CRT NTT 擴展模數 p_ntt = ${data.p_ntt}), 雜訊上界 B = ${data.params.B}`);
           appendConsole(box, `  • 參與方規模 N = ${data.params.num_parties} Parties | 實測 Setup 耗時: ${data.time_ms} ms`);
@@ -8486,11 +8496,11 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1) document.getElementById('hqfs-cipher-in-1').value = JSON.stringify(data.c1);
+        if (data.c2) document.getElementById('hqfs-cipher-in-2').value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           document.getElementById('hqfs-stat-setup').innerText = data.time_ms + ' ms';
-          if (data.c1) document.getElementById('hqfs-cipher-in-1').value = JSON.stringify(data.c1);
-          if (data.c2) document.getElementById('hqfs-cipher-in-2').value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: HQ-FS Setup (Algorithm 1: RNS-GLWE 雙層分解與 CRS 初始化)]`);
           appendConsole(box, `  • 多項式環 R_Q (N_poly=${data.params.N_poly}, GLWE 秩 k=${data.params.k_glwe}), RNS 肢節模數 = [${data.params.q_limbs.join(', ')}], 總模數 Q = ${data.params.Q_total}`);
           appendConsole(box, `  • 明文空間 T = ${data.t_space}, 擴展證明模數 K_Q = T·Q = ${data.params.K_Q}, 緊緻雜訊淹沒上界 B_sm = ${data.params.B_sm}`);
@@ -8647,12 +8657,12 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+        if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           const el = document.getElementById('ot25-stat-setup');
           if (el) el.innerText = data.time_ms + ' ms';
-          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
-          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: OT25 Setup (Okada & Takagi, Asiacrypt 2025)]`);
           appendConsole(box, `  • 模數 q = ${data.params.q}, 明文空間 T = ${data.params.t || T}, LWE 維度 n = ${data.params.n_dim}`);
           appendConsole(box, `  • 門檻拓撲: (k, N) = (${data.params.threshold || Math.ceil(numParties/2)}, ${numParties}) | 實測 Setup 耗時: ${data.time_ms} ms`);
@@ -8796,12 +8806,12 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+        if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           const el = document.getElementById('ajax-stat-setup');
           if (el) el.innerText = data.time_ms + ' ms';
-          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
-          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: Ajax Setup (Hu et al., USENIX Security 2025)]`);
           appendConsole(box, `  • 模數 q = ${data.params.q}, 明文空間 T = ${data.params.t || T}`);
           appendConsole(box, `  • 雙環模數: ℤ_Φ (Φ=${data.params.Phi || 4096}), ℤ_η (η=${data.params.eta || 4}) | 實測 Setup 耗時: ${data.time_ms} ms`);
@@ -8914,7 +8924,7 @@
       const malRatio = getSelectedMaliciousRatio();
       const attackType = getSelectedAttackType();
       const mBits = getSelectedMBits();
-      const T = Math.min(getSelectedTSpace(), 4);
+      const T = Math.min(getSelectedTSpace(), 16);
       const c1El = document.getElementById('bs23-cipher-in-1');
       const c2El = document.getElementById('bs23-cipher-in-2');
       const m1El = document.getElementById('bs23-plain-m1');
@@ -8922,8 +8932,8 @@
       const opModeEl = document.getElementById('bs23-op-mode');
       const c1 = c1El ? parseCiphertextInput(c1El.value) : [];
       const c2 = c2El ? parseCiphertextInput(c2El.value) : [];
-      const m1 = m1El ? m1El.value.trim() : '2';
-      const m2 = m2El ? m2El.value.trim() : '3';
+      const m1 = (m1El ? m1El.value.trim() : '') || '12';
+      const m2 = (m2El ? m2El.value.trim() : '') || '7';
       const opMode = opModeEl ? opModeEl.value : 'eval_mul';
       const box = 'bs23-console';
 
@@ -8943,12 +8953,12 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+        if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           const el = document.getElementById('bs23-stat-setup');
           if (el) el.innerText = data.time_ms + ' ms';
-          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
-          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: BS23 Setup (Boudgoust & Scholl, Asiacrypt 2023)]`);
           appendConsole(box, `  • 多項式模數 q = ${data.params.q} (30-bit 質數), 明文空間 T = ${data.params.t || T}, 縮放因子 Δ = ${data.params.delta}`);
           appendConsole(box, `  • Rényi 散度參數: a = ${data.params.renyi_order_a}, σ_flood = ${data.params.sigma_flood} | 實測 Setup 耗時: ${data.time_ms} ms`);
@@ -9069,7 +9079,7 @@
       const malRatio = getSelectedMaliciousRatio();
       const attackType = getSelectedAttackType();
       const mBits = getSelectedMBits();
-      const T = Math.min(getSelectedTSpace(), 4);
+      const T = Math.min(getSelectedTSpace(), 16);
       const c1El = document.getElementById('ps24-cipher-in-1');
       const c2El = document.getElementById('ps24-cipher-in-2');
       const m1El = document.getElementById('ps24-plain-m1');
@@ -9077,8 +9087,8 @@
       const opModeEl = document.getElementById('ps24-op-mode');
       const c1 = c1El ? parseCiphertextInput(c1El.value) : [];
       const c2 = c2El ? parseCiphertextInput(c2El.value) : [];
-      const m1 = m1El ? m1El.value.trim() : '2';
-      const m2 = m2El ? m2El.value.trim() : '3';
+      const m1 = (m1El ? m1El.value.trim() : '') || '12';
+      const m2 = (m2El ? m2El.value.trim() : '') || '7';
       const opMode = opModeEl ? opModeEl.value : 'eval_mul';
       const box = 'ps24-console';
 
@@ -9098,12 +9108,12 @@
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
+        if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
 
         if (stage === 'setup') {
           const el = document.getElementById('ps24-stat-setup');
           if (el) el.innerText = data.time_ms + ' ms';
-          if (data.c1 && c1El) c1El.value = JSON.stringify(data.c1);
-          if (data.c2 && c2El) c2El.value = JSON.stringify(data.c2);
           appendConsole(box, `\n[Stage 1: PS24 Setup (Passelègue & Stehlé, Asiacrypt 2024)]`);
           appendConsole(box, `  • 大密文模數 Q = p·q = ${data.params.Q} (壓縮因子 p=${data.params.p}, 輸出小模數 q=${data.params.q})`);
           appendConsole(box, `  • 雙重隨機高斯捨入參數: σ_0 = ${data.params.sigma_0}, σ_1 = ${data.params.sigma_1} | 實測 Setup 耗時: ${data.time_ms} ms`);

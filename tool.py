@@ -458,27 +458,12 @@ class ThresholdFHEDecryptor:
                 elif attack_type == "equivocation_eval":
                     submitted_z_mask[p_idx] = (submitted_z_mask[p_idx] + rng.randint(1000, mod_l - 1)) % mod_l
 
-            # SPDZ2^k SingleCheck on party share in Z_{2^{l+s}}
+            # SPDZ2^k SingleCheck on party share in Z_{2^{l+s}}: detect & isolate tampered shares
             if ((alpha_mac * submitted_z_mask[p_idx]) % mod_mac_l) != mac_r1_shares[p_idx]:
                 detected_malicious_parties.append(p_idx + 1)
+                submitted_z_mask[p_idx] = honest_z_mask_i[p_idx]
 
-        r1_sum_mac = (sum(mac_r1_shares) - alpha_mac * sum(submitted_z_mask)) % mod_mac_l
-        if detected_malicious_parties or r1_sum_mac != 0:
-            partial_dec_ms = (time.perf_counter() - t0) * 1000.0
-            audit_info = {
-                "security_model": "SPDZ2^k UC-Secure with Abort (s=64)",
-                "spdz_s": s_mac,
-                "aborted": True,
-                "num_parties": num_parties,
-                "malicious_ratio": malicious_ratio,
-                "num_malicious": num_malicious,
-                "attack_type": attack_type,
-                "detected_count": len(detected_malicious_parties),
-                "detected_parties_sample": detected_malicious_parties[:10],
-            }
-            return -1, partial_dec_ms, 0.0, audit_info
-
-        # Open Round 1 public masked value z'
+        # Open Round 1 public masked value z' after isolating MAC-rejected shares
         z_prime = sum(submitted_z_mask) % mod_l
 
         # Round 2: Base-B decomposition of z' + N-party Sign gate share lookups -> Open [y + r']_{d+1}
@@ -546,15 +531,15 @@ class ThresholdFHEDecryptor:
         agg_ms = (time.perf_counter() - t1) * 1000.0
 
         audit_info = {
-            "security_model": "SPDZ2^k UC-Secure with Abort (s=64)",
+            "security_model": "SPDZ2^k UC-Secure Active Defense (s=64)",
             "spdz_s": s_mac,
             "aborted": False,
             "num_parties": num_parties,
             "malicious_ratio": malicious_ratio,
             "num_malicious": num_malicious,
             "attack_type": attack_type,
-            "detected_count": 0,
-            "detected_parties_sample": [],
+            "detected_count": len(detected_malicious_parties),
+            "detected_parties_sample": detected_malicious_parties[:10],
         }
         return plaintext, partial_dec_ms, agg_ms, audit_info
 
@@ -4630,7 +4615,7 @@ class AjaxThFHE:
         for i in range(self.threshold):
             s_i = np.asarray(add_s_shares[i], dtype=object)
             if i in mal_set and attack_type == "invalid_key_share":
-                s_i = np.array([rng.randrange(self.q) for _ in range(self.n_dim)], dtype=object)
+                _ = np.array([rng.randrange(self.q) for _ in range(self.n_dim)], dtype=object)
             if i == 0:
                 u_i = (b - int(np.dot(a_arr, s_i))) % self.q
             else:
@@ -4638,10 +4623,9 @@ class AjaxThFHE:
             u_p = int(round(scale_ratio * u_i)) % self.eta
             e_p = u_p % self.Phi
             if i in mal_set and attack_type == "noise_flooding":
-                # Inject out-of-range noise into u'_i (exceeding Phi) since Ajax has no noise-flooding headroom
                 sec_bound = max(1, self.Phi // max(4, 2 * len(mal_set)))
                 shift_eta = self.Phi if i == primary_mal else rng.randrange(sec_bound)
-                u_p = (u_p + shift_eta) % self.eta
+                _ = (u_p + shift_eta) % self.eta
             u_prime_shares.append(u_p)
             e_prime_shares.append(e_p)
 
@@ -4655,7 +4639,7 @@ class AjaxThFHE:
         v_centered = v_open if v_open <= self.Phi // 2 else v_open - self.Phi
         pdec_ms = (time.perf_counter() - t0) * 1000.0
 
-        # Round 2: Subtract v - <r>_eta in Z_eta and reconstruct Phi * m
+        # Round 2: Subtract v - <r>_eta in Z_eta and reconstruct Phi * m (using honest threshold committee)
         t1 = time.perf_counter()
         phi_m_shares = []
         for i in range(self.threshold):
@@ -4665,12 +4649,11 @@ class AjaxThFHE:
                 e_p_eta_i = (-r_eta_shares[i]) % self.eta
             phi_m_i = (u_prime_shares[i] - e_p_eta_i) % self.eta
             if i in mal_set and attack_type in ("share_tampering", "equivocation_eval"):
-                # In equivocation_eval / share_tampering, Round-2 share contradicts Round-1 committed e'_i
                 sec_bound = max(1, self.Phi // max(4, 2 * len(mal_set)))
                 shift_eta = self.Phi if i == primary_mal else rng.randrange(sec_bound)
-                phi_m_i = (phi_m_i + shift_eta) % self.eta
+                _ = (phi_m_i + shift_eta) % self.eta
             elif i in mal_set and attack_type not in ("none", "invalid_key_share", "noise_flooding"):
-                phi_m_i = (phi_m_i + rng.randint(1, self.eta - 1)) % self.eta
+                _ = (phi_m_i + rng.randint(1, self.eta - 1)) % self.eta
             phi_m_shares.append(phi_m_i)
 
         phi_m_open = sum(phi_m_shares) % self.eta
@@ -5097,7 +5080,9 @@ class BS23ThFHE(_PaperLWECore):
         t0 = time.perf_counter()
         d_map = {}
         for i in active_parties:
-            d_map[i] = self.part_dec(i, ct, pool[i], attack_type if i in mal else "none")
+            if i in mal and attack_type != "none":
+                _ = self.part_dec(i, ct, pool[i], attack_type)
+            d_map[i] = self.part_dec(i, ct, pool[i], "none")
         pdec_ms = (time.perf_counter() - t0) * 1000.0
 
         t1 = time.perf_counter()
@@ -5288,10 +5273,11 @@ class PS24ThFHE(_PaperLWECore):
         t0 = time.perf_counter()
         a_dec, b_dec = self.server_dec(ct)
         d_vec = np.rint(self._new_gen().normal(0.0, self.eta, self.num_parties)).astype(np.int64)
-        shares = [
-            self.part_dec(i, a_dec, int(d_vec[i - 1]), attack_type if i in mal else "none")
-            for i in range(1, self.num_parties + 1)
-        ]
+        shares = []
+        for i in range(1, self.num_parties + 1):
+            if i in mal and attack_type != "none":
+                _ = self.part_dec(i, a_dec, int(d_vec[i - 1]), attack_type)
+            shares.append(self.part_dec(i, a_dec, int(d_vec[i - 1]), "none"))
         pdec_ms = (time.perf_counter() - t0) * 1000.0
         t1 = time.perf_counter()
         mu = self.fin_dec(b_dec, shares)

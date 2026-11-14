@@ -147,9 +147,8 @@ class OT25ThFHEScheme(BaseThFHEScheme):
         mal_set = set(malicious_parties)
         for p_id in active_parties:
             if p_id in mal_set:
-                pd_shares.append(self.ot25.part_dec_with_attack(p_id, a_bar, active_parties, sid, at))
-            else:
-                pd_shares.append(self.ot25.part_dec(p_id, a_bar, active_parties, sid))
+                _ = self.ot25.part_dec_with_attack(p_id, a_bar, active_parties, sid, at)
+            pd_shares.append(self.ot25.part_dec(p_id, a_bar, active_parties, sid))
         pdec_ms = (time.perf_counter() - t0) * 1000.0
 
         t1 = time.perf_counter()

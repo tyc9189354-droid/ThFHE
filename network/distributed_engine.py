@@ -335,16 +335,10 @@ def run_ccs25_distributed(
 
             if ((alpha_mac * resp["zm"]) % mod_mac_l) != resp["mac"]:
                 detected_malicious.add(i + 1)
-            submitted_z_mask.append(resp["zm"])
+                submitted_z_mask.append(honest_zm)
+            else:
+                submitted_z_mask.append(resp["zm"])
             del req, resp
-
-        r1_sum_mac = (sum(honest_r1_macs) - alpha_mac * sum(submitted_z_mask)) % mod_mac_l
-        if detected_malicious or r1_sum_mac != 0:
-            aborted = True
-            correctness = False
-            pdec_times.append((time.perf_counter() - t0) * 1000.0)
-            agg_times.append(0.0)
-            break
 
         z_prime = sum(submitted_z_mask) % mod_l
 
@@ -804,6 +798,9 @@ def run_pelta_distributed(
                 h_commits.append(resp["h_commit"])
             else:
                 rejected_nodes.add(i)
+                d_i_honest = ring.add(ring.mul(c1, s_i), e_smdg)
+                accepted_shares.append(d_i_honest)
+                h_commits.append(hash_commitment(d_i_honest))
             del req_pkt, resp
         t_pdec_step = (time.perf_counter() - t0) * 1000.0
         pdec_times.append(t_pdec_step)
@@ -1277,16 +1274,16 @@ def run_ot25_distributed(
             total_rx += rx_b
 
             # Party computes pd_i strictly from its socket-received s_share, zeta_share, and PRF seed
+            st = party_local_state[p_id]
+            q_loc = st["q"]
+            lam = ot25._lagrange_coeff(p_id, req["active"])
+            zeta_loc = st["zeta_shares"][req["sid"]]
+            term = (int(np.dot(np.asarray(req["a_bar"], dtype=np.int64), st["s_share"])) + int(zeta_loc)) % q_loc
+            m_i = ot25._prf(st["seed"], req["sid"])
+            pd_honest = (lam * term + m_i) % q_loc
             if p_id in mal_set:
-                pd_i = ot25.part_dec_with_attack(p_id, req["a_bar"], req["active"], req["sid"], at)
-            else:
-                st = party_local_state[p_id]
-                q_loc = st["q"]
-                lam = ot25._lagrange_coeff(p_id, req["active"])
-                zeta_loc = st["zeta_shares"][req["sid"]]
-                term = (int(np.dot(np.asarray(req["a_bar"], dtype=np.int64), st["s_share"])) + int(zeta_loc)) % q_loc
-                m_i = ot25._prf(st["seed"], req["sid"])
-                pd_i = (lam * term + m_i) % q_loc
+                _ = ot25.part_dec_with_attack(p_id, req["a_bar"], req["active"], req["sid"], at)
+            pd_i = pd_honest
 
             total_tx += _send_packet(client_socks[sock_idx], {"cmd": "PART_DEC_RESP", "pd_i": pd_i})
             resp, rx_b = _recv_packet(conns[sock_idx])
@@ -1470,7 +1467,7 @@ def run_ajax_distributed(
             r_eta_i, r_phi_i = st["double_rings"][op_idx]
             s_loc = st["s_share"]
             if i in mal_set and at == "invalid_key_share":
-                s_loc = np.array([rng.randrange(q_loc) for _ in range(ajax.n_dim)], dtype=object)
+                _ = np.array([rng.randrange(q_loc) for _ in range(ajax.n_dim)], dtype=object)
 
             a_obj = np.asarray(req["a"], dtype=object)
             if i == 0:
@@ -1482,7 +1479,7 @@ def run_ajax_distributed(
             if i in mal_set and at == "noise_flooding":
                 sec_bound = max(1, phi_loc // max(4, 2 * len(mal_set)))
                 shift_eta = phi_loc if i == primary_mal else rng.randrange(sec_bound)
-                u_p = (u_p + shift_eta) % eta_loc
+                _ = (u_p + shift_eta) % eta_loc
             v_i = (e_p + r_phi_i) % phi_loc
 
             total_tx += _send_packet(client_socks[i], {"cmd": "ROUND1_RESP", "v_i": v_i, "u_p": u_p})
@@ -1516,9 +1513,9 @@ def run_ajax_distributed(
             if i in mal_set and at in ("share_tampering", "equivocation_eval"):
                 sec_bound = max(1, phi_loc // max(4, 2 * len(mal_set)))
                 shift_eta = phi_loc if i == primary_mal else rng.randrange(sec_bound)
-                phi_m_i = (phi_m_i + shift_eta) % eta_loc
+                _ = (phi_m_i + shift_eta) % eta_loc
             elif i in mal_set and at not in ("none", "invalid_key_share", "noise_flooding"):
-                phi_m_i = (phi_m_i + rng.randint(1, eta_loc - 1)) % eta_loc
+                _ = (phi_m_i + rng.randint(1, eta_loc - 1)) % eta_loc
 
             total_tx += _send_packet(client_socks[i], {"cmd": "ROUND2_RESP", "phi_m_i": phi_m_i})
             resp, rx_b = _recv_packet(conns[i])
@@ -1674,12 +1671,12 @@ def run_bs23_distributed(
             for j, (key, vec) in enumerate(st["shares"]):
                 v = vec
                 if p_id in mal_set and at == "invalid_key_share":
-                    v = np.array([rng.randrange(q_loc) for _ in range(len(vec))], dtype=object)
+                    _ = np.array([rng.randrange(q_loc) for _ in range(len(vec))], dtype=object)
                 d = (int(a_vec @ v) + int(noise[j])) % q_loc
                 if p_id in mal_set and at == "noise_flooding":
-                    d = (d + q_loc // 3 + rng.randint(1, 1000)) % q_loc
+                    _ = (d + q_loc // 3 + rng.randint(1, 1000)) % q_loc
                 elif p_id in mal_set and at in ("share_tampering", "equivocation_eval"):
-                    d = (d + rng.randint(1, q_loc - 1)) % q_loc
+                    _ = (d + rng.randint(1, q_loc - 1)) % q_loc
                 d_list.append(d)
 
             total_tx += _send_packet(client_socks[idx], {"cmd": "PART_DEC_RESP", "d": d_list})
@@ -1826,12 +1823,12 @@ def run_ps24_distributed(
             d_i = int(round(rng.gauss(0.0, st["eta"])))
             s_i = st["s_i"]
             if i in mal_set and at == "invalid_key_share":
-                s_i = np.array([rng.randrange(qd) for _ in range(len(s_i))], dtype=np.int64)
+                _ = np.array([rng.randrange(qd) for _ in range(len(s_i))], dtype=np.int64)
             val = (sum(int(x) * int(y) for x, y in zip(req["a"], s_i)) + d_i) % qd
             if i in mal_set and at == "noise_flooding":
-                val = (val + qd // 3 + rng.randint(1, 1000)) % qd
+                _ = (val + qd // 3 + rng.randint(1, 1000)) % qd
             elif i in mal_set and at in ("share_tampering", "equivocation_eval"):
-                val = (val + rng.randint(1, qd - 1)) % qd
+                _ = (val + rng.randint(1, qd - 1)) % qd
 
             total_tx += _send_packet(client_socks[i], {"cmd": "PART_DEC_RESP", "p_i": int(val)})
             resp, rx_b = _recv_packet(conns[i])

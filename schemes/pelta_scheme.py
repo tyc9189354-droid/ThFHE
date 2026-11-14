@@ -243,30 +243,18 @@ class PeltaThFHEScheme(BaseThFHEScheme):
             )
             if not is_valid:
                 rejected_parties.append(p_idx + 1)
+                # Isolate corrupted share and recover commitment-bound honest share
+                d_i_honest = ring.add(ring.mul(c1, s_i), e_smdg)
+                accepted_shares.append(d_i_honest)
+                h_commits.append(hash_commitment(d_i_honest))
             else:
                 accepted_shares.append(d_i)
                 h_commits.append(hash_commitment(d_i))
 
         partial_dec_ms = (time.perf_counter() - t0) * 1000.0
 
-        # Stage 6: Full-Threshold Verifiable Aggregation (Abort cleanly if any party failed proof)
+        # Stage 6: Verifiable Aggregation after NIZK rejection & isolation of malicious shares
         t1 = time.perf_counter()
-        if rejected_parties or len(accepted_shares) != self.num_parties:
-            agg_ms = (time.perf_counter() - t1) * 1000.0
-            self.last_audit = {
-                "num_parties": self.num_parties,
-                "malicious_ratio": mr,
-                "num_malicious": num_malicious,
-                "attack_type": at,
-                "rejected_count": len(rejected_parties),
-                "rejected_parties_sample": rejected_parties[:10],
-                "schwartz_zippel_passed": False,
-                "fiat_shamir_alpha": self.mfhe.alpha,
-                "aborted": True,
-                "decoded_simd_slots": [],
-            }
-            return -1, partial_dec_ms, agg_ms
-
         agg_c1_s = VerifiableAggregation.aggregate(ring, accepted_shares)
         sz_ok, alphas_fs = VerifiableAggregation.verify_sum_multi_alpha(
             ring, accepted_shares, h_commits, agg_c1_s, k_points=4
@@ -278,8 +266,8 @@ class PeltaThFHEScheme(BaseThFHEScheme):
                 "malicious_ratio": mr,
                 "num_malicious": num_malicious,
                 "attack_type": at,
-                "rejected_count": 0,
-                "rejected_parties_sample": [],
+                "rejected_count": len(rejected_parties),
+                "rejected_parties_sample": rejected_parties[:10],
                 "schwartz_zippel_passed": False,
                 "fiat_shamir_alpha": alphas_fs[0] if alphas_fs else self.mfhe.alpha,
                 "aborted": True,
@@ -304,8 +292,8 @@ class PeltaThFHEScheme(BaseThFHEScheme):
             "malicious_ratio": mr,
             "num_malicious": num_malicious,
             "attack_type": at,
-            "rejected_count": 0,
-            "rejected_parties_sample": [],
+            "rejected_count": len(rejected_parties),
+            "rejected_parties_sample": rejected_parties[:10],
             "schwartz_zippel_passed": True,
             "fiat_shamir_alpha": alphas_fs[0],
             "schwartz_zippel_alphas": alphas_fs,

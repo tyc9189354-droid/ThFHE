@@ -535,13 +535,20 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
 
         if stage == "setup":
             t0 = time.perf_counter()
-            params = xs.setup(k=32, m=m_bits, num_parties=num_parties)
+            params = dict(xs.setup(k=32, m=m_bits, num_parties=num_parties))
             ms = round((time.perf_counter() - t0) * 1000.0, 3)
             LIVE_LAB[f"{key}_setup_ms"] = ms
             xs.keygen()
             core = xs.bs23 if is_bs else xs.ps24
+            params.setdefault("t", p_mod)
+            params.setdefault("delta", int(core.Delta))
+            if is_bs:
+                params.setdefault("renyi_order_a", getattr(core, "renyi_order", 16))
+            else:
+                params.setdefault("p", getattr(core, "p_round", 1 << 20))
+                params.setdefault("q", getattr(core, "q_dec", 256))
             m1_val = int(req.get("m1", 12)) % p_mod
-            m2_val = int(req.get("m2", 25)) % p_mod
+            m2_val = int(req.get("m2", 7)) % p_mod
             c1, _ = xs.encrypt(m1_val)
             c2, _ = xs.encrypt(m2_val)
             self._send_json(200, {
@@ -551,11 +558,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
 
         elif stage == "keygen":
             t0 = time.perf_counter()
-            kg_info = xs.keygen()
+            kg_info = dict(xs.keygen())
             ms = round((time.perf_counter() - t0) * 1000.0, 3)
             LIVE_LAB[f"{key}_keygen_ms"] = ms
+            if is_bs:
+                kg_info.setdefault("lsss_type", kg_info.get("sharing", "replicated"))
+            else:
+                s_norm_val = float(kg_info.get("s_norm", 3.2))
+                kg_info.setdefault("secret_norm_sq", round(s_norm_val * s_norm_val, 2))
             m1_val = int(req.get("m1", 12)) % p_mod
-            m2_val = int(req.get("m2", 25)) % p_mod
+            m2_val = int(req.get("m2", 7)) % p_mod
             c1, _ = xs.encrypt(m1_val)
             c2, _ = xs.encrypt(m2_val)
             self._send_json(200, {
@@ -568,14 +580,22 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             prep_data = xs.preprocess()
             ms = round((time.perf_counter() - t0) * 1000.0, 3)
             LIVE_LAB[f"{key}_prep_ms"] = ms
+            off_m = dict(xs.get_offline_metrics(prep_data))
+            if is_bs:
+                off_m.setdefault("sigma_flood", getattr(core, "sigma_flood", 0))
+                off_m.setdefault("gl_extractor_bits", getattr(core, "n_dim", 16))
+            else:
+                off_m.setdefault("compression_ratio_p", getattr(core, "p_round", 1 << 20))
+                off_m.setdefault("target_modulus_q", getattr(core, "q_dec", 256))
+                off_m.setdefault("share_bits", int(getattr(core, "q_dec", 256)).bit_length())
             self._send_json(200, {
                 "status": "ok", "stage": "preprocess", "time_ms": ms, "t_space": p_mod,
-                "prep_data": prep_data, "offline_metrics": xs.get_offline_metrics(prep_data)
+                "prep_data": prep_data, "offline_metrics": off_m
             })
 
         elif stage == "encrypt":
-            m1_val = int(req.get("m1", 3)) % p_mod
-            m2_val = int(req.get("m2", 2)) % p_mod
+            m1_val = int(req.get("m1", 12)) % p_mod
+            m2_val = int(req.get("m2", 7)) % p_mod
             t0 = time.perf_counter()
             c1, _ = xs.encrypt(m1_val)
             c2, _ = xs.encrypt(m2_val)
@@ -589,16 +609,23 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             })
 
         elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
-            m1_val = int(req.get("m1", 3)) % p_mod
-            m2_val = int(req.get("m2", 2)) % p_mod
-            if stage == "run_all" and not req.get("c1"):
-                c1, _ = xs.encrypt(m1_val)
-                c2, _ = xs.encrypt(m2_val)
+            req_m1 = int(req.get("m1", 12)) % p_mod
+            req_m2 = int(req.get("m2", 7)) % p_mod
+            if not req.get("c1") or not req.get("c2"):
+                c1, _ = xs.encrypt(req_m1)
+                c2, _ = xs.encrypt(req_m2)
+                m1_val, m2_val = req_m1, req_m2
             else:
                 c1 = normalize_fn(req.get("c1", []), xs)
                 c2 = normalize_fn(req.get("c2", []), xs)
                 m1_val = core.decrypt_direct(c1)
                 m2_val = core.decrypt_direct(c2)
+                if "m1" in req and m1_val != req_m1:
+                    c1, _ = xs.encrypt(req_m1)
+                    m1_val = req_m1
+                if "m2" in req and m2_val != req_m2:
+                    c2, _ = xs.encrypt(req_m2)
+                    m2_val = req_m2
             op_mode = req.get("op_mode", "eval_mul")
 
             t0 = time.perf_counter()
@@ -634,13 +661,21 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             )
             is_tampered = (malicious_ratio > 0 and attack_type != "none")
             verified = (mu_dec == expected_mu)
+            extra_metrics: Dict[str, Any] = {}
+            if is_bs:
+                extra_metrics["renyi_metrics"] = {"order_a": getattr(core, "renyi_order", 16), "sigma_flood": getattr(core, "sigma_flood", 0)}
+            else:
+                extra_metrics["server_dec_metrics"] = {"q": getattr(core, "q_dec", 256), "share_size_bits": int(getattr(core, "q_dec", 256)).bit_length()}
             self._send_json(200, {
                 "status": "ok", "stage": stage, "t_space": p_mod, "op_mode": op_mode, "op_label": op_label,
                 "num_parties": num_parties, "malicious_ratio": malicious_ratio, "attack_type": attack_type,
-                "m1": m1_val, "m2": m2_val, "expected_plaintext": expected_mu,
+                "m1": m1_val, "m2": m2_val, "c1": [c1[0], c1[1]], "c2": [c2[0], c2[1]],
+                "expected_plaintext": expected_mu,
                 "decrypted_plaintext": mu_dec, "verified": verified, "is_tampered": is_tampered,
+                "partial_dec_ms": round(pdec_ms, 3), "agg_ms": round(agg_ms, 3),
                 "eval_noise": eval_noise, "Delta": int(core.Delta),
                 "audit_info": xs.last_audit,
+                **extra_metrics,
                 "timings": {
                     "setup_time_ms": LIVE_LAB[f"{key}_setup_ms"],
                     "keygen_time_ms": LIVE_LAB[f"{key}_keygen_ms"],
@@ -739,16 +774,27 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
 
             m1_int = int(m1_parsed if isinstance(m1_parsed, int) else m1_parsed[0])
             m2_int = int(m2_parsed if isinstance(m2_parsed, int) else m2_parsed[0])
-            nct1, _ = nscheme.encrypt(m1_int)
-            nct2, _ = nscheme.encrypt(m2_int)
-            otct1, _ = otscheme.encrypt(m1_int)
-            otct2, _ = otscheme.encrypt(m2_int)
-            ajct1, _ = ajscheme.encrypt(m1_int)
-            ajct2, _ = ajscheme.encrypt(m2_int)
-            bsct1, _ = bsscheme.encrypt(m1_int % bsscheme.p)
-            bsct2, _ = bsscheme.encrypt(m2_int % bsscheme.p)
-            psct1, _ = psscheme.encrypt(m1_int % psscheme.p)
-            psct2, _ = psscheme.encrypt(m2_int % psscheme.p)
+            _, nm1_p = parse_message_or_slots(req.get("nm1", m1_int), nscheme.lwe.p, simd_mode=False)
+            _, nm2_p = parse_message_or_slots(req.get("nm2", m2_int), nscheme.lwe.p, simd_mode=False)
+            _, otm1_p = parse_message_or_slots(req.get("otm1", 12), otscheme.p, simd_mode=False)
+            _, otm2_p = parse_message_or_slots(req.get("otm2", 7), otscheme.p, simd_mode=False)
+            _, ajm1_p = parse_message_or_slots(req.get("ajm1", 3), ajscheme.p, simd_mode=False)
+            _, ajm2_p = parse_message_or_slots(req.get("ajm2", 2), ajscheme.p, simd_mode=False)
+            _, bsm1_p = parse_message_or_slots(req.get("bsm1", 12), bsscheme.p, simd_mode=False)
+            _, bsm2_p = parse_message_or_slots(req.get("bsm2", 7), bsscheme.p, simd_mode=False)
+            _, psm1_p = parse_message_or_slots(req.get("psm1", 12), psscheme.p, simd_mode=False)
+            _, psm2_p = parse_message_or_slots(req.get("psm2", 7), psscheme.p, simd_mode=False)
+
+            nct1, _ = nscheme.encrypt(int(nm1_p))
+            nct2, _ = nscheme.encrypt(int(nm2_p))
+            otct1, _ = otscheme.encrypt(int(otm1_p))
+            otct2, _ = otscheme.encrypt(int(otm2_p))
+            ajct1, _ = ajscheme.encrypt(int(ajm1_p))
+            ajct2, _ = ajscheme.encrypt(int(ajm2_p))
+            bsct1, _ = bsscheme.encrypt(int(bsm1_p) % bsscheme.p)
+            bsct2, _ = bsscheme.encrypt(int(bsm2_p) % bsscheme.p)
+            psct1, _ = psscheme.encrypt(int(psm1_p) % psscheme.p)
+            psct2, _ = psscheme.encrypt(int(psm2_p) % psscheme.p)
 
             num_mal = 0 if attack_type == "none" else (num_parties * malicious_ratio) // 100
             random_mal_parties = sorted(random.sample(range(1, num_parties + 1), num_mal)) if num_mal > 0 else []
@@ -1151,6 +1197,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 c2 = normalize_ccs_ciphertext(raw_c2, scheme)
                 m1_val = scheme.lwe.decrypt_direct(c1)
                 m2_val = scheme.lwe.decrypt_direct(c2)
+                if "m1" in req and not isinstance(req.get("m1"), list):
+                    _, req_m1 = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=False)
+                    if isinstance(req_m1, int) and m1_val != req_m1:
+                        c1, _ = scheme.encrypt(req_m1)
+                        m1_val = req_m1
+                if "m2" in req and not isinstance(req.get("m2"), list):
+                    _, req_m2 = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=False)
+                    if isinstance(req_m2, int) and m2_val != req_m2:
+                        c2, _ = scheme.encrypt(req_m2)
+                        m2_val = req_m2
 
                 t0 = time.perf_counter()
                 if op_mode == "eval_mul":
@@ -1179,6 +1235,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         "t_space": p_mod,
                         "time_ms": ms,
                         "op_label": op_label,
+                        "c1": c1,
+                        "c2": c2,
                         "c_eval": c_eval,
                         "expected_mu": expected_mu
                     })
@@ -1203,6 +1261,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "simd_mode": False,
                     "t_space": p_mod,
                     "op_label": op_label,
+                    "c1": c1,
+                    "c2": c2,
                     "partial_dec_ms": round(partial_dec_ms, 3),
                     "agg_ms": round(agg_ms, 3),
                     "total_online_ms": round(partial_dec_ms + agg_ms, 3),
@@ -1427,6 +1487,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 # Scalar path
                 m1_val = pscheme.mfhe.decrypt_direct(ct1)
                 m2_val = pscheme.mfhe.decrypt_direct(ct2)
+                if "m1" in req and isinstance(m1_in, int) and m1_val != m1_in:
+                    ct1, _ = pscheme.encrypt(m1_in)
+                    m1_val = m1_in
+                if "m2" in req and isinstance(m2_in, int) and m2_val != m2_in:
+                    ct2, _ = pscheme.encrypt(m2_in)
+                    m2_val = m2_in
 
                 t_eval0 = time.perf_counter()
                 if op_mode == "eval_mul":
@@ -1455,6 +1521,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         "t_space": p_mod,
                         "time_ms": eval_ms,
                         "op_label": op_label,
+                        "c1": [ct1[0], ct1[1]],
+                        "c2": [ct2[0], ct2[1]],
                         "ct_eval": [ct_eval[0], ct_eval[1]],
                         "expected_mu": expected_mu
                     })
@@ -1481,12 +1549,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "p_mod": p_mod,
                     "m1": m1_val,
                     "m2": m2_val,
+                    "c1": [ct1[0], ct1[1]],
+                    "c2": [ct2[0], ct2[1]],
                     "expected_plaintext": expected_mu,
                     "decrypted_plaintext": dec_out,
                     "verified": verified_scalar,
                     "evaluated_ciphertext": [ct_eval[0], ct_eval[1]],
                     "audit_info": audit,
                     "alpha": audit.get("fiat_shamir_alpha", pscheme.mfhe.alpha),
+                    "partial_dec_ms": round(zk_ms, 3),
+                    "agg_ms": round(agg_ms, 3),
                     "timings": {
                         "setup_time_ms": LIVE_LAB["pelta_setup_ms"],
                         "keygen_time_ms": LIVE_LAB["pelta_keygen_ms"],
@@ -1592,6 +1664,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
             c2 = normalize_ccs_ciphertext(raw_c2, scheme)
             m1_val = scheme.lwe.decrypt_direct(c1)
             m2_val = scheme.lwe.decrypt_direct(c2)
+            if "m1" in req and not isinstance(req.get("m1"), list):
+                _, req_m1 = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=False)
+                if isinstance(req_m1, int) and m1_val != req_m1:
+                    c1, _ = scheme.encrypt(req_m1)
+                    m1_val = req_m1
+            if "m2" in req and not isinstance(req.get("m2"), list):
+                _, req_m2 = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=False)
+                if isinstance(req_m2, int) and m2_val != req_m2:
+                    c2, _ = scheme.encrypt(req_m2)
+                    m2_val = req_m2
 
             t_eval0 = time.perf_counter()
             if op_mode == "eval_mul":
@@ -1642,6 +1724,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 "p_mod": p_mod,
                 "m1": m1_val,
                 "m2": m2_val,
+                "c1": c1,
+                "c2": c2,
                 "expected_plaintext": expected_mu,
                 "decrypted_plaintext": dec_out,
                 "aborted": aborted,
@@ -1873,6 +1957,12 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 # Scalar path
                 m1_val = hscheme.hqfs.decrypt(ct1)
                 m2_val = hscheme.hqfs.decrypt(ct2)
+                if "m1" in req and isinstance(hm1_p, int) and m1_val != hm1_p:
+                    ct1, _ = hscheme.encrypt(hm1_p)
+                    m1_val = hm1_p
+                if "m2" in req and isinstance(hm2_p, int) and m2_val != hm2_p:
+                    ct2, _ = hscheme.encrypt(hm2_p)
+                    m2_val = hm2_p
                 t0 = time.perf_counter()
                 if op_mode == "eval_mul":
                     ct_eval = hscheme.eval_mul(ct1, ct2)
@@ -1900,6 +1990,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                         "t_space": p_mod,
                         "time_ms": eval_ms,
                         "op_label": op_label,
+                        "c1": [ct1[0], ct1[1]],
+                        "c2": [ct2[0], ct2[1]],
                         "ct_eval": [ct_eval[0], ct_eval[1]],
                         "expected_mu": expected_mu
                     })
@@ -1923,10 +2015,14 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "attack_type": attack_type,
                     "m1": m1_val,
                     "m2": m2_val,
+                    "c1": [ct1[0], ct1[1]],
+                    "c2": [ct2[0], ct2[1]],
                     "expected_plaintext": expected_mu,
                     "decrypted_plaintext": mu_dec,
                     "verified": (mu_dec == expected_mu),
                     "audit_info": hscheme.last_audit,
+                    "partial_dec_ms": round(zk_ms, 3),
+                    "agg_ms": round(agg_ms, 3),
                     "timings": {
                         "setup_time_ms": LIVE_LAB["hqfs_setup_ms"],
                         "keygen_time_ms": LIVE_LAB["hqfs_keygen_ms"],
@@ -2023,6 +2119,16 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 c2 = normalize_noah_ciphertext(req.get("c2", []), nscheme)
                 m1_val = nscheme.lwe.decrypt_direct(c1)
                 m2_val = nscheme.lwe.decrypt_direct(c2)
+                if "m1" in req:
+                    _, req_m1 = parse_message_or_slots(req.get("m1", 12), p_mod, simd_mode=False)
+                    if m1_val != int(req_m1):
+                        c1, _ = nscheme.encrypt(int(req_m1))
+                        m1_val = int(req_m1)
+                if "m2" in req:
+                    _, req_m2 = parse_message_or_slots(req.get("m2", 25), p_mod, simd_mode=False)
+                    if m2_val != int(req_m2):
+                        c2, _ = nscheme.encrypt(int(req_m2))
+                        m2_val = int(req_m2)
                 op_mode = req.get("op_mode", "eval_mul")
 
                 t0 = time.perf_counter()
@@ -2080,6 +2186,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "decrypted_plaintext": dec_out,
                     "verified": verified,
                     "is_tampered": is_tampered,
+                    "partial_dec_ms": round(pdec_ms, 3),
+                    "agg_ms": round(agg_ms, 3),
                     "protocol_mode": nscheme.protocol_mode,
                     "t_threshold": nscheme.t,
                     "audit_info": audit_info,
@@ -2175,16 +2283,23 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 })
 
             elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
-                m1_val = int(req.get("m1", 12)) % p_mod
-                m2_val = int(req.get("m2", 7)) % p_mod
+                req_m1 = int(req.get("m1", 12)) % p_mod
+                req_m2 = int(req.get("m2", 7)) % p_mod
                 if stage == "run_all" and not req.get("c1"):
-                    c1, _ = otscheme.encrypt(m1_val)
-                    c2, _ = otscheme.encrypt(m2_val)
+                    c1, _ = otscheme.encrypt(req_m1)
+                    c2, _ = otscheme.encrypt(req_m2)
+                    m1_val, m2_val = req_m1, req_m2
                 else:
                     c1 = normalize_ot25_ciphertext(req.get("c1", []), otscheme)
                     c2 = normalize_ot25_ciphertext(req.get("c2", []), otscheme)
                     m1_val = otscheme.ot25.decrypt_direct(c1)
                     m2_val = otscheme.ot25.decrypt_direct(c2)
+                    if "m1" in req and m1_val != req_m1:
+                        c1, _ = otscheme.encrypt(req_m1)
+                        m1_val = req_m1
+                    if "m2" in req and m2_val != req_m2:
+                        c2, _ = otscheme.encrypt(req_m2)
+                        m2_val = req_m2
                 op_mode = req.get("op_mode", "eval_mul")
 
                 t0 = time.perf_counter()
@@ -2241,6 +2356,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "decrypted_plaintext": mu_dec,
                     "verified": verified,
                     "is_tampered": is_tampered,
+                    "partial_dec_ms": round(pdec_ms, 3),
+                    "agg_ms": round(agg_ms, 3),
                     "audit_info": otscheme.last_audit,
                     "timings": {
                         "setup_time_ms": LIVE_LAB["ot25_setup_ms"],
@@ -2334,16 +2451,23 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                 })
 
             elif stage in ("eval", "partial_dec", "aggregate", "run_all"):
-                m1_val = int(req.get("m1", 3)) % p_mod
-                m2_val = int(req.get("m2", 2)) % p_mod
+                req_m1 = int(req.get("m1", 3)) % p_mod
+                req_m2 = int(req.get("m2", 2)) % p_mod
                 if stage == "run_all" and not req.get("c1"):
-                    c1, _ = ajscheme.encrypt(m1_val)
-                    c2, _ = ajscheme.encrypt(m2_val)
+                    c1, _ = ajscheme.encrypt(req_m1)
+                    c2, _ = ajscheme.encrypt(req_m2)
+                    m1_val, m2_val = req_m1, req_m2
                 else:
                     c1 = normalize_ajax_ciphertext(req.get("c1", []), ajscheme)
                     c2 = normalize_ajax_ciphertext(req.get("c2", []), ajscheme)
                     m1_val = ajscheme.ajax.decrypt_direct(c1)
                     m2_val = ajscheme.ajax.decrypt_direct(c2)
+                    if "m1" in req and m1_val != req_m1:
+                        c1, _ = ajscheme.encrypt(req_m1)
+                        m1_val = req_m1
+                    if "m2" in req and m2_val != req_m2:
+                        c2, _ = ajscheme.encrypt(req_m2)
+                        m2_val = req_m2
                 op_mode = req.get("op_mode", "eval_mul")
 
                 t0 = time.perf_counter()
@@ -2400,6 +2524,8 @@ class ThFHEWebHandler(SimpleHTTPRequestHandler):
                     "decrypted_plaintext": mu_dec,
                     "verified": verified,
                     "is_tampered": is_tampered,
+                    "partial_dec_ms": round(pdec_ms, 3),
+                    "agg_ms": round(agg_ms, 3),
                     "audit_info": ajscheme.last_audit,
                     "timings": {
                         "setup_time_ms": LIVE_LAB["ajax_setup_ms"],

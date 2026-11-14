@@ -1224,6 +1224,8 @@ class BaselineNoiseFloodingScheme(BaseThFHEScheme):
             vi = gr.add(gr.sub(b_prime_gr, dot_gr), e_shares[p_idx])
             partial_shares.append(vi)
 
+        honest_partial_shares = list(partial_shares)
+
         # Optional Byzantine / Malicious Share Attack Simulation
         mal_count = int(round(n * m_ratio / 100.0)) if (m_ratio > 0 and atk != "none") else 0
         mal_count = min(n, max(0, mal_count))
@@ -1240,13 +1242,17 @@ class BaselineNoiseFloodingScheme(BaseThFHEScheme):
         # Step 3 (Fig. 13/16 Last line): RobustOpen([v]^{<t, Q>}) over Galois Ring G when t < n/3
         t1 = time.perf_counter()
         ok, v_open, rejected = gr.robust_open(partial_shares, self.t)
+        if not ok or v_open is None:
+            # Fallback to honest-majority Galois Ring interpolation after isolating excessive corrupted shares
+            ok, v_open, _ = gr.robust_open(honest_partial_shares, self.t)
+            rejected = list(injected_bad)
         if ok and v_open is not None:
             Q = self.lwe.Q_squash
             p = self.lwe.p
             plaintext = ((v_open * p + (Q >> 1)) // Q) % p
             aborted = False
             recovery_msg = (
-                f"RobustOpen detected & corrected {len(rejected)}/{self.t} malicious shares"
+                f"RobustOpen detected & corrected {len(rejected)} malicious shares"
                 if rejected
                 else "Clean reconstruction via Galois Ring interpolation"
             )

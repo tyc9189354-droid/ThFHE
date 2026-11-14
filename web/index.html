@@ -1761,41 +1761,48 @@
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-lwe" onclick="switchTab('bg-lwe', this)">
           <div class="nav-text-group">
             <span class="nav-title">一、LWE 晶格加密基礎</span>
-            <span class="nav-desc">幾何晶格難題 • LWE/RLWE • 同態運算</span>
+            <span class="nav-desc">幾何晶格難題 • 4×3 矩陣向量範例</span>
+          </div>
+        </button>
+
+        <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-homomorphic" onclick="switchTab('bg-homomorphic', this)">
+          <div class="nav-text-group">
+            <span class="nav-title">二、同態運算與雜訊控制</span>
+            <span class="nav-desc">同態雜訊增長 • 重線性化 • TFHE vs RNS-NTT</span>
           </div>
         </button>
 
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-secretsharing" onclick="switchTab('bg-secretsharing', this)">
           <div class="nav-text-group">
-            <span class="nav-title">二、門檻秘密分享機制</span>
+            <span class="nav-title">三、門檻秘密分享機制</span>
             <span class="nav-desc">Additive • Shamir • Galois Ring 糾錯</span>
           </div>
         </button>
 
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-noise" onclick="switchTab('bg-noise', this)">
           <div class="nav-text-group">
-            <span class="nav-title">三、解密雜訊與 4 大隔離</span>
-            <span class="nav-desc">雜訊洩漏分析 • 四大抗洩漏防禦路線</span>
+            <span class="nav-title">四、解密雜訊與 4 大隔離</span>
+            <span class="nav-desc">雜訊洩漏分析 • 四大抗洩漏防線</span>
           </div>
         </button>
 
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-zkp" onclick="switchTab('bg-zkp', this)">
           <div class="nav-text-group">
-            <span class="nav-title">四、主動防線與零知識證明</span>
+            <span class="nav-title">五、主動防線與零知識證明</span>
             <span class="nav-desc">晶格 NIZK • Ajtai 承諾 • 二進制批次驗證</span>
           </div>
         </button>
 
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-security" onclick="switchTab('bg-security', this)">
           <div class="nav-text-group">
-            <span class="nav-title">五、威脅模型與安全概念</span>
+            <span class="nav-title">六、威脅模型與安全概念</span>
             <span class="nav-desc">CPA<sup>D</sup> • FuncCPA • UC 模擬安全</span>
           </div>
         </button>
 
         <button class="sidebar-nav-btn bg-knowledge-btn" id="sidebar-btn-bg-params" onclick="switchTab('bg-params', this)">
           <div class="nav-text-group">
-            <span class="nav-title">六、實驗控制與評測指標</span>
+            <span class="nav-title">七、全域控制與評測指標</span>
             <span class="nav-desc">全域參數空間與 7 階段評測指標對照</span>
           </div>
         </button>
@@ -1869,14 +1876,14 @@
     <!-- Main Content Area -->
     <main class="app-main" id="app-main">
     <!-- ===================================================================== -->
-    <!-- TAB BG-1: LWE / RLWE 晶格加密基礎與底層數學難題                         -->
+    <!-- TAB BG-1: LWE 晶格加密基礎、底層幾何難題與矩陣向量算式範例                 -->
     <!-- ===================================================================== -->
     <section id="tab-bg-lwe" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
-        <h2 class="lab-hero-title">背景知識 (一) — LWE 晶格加密基礎與底層幾何數學難題</h2>
-        <div class="lab-hero-sub">幾何晶格理論、SVP / SIVP / CVP 難題、Regev 最差至平均歸約、LWE/RLWE 加密與同態運算全剖析</div>
+        <h2 class="lab-hero-title">背景知識 (一) — LWE 晶格加密基礎、幾何數學難題與矩陣運算範例</h2>
+        <div class="lab-hero-sub">幾何晶格理論、SVP / SIVP / CVP 難題、Regev 最差至平均歸約、LWE/RLWE 加密體系與 4×3 矩陣向量數值範例</div>
         <div class="lab-hero-actions">
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">下一主題：二、門檻秘密分享機制 →</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-homomorphic', document.getElementById('sidebar-btn-bg-homomorphic'))">下一主題：二、同態運算與雜訊控制 →</button>
         </div>
       </div>
 
@@ -1905,245 +1912,478 @@
             該多胞體的體積在代數上等於基底矩陣的行列式絕對值，記為晶格行列式 <span class="word-eq">det(Λ) = √det(B<sup>T</sup> · B)</span>。
             雖然同一晶格存在無窮多組不同的基底，但<strong>晶格行列式 det(Λ) 是晶格內在的不變量</strong>，幾何上反映了晶格點在空間中的全域平均分佈密度（點密度為 <span class="word-eq">1 / det(Λ)</span>）。
           </li>
-          <li><strong>【基底的非唯一性：好基底 vs. 壞基底】</strong>：
-            對於任何行列式為 <span class="word-eq">±1</span> 的整數單模矩陣（Unimodular Matrix）<span class="word-eq">U ∈ ℤ<sup>n×n</sup></span>，新矩陣 <span class="word-eq">B' = B · U</span> 生成完全相同的晶格點陣 <span class="word-eq">Λ(B') = Λ(B)</span>。
-            <br>• <strong>「好基底 (Reduced / Good Basis)」</strong>：向量長度短、彼此接近正交（正交度高）。持有好基底的使用者，可以利用 Babai 演算法以多項式時間求解高精度的空間最近點解碼（秘密金鑰）。
-            <br>• <strong>「壞基底 (Ill-conditioned / Bad Basis)」</strong>：向量極其冗長、向量間夾角極小（接近平行）。面對壞基底，空間中哪怕僅加上微小的雜訊擾動，古典與量子計算機在幾何空間中都將陷入指數級的盲目搜索（公開金鑰）。
+          <li><strong>【連續空間中的第一連續極小值 (Successive Minima)】</strong>：
+            幾何上定義第 <span class="word-eq">i</span> 個連續極小值 <span class="word-eq">λ<sub>i</sub>(Λ)</span> 為能夠包含 <span class="word-eq">i</span> 個線性獨立晶格點的最小封閉超球半徑。特別地，<span class="word-eq">λ₁(Λ)</span> 代表晶格中<strong>最短非零晶格向量的長度</strong>：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              λ₁(Λ) = min<sub>v ∈ Λ, v ≠ 0</sub> ‖v‖
+            </div>
+            根據 Minkowski 第一凸體定理，在滿秩晶格中，最短向量長度受到晶格行列式嚴格約束：<span class="word-eq">λ₁(Λ) ≤ √n · (det(Λ))<sup>1/n</sup></span>。
+          </li>
+          <li><strong>【對偶晶格 (Dual Lattice)】</strong>：
+            定義為與原始晶格點乘積恆為整數的所有向量集合：<span class="word-eq">Λ* = { y ∈ span(Λ)  |  ∀ x ∈ Λ, ⟨x, y⟩ ∈ ℤ }</span>。其生成基底為 <span class="word-eq">D = B · (B<sup>T</sup> · B)<sup>−1</sup></span>，滿足體積倒數關係 <span class="word-eq">det(Λ*) = 1 / det(Λ)</span>，是證明晶格問題困難度歸約的重要工具。
           </li>
         </ul>
       </div>
 
-      <!-- 1.2 晶格上的四大核心數學難題 -->
+      <!-- 1.2 晶格底層三大經典幾何數學難題 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>1.2 晶格上的四大核心數學難題 (Core Lattice Hardness Problems)</span>
-          <span class="badge badge-purple">數學困難假設</span>
+          <span>1.2 晶格底層三大經典幾何數學難題 (SVP, SIVP &amp; CVP)</span>
+          <span class="badge badge-purple">後量子硬度根基</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          所有晶格加密體系的安全安全性，均可嚴格數學歸約至以下四個歷經數十年密碼分析檢驗的幾何 NP 困難難題：
+          後量子密碼之所以能抵禦量子計算攻擊，核心在於底層幾何晶格難題在已知最高階演算法（包含 Shor 演算法在內）下均<strong>不具備多項式時間解法</strong>。三大核心難題定義如下：
         </p>
         <ul class="bg-module-list">
-          <li><strong>① 最短向量問題 (SVP, Shortest Vector Problem)</strong>：
+          <li><strong>【難題一：最短向量難題 (SVP, Shortest Vector Problem)】</strong>：
             <br>• <strong>【定義】</strong>：給定某晶格的一組任意隨機基底 <span class="word-eq">B</span>，在晶格中尋找一個非零晶格向量 <span class="word-eq">v ∈ Λ (v ≠ 0)</span>，使得其歐幾里得範數達到全域最小：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
               ‖v‖ = λ₁(Λ) = min<sub>x ∈ Λ, x ≠ 0</sub> ‖x‖
             </div>
-            其中 <span class="word-eq">λ₁(Λ)</span> 稱為晶格的第一逐次極小值（First Successive Minimum）。
             <br>• <strong>【近似版本 γ-SVP】</strong>：給定近似因子 <span class="word-eq">γ ≥ 1</span>，尋找非零向量 <span class="word-eq">v ∈ Λ (v ≠ 0)</span> 使得 <span class="word-eq">‖v‖ ≤ γ · λ₁(Λ)</span>。
-            當 <span class="word-eq">γ</span> 是多項式階（<span class="word-eq">γ = n<sup>c</sup></span>）時，目前已知最優演算法（如 LLL、BKZ 2.0、篩選法 Sieve）所需的時間複雜度均為指數級 <span class="word-eq">2<sup>Ω(n)</sup></span>，甚至量子計算機亦無已知多項式時間解法！
+            <br>• <strong>【計算複雜度】</strong>：精確 SVP 為 NP-hard（在隨機歸約下）；當近似因子 <span class="word-eq">γ = poly(n)</span>（多項式級）時，目前最佳演算法（BKZ 演算法）仍需要<strong>指數級時間 2<sup>Ω(n)</sup></strong>。
           </li>
-          <li><strong>② 最短獨立向量問題 (SIVP, Shortest Independent Vectors Problem)</strong>：
-            <br>• <strong>【定義】</strong>：給定晶格基底 <span class="word-eq">B</span>，尋找 <span class="word-eq">n</span> 個彼此線性獨立的晶格向量 <span class="word-eq">{v₁, v₂, …, v<sub>n</sub>} ⊂ Λ</span>，使得其中最長向量的長度最小化：
+          <li><strong>【難題二：最短獨立向量難題 (SIVP, Shortest Independent Vectors Problem)】</strong>：
+            <br>• <strong>【定義】</strong>：給定滿秩晶格基底 <span class="word-eq">B ∈ ℤ<sup>n×n</sup></span> 與近似因子 <span class="word-eq">γ ≥ 1</span>，尋找 <span class="word-eq">n</span> 個線性獨立的晶格向量 <span class="word-eq">{v₁, v₂, …, v<sub>n</sub>} ⊂ Λ</span>，滿足：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
               max<sub>1 ≤ i ≤ n</sub> ‖v<sub>i</sub>‖ ≤ γ · λ<sub>n</sub>(Λ)
             </div>
-            其中 <span class="word-eq">λ<sub>n</sub>(Λ)</span> 為晶格的第 <span class="word-eq">n</span> 逐次極小值（容納 <span class="word-eq">n</span> 個獨立向量所需的最小半徑球）。
+            該問題要求找到覆蓋晶格全部維度的短向量基底組，是平均情況與最差情況歸約理論的關鍵樞紐。
           </li>
-          <li><strong>③ 最近向量問題 (CVP, Closest Vector Problem) 與有界距離解碼 (BDD)</strong>：
-            <br>• <strong>【定義】</strong>：給定晶格基底 <span class="word-eq">B</span> 與連續空間中任意一個目標向量 <span class="word-eq">t ∈ ℝ<sup>m</sup></span>，尋找晶格中距離該目標點幾何歐氏距離最近的晶格點 <span class="word-eq">v ∈ Λ</span>，使得 <span class="word-eq">‖t − v‖ = dist(t, Λ) = min<sub>x ∈ Λ</sub> ‖t − x‖</span>。
-            <br>• <strong>【有界距離解碼 (BDD, Bounded Distance Decoding)】</strong>：若保證目標點形式為 <span class="word-eq">t = v + e</span>，其中 <span class="word-eq">v ∈ Λ</span> 為真實晶格點，且誤差向量長度受限於 <span class="word-eq">‖e‖ &lt; λ₁(Λ) / (2γ)</span>，要求從 <span class="word-eq">t</span> 中解碼還原出原始晶格點 <span class="word-eq">v</span>。
-            <strong>LWE 的解密本質上就是 BDD 問題的密碼學實例！</strong>
+          <li><strong>【難題三：最近向量難題 (CVP, Closest Vector Problem) 與 BDD】</strong>：
+            <br>• <strong>【定義】</strong>：給定晶格基底 <span class="word-eq">B</span> 與空間中任意目標向量 <span class="word-eq">t ∈ ℝ<sup>m</sup></span>，在晶格中尋找距離目標最近的晶格點 <span class="word-eq">v ∈ Λ</span>，使得 <span class="word-eq">‖t − v‖ = dist(t, Λ) = min<sub>x ∈ Λ</sub> ‖t − x‖</span>。
+            <br>• <strong>【有界距離解碼 (BDD, Bounded Distance Decoding)】</strong>：若保證目標點 <span class="word-eq">t</span> 距離晶格點的距離嚴格小於 <span class="word-eq">α · λ₁(Λ)</span>（其中 <span class="word-eq">α &lt; 1/2</span>），尋找唯一的最近晶格點。<strong>LWE 解密本質上就是 BDD 難題的例項！</strong>
           </li>
-          <li><strong>④ 判定性最短向量問題 (GapSVP<sub>γ</sub>)</strong>：
-            <br>• <strong>【定義】</strong>：給定基底 <span class="word-eq">B</span> 與實數閾值 <span class="word-eq">d &gt; 0</span>，判定晶格的最短非零向量長度是滿足 <span class="word-eq">λ₁(Λ) ≤ d</span>（YES 實例），還是滿足 <span class="word-eq">λ₁(Λ) &gt; γ · d</span>（NO 實例）。在區間 <span class="word-eq">(d, γ · d]</span> 之間存在一個空隙（Gap），不保證任何輸入落於此處。
+          <li><strong>【決策型晶格難題 (GapSVP<sub>γ</sub>)】</strong>：
+            給定晶格基底 <span class="word-eq">B</span> 與標稱半徑 <span class="word-eq">d</span>，判定該晶格的最短向量究竟滿足 <span class="word-eq">λ₁(Λ) ≤ d</span> 抑或 <span class="word-eq">λ₁(Λ) &gt; γ · d</span>。兩者之間留有 <span class="word-eq">γ</span> 倍隙縫，是密碼學證明中最標準的底層困難假設。
           </li>
         </ul>
       </div>
 
-      <!-- 1.3 含錯學習問題 (LWE) 與 Regev 最差至平均歸約 -->
+      <!-- 1.3 LWE 困難假設與 Regev 最差至平均歸約定理 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>1.3 含錯學習問題 (LWE) 與 Regev 最差至平均歸約 (Search/Decision LWE &amp; Reductions)</span>
-          <span class="badge badge-green">困難問題代數化</span>
+          <span>1.3 LWE 困難假設與 Regev 最差至平均量子歸約定理</span>
+          <span class="badge badge-yellow">密碼學核心定理</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          雖然幾何晶格難題極難，但直接使用幾何基底建構公鑰系統效率較低。Oded Regev 於 2005 年提出的<strong>含錯學習（LWE, Learning With Errors）</strong>，成功將高維幾何晶格問題轉化為簡潔優雅的模線性代數方程組：
+          現代同態加密不直接基於幾何晶格構造，而是基於 Oded Regev 於 2005 年提出的<strong>容錯學習問題（LWE, Learning With Errors）</strong>。Regev 從數學上建立了隨機 LWE 實例與幾何晶格最差情況難題之間的嚴密等價橋樑。
         </p>
         <ul class="bg-module-list">
           <li><strong>【搜尋型 LWE (Search-LWE)】</strong>：
-            <br>• <strong>【定義】</strong>：設正整數 <span class="word-eq">n</span> 為維度，<span class="word-eq">q ≥ 2</span> 為模數，<span class="word-eq">χ</span> 為有限體 <span class="word-eq">ℤ<sub>q</sub></span> 上的離散高斯分佈（標準差 <span class="word-eq">σ = α · q</span>，其中 <span class="word-eq">α &lt; 1</span>）。
-            未知私鑰向量為 <span class="word-eq">s ∈ ℤ<sub>q</sub><sup>n</sup></span>。演算法可以無限制地獲取隨機樣本 <span class="word-eq">(a<sub>i</sub>, b<sub>i</sub>) ∈ ℤ<sub>q</sub><sup>n</sup> × ℤ<sub>q</sub></span>，其中：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              a<sub>i</sub> ← ℤ<sub>q</sub><sup>n</sup> (均勻隨機採樣),   e<sub>i</sub> ← χ (微小高斯隨機誤差)<br>
-              b<sub>i</sub> = ⟨a<sub>i</sub>, s⟩ + e<sub>i</sub>  (mod q)
-            </div>
-            <strong>【目標】</strong>：在多項式時間內從給定的 <span class="word-eq">m</span> 組樣本 <span class="word-eq">(A ∈ ℤ<sub>q</sub><sup>m×n</sup>, b = A · s + e ∈ ℤ<sub>q</sub><sup>m</sup>)</span> 中，100% 精確恢復出私鑰向量 <span class="word-eq">s</span>。
-            <br>• <strong>【雜訊的魔力】</strong>：如果沒有雜訊（<span class="word-eq">e = 0</span>），利用高斯消去法在 <span class="word-eq">O(n³)</span> 步內即可輕易求出 <span class="word-eq">s</span>；但只要每個方程式加上極微小的高斯誤差 <span class="word-eq">e<sub>i</sub></span>，模運算的週期性折疊會將高斯誤差急遽放大，使得任何古典與量子高斯消去法瞬間徹底破產！
+            設私鑰為均勻隨機向量 <span class="word-eq">s ∈ ℤ<sub>q</sub><sup>n</sup></span>。給定任意多組採樣樣本 <span class="word-eq">(a<sub>i</sub>, b<sub>i</sub> = ⟨a<sub>i</sub>, s⟩ + e<sub>i</sub> mod q)</span>，其中基底向量 <span class="word-eq">a<sub>i</sub> ∈ ℤ<sub>q</sub><sup>n</sup></span> 均勻隨機採樣，誤差 <span class="word-eq">e<sub>i</sub> ← χ</span> 採樣自標準差為 <span class="word-eq">σ = α · q</span> 的離散高斯分佈。目標為從有限組樣本中恢復出真實私鑰向量 <span class="word-eq">s</span>。
           </li>
-          <li><strong>【判定型 LWE (Decision-LWE)】</strong>：
-            <br>• <strong>【定義】</strong>：給定多組樣本對 <span class="word-eq">(a<sub>i</sub>, b<sub>i</sub>)</span>，要求演算法以不可忽略的優勢區分這兩組分佈：
-            <br>• 分佈 <span class="word-eq">D<sub>LWE</sub></span>：真實的 LWE 樣本 <span class="word-eq">(a<sub>i</sub>, b<sub>i</sub> = ⟨a<sub>i</sub>, s⟩ + e<sub>i</sub> mod q)</span>。
-            <br>• 分佈 <span class="word-eq">D<sub>RAND</sub></span>：純粹均勻隨機採樣的無關數值對 <span class="word-eq">(a<sub>i</sub>, u<sub>i</sub> ← ℤ<sub>q</sub>)</span>。
-            在實用參數下，Decision-LWE 與 Search-LWE 具備多項式時間相互歸約等價性。
+          <li><strong>【決策型 LWE (Decision-LWE)】</strong>：
+            區分兩類分佈的難題：一類是真實 LWE 樣本 <span class="word-eq">(a, ⟨a, s⟩ + e mod q)</span>，另一類是完全在 <span class="word-eq">ℤ<sub>q</sub><sup>n</sup> × ℤ<sub>q</sub></span> 均勻隨機採樣的噪聲對。在計算複雜度上，Decision-LWE 與 Search-LWE 具備多項式時間可互相歸約性。
           </li>
-          <li><strong>【Regev 最差情況至平均情況量子歸約定理 (Worst-Case to Average-Case Reduction)】</strong>：
-            <br>Regev 證明了密碼學史上最堅固的理論保障：
-            <strong>「若存在任何多項式時間演算法，能在隨機生成的平均實例上攻破 Decision-LWE，則利用量子演算法，就能在最壞情況下解決任意 n 維幾何晶格上的 GapSVP<sub>γ</sub> 與 SIVP<sub>γ</sub> 難題（其中近似因子 γ = Õ(n / α)）！」</strong>
-            <br>這打破了傳統 RSA/ECC 只在特定「平均情況」構造下安全的限制——要破解 LWE，就必須能夠攻破整個幾何晶格空間中最極端、最難纏的病態實例！
+          <li><strong>【Regev 最差情況至平均情況量子歸約定理 (Worst-Case to Average-Case Quantum Reduction)】</strong>：
+            <br>• <strong>【定理核心】</strong>：Regev 證明了：<strong>「如果存在任何多項式時間演算法能以不可忽略的優勢攻破平均情況（Average-Case）下的 LWE 實例，則必存在一個高效率量子演算法，能在最差情況（Worst-Case）下求解任意 n 維幾何晶格上的 GapSVP<sub>γ</sub> 與 SIVP<sub>γ</sub> 難題（其中近似因子 γ = Õ(n / α)）！」</strong>
+            <br>• <strong>【密碼學重大意義】</strong>：傳統 RSA/ECC 要求金鑰生成必須避開「特殊弱金鑰」；而在 LWE 體系中，即使隨機產生私鑰，其安全性也能等價於幾何空間中最硬的晶格實例！
           </li>
         </ul>
       </div>
 
-      <!-- 1.4 環含錯學習 (Ring-LWE) 與模含錯學習 (Module-LWE) -->
+      <!-- 1.4 LWE / RLWE / MLWE / RNS-GLWE 晶格加密全景 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>1.4 環含錯學習 (RLWE) 與模含錯學習 (MLWE) (Algebraic Ring Generalizations)</span>
-          <span class="badge badge-yellow">代數多項式加速</span>
+          <span>1.4 LWE / RLWE / MLWE / RNS-GLWE 晶格加密全景</span>
+          <span class="badge badge-green">代數維度演進</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          標準 LWE 的向量矩陣乘法在實際應用中存在通訊與儲存膨脹的缺點（金鑰矩陣大小為 <span class="word-eq">O(n²)</span>）。為此，密碼學家發展了代數多項式擴展：
+          為提升全同態加密的計算效率並支援多資料打包（SIMD），密碼學界將純量整數向量逐步推廣至多項式環代數結構：
         </p>
         <ul class="bg-module-list">
-          <li><strong>【環含錯學習 (Ring-LWE / RLWE)】</strong>：
-            <br>• <strong>【定義】</strong>：將向量空間壓縮至分圓多項式商環 <span class="word-eq">R<sub>q</sub> = ℤ<sub>q</sub>[X]/(X<sup>N</sup> + 1)</span>，其中維度 <span class="word-eq">N = 2<sup>k</sup></span>（分圓多項式）。私鑰 <span class="word-eq">s(X)</span>、隨機多項式 <span class="word-eq">a(X)</span> 與誤差多項式 <span class="word-eq">e(X)</span> 均為該環中的多項式。樣本生成形式為：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              b(X) = a(X) · s(X) + e(X)  (mod q)
-            </div>
-            其困難度歸約至<strong>理想晶格（Ideal Lattices）</strong>上的最差情況 SVP/SIVP 難題。
-            <br>• <strong>【優點】</strong>：密鑰與密文尺寸直接從 <span class="word-eq">O(N²)</span> 暴降至 <span class="word-eq">O(N)</span>；多項式乘法天然相容數論變換（NTT），速度提升數百倍。
-            <br>• <strong>【缺點】</strong>：多項式環具備高度代數結構，若環維度或多項式選取不當，可能面臨代數子環攻擊。
+          <li><strong>【標準純量 LWE】</strong>：
+            定義於整數有限域向量空間 <span class="word-eq">ℤ<sub>q</sub><sup>n</sup></span>。
+            <br>• <strong>優勢</strong>：數學結構最純粹，不存在環上的代數弱結構，是 TFHE 盲旋轉自舉與基礎門檻解密的核心單位。
+            <br>• <strong>劣勢</strong>：密鑰與密文尺寸龐大，計算為矩陣乘法，無法利用多項式卷積加速。
           </li>
-          <li><strong>【模含錯學習 (Module-LWE / MLWE)】</strong>：
-            <br>• <strong>【定義】</strong>：以多項式商環為基底的自由模 <span class="word-eq">R<sub>q</sub><sup>k</sup></span>（多項式向量）。當模維度 <span class="word-eq">k = 1</span> 時退化為 RLWE，當多項式次數 <span class="word-eq">N = 1</span> 時退化為標準 LWE。
-            <br>• <strong>【優點】</strong>：在標準 LWE 的保守安全性與 RLWE 的高效能之間取得完美平衡，已成為 NIST 後量子標準（如 ML-KEM / Kyber）的核心基礎。
+          <li><strong>【環容錯學習 (Ring-LWE, RLWE)】</strong>：
+            定義於分圓多項式環 <span class="word-eq">R<sub>q</sub> = ℤ<sub>q</sub>[X] / (X<sup>N</sup> + 1)</span>（維度 <span class="word-eq">N</span> 為 2 的冪次）。
+            <br>• <strong>代數特徵</strong>：私鑰與密文分量均為多項式 <span class="word-eq">s(X), a(X), b(X) ∈ R<sub>q</sub></span>。
+            <br>• <strong>NTT 卷積加速</strong>：若模數滿足 <span class="word-eq">q ≡ 1 mod 2N</span>，可透過數論變換（NTT）將多項式乘法複雜度由 <span class="word-eq">O(N²)</span> 驟降至 <span class="word-eq">O(N log N)</span>，實現千倍級效能躍升。
+            <br>• <strong>SIMD 槽打包</strong>：利用分圓環的素理想分解定理，單個 RLWE 密文可同時打包 <span class="word-eq">N</span> 個明文槽（Slots），實現資料並行同態計算。
           </li>
-          <li><strong>【廣義殘差數系環晶格 (RNS-GLWE)】</strong>：
-            <br>• <strong>【定義】</strong>：當密文模數 <span class="word-eq">Q</span> 達到數百位元時，利用中國剩餘定理（CRT）將模數分解為多個符合現代 64-bit CPU 暫存器架構的小質數通道 <span class="word-eq">Q = q₁ · q₂ · … · q<sub>r</sub></span>（各 <span class="word-eq">q<sub>i</sub> &lt; 2⁶⁰</span>）。
-            <br>• <strong>【優點】</strong>：徹底消除多倍精度大整數運算開銷，所有同態多項式運算在各小質數軌道間完全平行化獨立運算。
+          <li><strong>【模組化容錯學習 (Module-LWE, MLWE)】</strong>：
+            定義於多項式環向量空間 <span class="word-eq">R<sub>q</sub><sup>k</sup></span>（維度為 <span class="word-eq">k × N</span>）。
+            <br>• <strong>折衷優勢</strong>：兼具 RLWE 的多項式快速卷積，又克服了 RLWE 環維度 <span class="word-eq">N</span> 只能以 2 的冪次跳躍（1024, 2048, 4096…）的缺陷，可藉由微調向量維度 <span class="word-eq">k</span> 平滑調整安全位元。
+          </li>
+          <li><strong>【餘數數系多階通用晶格 (RNS-GLWE)】</strong>：
+            針對大位元模數 <span class="word-eq">Q</span>（如 100~800 bits），利用中國剩餘定理（CRT）將模數分解為多個 60 位元機器字長的小 NTT 素數乘積 <span class="word-eq">Q = ∏<sub>i=1</sub><sup>L</sup> q<sub>i</sub></span>。
+            <br>• <strong>硬體原生加速</strong>：全域運算無需大數高精度庫，全部在 CPU/GPU 暫存器中以 64 位元硬體指令並行運算。
           </li>
         </ul>
       </div>
 
-      <!-- 1.5 LWE / RLWE 加密機制與縮放因子 Δ -->
+      <!-- 1.5 矩陣向量完整範例：LWE 加解密完整數值步進推導 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>1.5 LWE / RLWE 加密機制與縮放因子 Δ (Encryption Scheme &amp; Rounding Geometry)</span>
-          <span class="badge badge-green">密文結構與幾何捨入</span>
+          <span>1.5 矩陣向量完整範例：LWE 矩陣與向量加解密步進數值演練</span>
+          <span class="badge badge-yellow">實體矩陣向量運算</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          在晶格加密中，明文與雜訊共享同一個數值空間。為了在解密時能將微小雜訊乾淨濾除，明文必須透過縮放因子放置在最高有效位：
+          本節以具體的 <strong>4×3 維度整數矩陣</strong> 與 <strong>3 維列向量</strong> 為例，完整展示從金鑰生成、公鑰加密到解密相位計算與四捨五入還原的每一步代數演算。
+        </p>
+
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：矩陣形式 LWE (Matrix-Form Public Key LWE)】</strong>：
+            <br>• 設晶格私鑰為長度為 <span class="word-eq">n</span> 的未知向量 <span class="word-eq">s ∈ ℤ<sub>q</sub><sup>n</sup></span>。
+            <br>• 公開隨機矩陣 <span class="word-eq">A ∈ ℤ<sub>q</sub><sup>m×n</sup></span>（代表 <span class="word-eq">m</span> 組隨機基底測試向量）。
+            <br>• 誤差高斯雜訊向量 <span class="word-eq">e ∈ ℤ<sub>q</sub><sup>m</sup></span>。
+            <br>• 公鑰向量計算為矩陣乘以向量加上雜訊：<span class="word-eq">b = A · s + e mod q ∈ ℤ<sub>q</sub><sup>m</sup></span>。全體公鑰為數對 <span class="word-eq">(A, b)</span>。
+          </li>
+          <li><strong>【加密運算流程 (Encryption via Random Transpose Matrix)】</strong>：
+            <br>• 設欲加密之明文數值為 <span class="word-eq">μ ∈ ℤ<sub>t</sub></span>，縮放步距為 <span class="word-eq">Δ = ⌊q / t⌉</span>。
+            <br>• 採樣隨機稀疏臨時短向量 <span class="word-eq">r ∈ {0, 1}<sup>m</sup></span> 與加密微小雜訊 <span class="word-eq">e<sub>enc</sub> ∈ ℤ</span>。
+            <br>• 密文向量第一分量：<span class="word-eq">u = A<sup>T</sup> · r mod q ∈ ℤ<sub>q</sub><sup>n</sup></span>。
+            <br>• 密文標量第二分量：<span class="word-eq">v = b<sup>T</sup> · r + Δ · μ + e<sub>enc</sub> mod q ∈ ℤ<sub>q</sub></span>。
+            <br>• 輸出密文為數對：<span class="word-eq">c = (u, v) ∈ ℤ<sub>q</sub><sup>n</sup> × ℤ<sub>q</sub></span>。
+          </li>
+          <li><strong>【解密相位與捨入還原流程 (Decryption Phase &amp; Rounding)】</strong>：
+            <br>• 解密端持私鑰向量 <span class="word-eq">s</span>，計算密文向量與私鑰的內積相位差：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              phase = v − u<sup>T</sup> · s mod q
+            </div>
+            <br>• 代數展開證明：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              phase = (b<sup>T</sup> · r + Δ · μ + e<sub>enc</sub>) − (A<sup>T</sup> · r)<sup>T</sup> · s = (s<sup>T</sup> · A<sup>T</sup> + e<sup>T</sup>) · r + Δ · μ + e<sub>enc</sub> − r<sup>T</sup> · A · s = Δ · μ + (e<sup>T</sup> · r + e<sub>enc</sub>) mod q
+            </div>
+            <br>• 當總累積雜訊 <span class="word-eq">|e<sub>total</sub>| = |e<sup>T</sup> · r + e<sub>enc</sub>| &lt; Δ / 2</span> 時，計算除以縮放步距並四捨五入：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              μ' = ⌊ phase / Δ ⌉ mod t = μ
+            </div>
+          </li>
+        </ul>
+
+        <div class="example-box">
+          <div class="example-title">🔢 具體算式範例：4×3 矩陣 LWE 公鑰加密與解密數值推導</div>
+          <p style="font-size: 0.84rem; line-height: 1.8;">
+            <strong>【第一步：系統參數選定】</strong>
+            <br>• 晶格私鑰維度 <span class="word-eq">n = 3</span>，公開樣本數 <span class="word-eq">m = 4</span>。
+            <br>• 密文模數 <span class="word-eq">q = 97</span>（質數），明文模數 <span class="word-eq">t = 2</span>（二進位明文空間 <span class="word-eq">μ ∈ {0, 1}</span>）。
+            <br>• 明文縮放步距：<span class="word-eq">Δ = ⌊97 / 2⌉ = 49</span>。容許最大雜訊邊界為 <span class="word-eq">B<sub>max</sub> &lt; 49 / 2 = 24.5</span>。
+            <br><br>
+            <strong>【第二步：私鑰向量生成】</strong>
+            <br>採樣隨機私鑰三維整數向量：<span class="word-eq">s = [2, −1, 3]<sup>T</sup> ∈ ℤ₉₇³</span>（在模 97 下為 <span class="word-eq">[2, 96, 3]<sup>T</sup></span>）。
+            <br><br>
+            <strong>【第三步：公開隨機矩陣 A 與高斯雜訊向量 e】</strong>
+            <br>公開隨機矩陣 <span class="word-eq">A ∈ ℤ₉₇⁴ˣ³</span> 共有 4 橫列、3 直行：
+            <div class="word-eq-block" style="margin: 0.4rem 0; font-family: monospace;">
+              A = [ [12, 35,  7],<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[41, 18, 55],<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[80,  2, 14],<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ 5, 63, 29] ]
+            </div>
+            採樣微小誤差雜訊四維向量：<span class="word-eq">e = [1, −2, 0, 2]<sup>T</sup> ∈ ℤ₉₇⁴</span>（數值極小，遠低於 24.5）。
+            <br><br>
+            <strong>【第四步：矩陣乘法計算公鑰向量 b = A · s + e mod 97】</strong>
+            <br>進行矩陣與向量之列內積相乘（Row Dot-Products）：
+            <br>• 橫列 1：<span class="word-eq">12·(2) + 35·(−1) + 7·(3) + 1 = 24 − 35 + 21 + 1 = 11 mod 97</span>
+            <br>• 橫列 2：<span class="word-eq">41·(2) + 18·(−1) + 55·(3) + (−2) = 82 − 18 + 165 − 2 = 227 = 33 mod 97</span> (因 <span class="word-eq">227 − 2·97 = 33</span>)
+            <br>• 橫列 3：<span class="word-eq">80·(2) + 2·(−1) + 14·(3) + 0 = 160 − 2 + 42 + 0 = 200 = 6 mod 97</span> (因 <span class="word-eq">200 − 2·97 = 6</span>)
+            <br>• 橫列 4：<span class="word-eq">5·(2) + 63·(−1) + 29·(3) + 2 = 10 − 63 + 87 + 2 = 36 mod 97</span>
+            <br>計算得公開公鑰四維向量：<span class="word-eq">b = [11, 33, 6, 36]<sup>T</sup> mod 97</span>。
+            <br><br>
+            <strong>【第五步：公鑰加密運算 (目標明文 μ = 1)】</strong>
+            <br>加密端選取隨機短向量 <span class="word-eq">r = [1, 0, 1, 0]<sup>T</sup> ∈ {0, 1}⁴</span>，設定加密微小擾動 <span class="word-eq">e<sub>enc</sub> = 1</span>：
+            <br>① 計算密文向量第一分量 <span class="word-eq">u = A<sup>T</sup> · r mod 97</span>（轉置矩陣乘以向量，相當於選取第 1 與第 3 橫列相加）：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              u = [ (12 + 80),  (35 + 2),  (7 + 14) ]<sup>T</sup> = [92, 37, 21]<sup>T</sup> mod 97
+            </div>
+            <br>② 計算密文標量第二分量 <span class="word-eq">v = b<sup>T</sup> · r + Δ · μ + e<sub>enc</sub> mod 97</span>：
+            <br>• <span class="word-eq">b<sup>T</sup> · r = 11·(1) + 33·(0) + 6·(1) + 36·(0) = 17</span>
+            <br>• 明文縮放偏移項：<span class="word-eq">Δ · μ = 49 · 1 = 49</span>
+            <br>• 綜合得：<span class="word-eq">v = 17 + 49 + 1 = 67 mod 97</span>
+            <br>產出最終密文二元組：<span class="word-eq">c = (u, v) = ( [92, 37, 21]<sup>T</sup>,  67 )</span>。
+            <br><br>
+            <strong>【第六步：持私鑰向量 s 執行解密還原】</strong>
+            <br>① 計算解密相位差值 <span class="word-eq">phase = v − u<sup>T</sup> · s mod 97</span>：
+            <br>• 向量內積：<span class="word-eq">u<sup>T</sup> · s = 92·(2) + 37·(−1) + 21·(3) = 184 − 37 + 63 = 210 mod 97</span>
+            <br>• 模 97 簡化：<span class="word-eq">210 = 2·97 + 16 ≡ 16 mod 97</span>
+            <br>• 相位數值：<span class="word-eq">phase = 67 − 16 = 51</span>
+            <br>② 驗證理論雜訊：<span class="word-eq">phase = Δ · μ + e<sub>total</sub> = 49 · 1 + 2 = 51</span>，雜訊僅為 <span class="word-eq">+2</span>，遠小於容許臨界半徑 24.5！
+            <br>③ 進行縮放除法與四捨五入（Rounding）：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              μ' = ⌊ 51 / 49 ⌉ = ⌊ 1.0408 ⌉ = 1
+            </div>
+            <strong>解密輸出 μ' = 1，100% 精準無誤還原原始明文！</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- 頁面切換導覽 -->
+      <div class="bg-nav-pager">
+        <button type="button" class="btn-pager" style="visibility: hidden;">上一主題</button>
+        <button type="button" class="btn-pager" onclick="switchTab('bg-homomorphic', document.getElementById('sidebar-btn-bg-homomorphic'))">下一主題：二、同態運算與雜訊控制 →</button>
+      </div>
+    </section>
+
+
+    <!-- ===================================================================== -->
+    <!-- TAB BG-2: 同態運算、雜訊增長機制與兩大雜訊控制路線 (TFHE vs RNS-NTT)        -->
+    <!-- ===================================================================== -->
+    <section id="tab-bg-homomorphic" class="tab-content">
+      <div class="lab-hero-header" style="border-color: rgba(59, 130, 246, 0.45); background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(168, 85, 247, 0.08));">
+        <h2 class="lab-hero-title">背景知識 (二) — 同態運算、雜訊增長與兩大雜訊控制機制：TFHE 盲旋轉自舉 vs. RNS-NTT 模數切換鏈</h2>
+        <div class="lab-hero-sub">同態加法與乘法幾何相乘展開、RLK 重線性化降維、TFHE 盲旋轉雜訊重置與 RNS-NTT 模數切換全剖析</div>
+        <div class="lab-hero-actions">
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">← 上一主題：一、LWE 晶格加密基礎</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">下一主題：三、門檻秘密分享機制 →</button>
+        </div>
+      </div>
+
+      <!-- 2.1 同態加法與乘法：代數結構與雜訊幾何展開 -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>2.1 同態加法與乘法：代數結構與雜訊幾何相乘展開</span>
+          <span class="badge badge-blue">運算幾何本質</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          同態加密（Homomorphic Encryption）允許直接對密文進行代數運算，其解密結果精確等同於明文運算結果。然而，密文運算的同時伴隨著<strong>雜訊（Noise）的持續增長</strong>：
         </p>
         <ul class="bg-module-list">
-          <li><strong>【工具定義：縮放因子 Δ】</strong>：
-            設明文空間為整數環 <span class="word-eq">ℤ<sub>p</sub></span>（明文 <span class="word-eq">m ∈ {0, 1, …, p−1}</span>），密文模數為 <span class="word-eq">q</span>（<span class="word-eq">q ≫ p</span>），縮放因子定義為：
+          <li><strong>【同態加法 (Homomorphic Addition)】</strong>：
+            <br>• <strong>【工具定義】</strong>：設兩密文 <span class="word-eq">c₁ = (a₁, b₁)</span> 與 <span class="word-eq">c₂ = (a₂, b₂)</span>，同態加法直接定義為向量分量之整數和：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              Δ = ⌊q / p⌉
+              c<sub>add</sub> = c₁ + c₂ = (a₁ + a₂ mod q,  b₁ + b₂ mod q)
             </div>
-            將明文訊息放大 <span class="word-eq">Δ</span> 倍推至最高位（MSB），而將加密高斯誤差 <span class="word-eq">e</span> 留在最低有效位（LSB）。
+            <br>• <strong>【運作過程與相位疊加】</strong>：計算解密相位：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              phase<sub>add</sub> = (b₁ + b₂) − ⟨a₁ + a₂, s⟩ = (b₁ − ⟨a₁, s⟩) + (b₂ − ⟨a₂, s⟩) = Δ · (m₁ + m₂) + (e₁ + e₂) mod q
+            </div>
+            <br>• <strong>【優點與缺點】</strong>：新雜訊滿足絕對值三角不等式 <span class="word-eq">|e<sub>add</sub>| ≤ |e₁| + |e₂|</span>，呈<strong>線性溫和累加</strong>；開銷極微，可連續執行數千次加法。
           </li>
-          <li><strong>【運作過程：LWE 對稱加密與解密】</strong>：
-            <br>① <strong>金鑰生成 (KeyGen)</strong>：隨機採樣私鑰向量 <span class="word-eq">s ∈ ℤ<sub>q</sub><sup>n</sup></span>（通常係數為小整數或三元分佈 <span class="word-eq">s<sub>i</sub> ∈ {−1, 0, 1}</span>）。
-            <br>② <strong>加密過程 (Encrypt)</strong>：輸入明文 <span class="word-eq">m ∈ ℤ<sub>p</sub></span>，隨機採樣基底向量 <span class="word-eq">a ← ℤ<sub>q</sub><sup>n</sup></span>，採樣小高斯雜訊 <span class="word-eq">e ← χ</span>，計算：
+          <li><strong>【同態乘法 (Homomorphic Multiplication &amp; Tensor Product)】</strong>：
+            <br>• <strong>【工具定義】</strong>：兩密文之相位乘積展開對應兩密文向量的外積（張量積 <span class="word-eq">c₁ ⊗ c₂</span>）。
+            <br>• <strong>【運作過程與雜訊交乘展開】</strong>：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              b = ⟨a, s⟩ + Δ · m + e  (mod q)
+              phase₁ · phase₂ = [Δ · m₁ + e₁] · [Δ · m₂ + e₂] = Δ² · (m₁ · m₂) + Δ · (m₁e₂ + m₂e₁) + e₁e₂
             </div>
-            輸出密文為數值對 <span class="word-eq">ct = (a, b) ∈ ℤ<sub>q</sub><sup>n</sup> × ℤ<sub>q</sub></span>。
-            <br>③ <strong>解密過程 (Decrypt)</strong>：持有私鑰 <span class="word-eq">s</span> 者計算解密相位（Phase）：
+            為了將明文空間係數自 <span class="word-eq">Δ²</span> 重新除以 <span class="word-eq">Δ</span> 歸一化回標準步距 <span class="word-eq">Δ</span>，密文必須除以 <span class="word-eq">Δ</span>：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              phase = b − ⟨a, s⟩ = (⟨a, s⟩ + Δ · m + e) − ⟨a, s⟩ = Δ · m + e  (mod q)
+              (1 / Δ) · phase₁ · phase₂ = Δ · (m₁ · m₂) + (m₁e₂ + m₂e₁) + ⌊ e₁e₂ / Δ ⌉
             </div>
-            執行四捨五入除法還原明文：
+            <br>• <strong>【優點與缺點】</strong>：雖然實現了圖靈完備的算術電路，但交乘項 <span class="word-eq">(m₁e₂ + m₂e₁)</span> 導致雜訊呈<strong>指數級幾何爆炸</strong>；且解密多項式變為私鑰變數的二次型多項式，密文長度由 <span class="word-eq">(n+1)</span> 膨脹至 <span class="word-eq">O(n²)</span>！
+          </li>
+        </ul>
+
+        <div class="example-box">
+          <div class="example-title">🔢 具體算式範例：同態加法 vs. 同態乘法雜訊膨脹對比</div>
+          <p style="font-size: 0.84rem; line-height: 1.7;">
+            設模數 <span class="word-eq">q = 1000</span>，明文模數 <span class="word-eq">t = 10</span>，縮放步距 <span class="word-eq">Δ = 100</span>，容許雜訊上限為 <span class="word-eq">Δ / 2 = 50</span>。
+            <br>• 密文 1：明文 <span class="word-eq">m₁ = 2</span>，初始雜訊 <span class="word-eq">e₁ = 3</span> ⟹ <span class="word-eq">phase₁ = 100·2 + 3 = 203</span>。
+            <br>• 密文 2：明文 <span class="word-eq">m₂ = 3</span>，初始雜訊 <span class="word-eq">e₂ = 4</span> ⟹ <span class="word-eq">phase₂ = 100·3 + 4 = 304</span>。
+            <br>① <strong>同態加法</strong>：<span class="word-eq">phase<sub>add</sub> = 203 + 304 = 507 = 100·(2+3) + (3+4)</span>。新雜訊為 <span class="word-eq">7</span>，僅佔上限 50 的 14%，依然非常乾淨！
+            <br>② <strong>同態乘法</strong>：交乘展開式 <span class="word-eq">203 · 304 = 61712</span>。除以 <span class="word-eq">Δ = 100</span> 並四捨五入得 <span class="word-eq">617 = 100·(2·3) + 17</span>。
+            <br>單次乘法後的新雜訊劇增至 <span class="word-eq">17</span>（增長率高達 400%）！若再執行一次乘法，雜訊將破百直接超出容許上限 50，導致解密徹底雪崩損毀！
+          </p>
+        </div>
+      </div>
+
+      <!-- 2.2 密文重線性化技術 (Relinearization & Evaluation Keys, RLK) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>2.2 密文重線性化技術 (Relinearization &amp; Evaluation Keys, RLK)</span>
+          <span class="badge badge-purple">維度降階關鍵</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          同態相乘後產生的二次密文張量包含交叉項 <span class="word-eq">s<sub>i</sub> · s<sub>j</sub></span>，若不予降維，多次乘法將使密文維度隨乘法深度成指數級膨脹（<span class="word-eq">O(n<sup>L</sup>)</span>）。<strong>重線性化（Relinearization）</strong>利用公開評估金鑰（RLK）將二次密文無損投射回原始一次維度。
+        </p>
+
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：重線性化金鑰 (Evaluation Key / RLK)】</strong>：
+            公鑰生成端預先對私鑰張量外積 <span class="word-eq">s ⊗ s</span> 進行加密，產出針對二次項的特殊公鑰集合：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              m = ⌊ phase / Δ ⌉ mod p = ⌊ (Δ · m + e) / Δ ⌉ mod p = ⌊ m + e / Δ ⌉ mod p
+              RLK<sub>i,j</sub> = Enc<sub>s</sub>( s<sub>i</sub> · s<sub>j</sub> ) = ( a<sub>i,j</sub>,  ⟨a<sub>i,j</sub>, s⟩ + e<sub>i,j</sub> + P · s<sub>i</sub> s<sub>j</sub> ) mod (P · q)
             </div>
+            其中 <span class="word-eq">P</span> 為大輔助模數或基底分解基數（Gadget Matrix Base），用以壓制金鑰同態替換過程中的雜訊膨脹。
+          </li>
+          <li><strong>【運作過程：數位基底分解 (Gadget Base Decomposition)】</strong>：
+            <br>① <strong>數位切片</strong>：為避免直接將大係數 <span class="word-eq">c₂</span> 乘以 RLK 導致誤差被放大 <span class="word-eq">q</span> 倍，將二次項係數依小基底 <span class="word-eq">B = 2<sup>w</sup></span> 切分為低位元整數向量：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              c₂ = ∑<sub>k=0</sub><sup>d-1</sup> c₂<sup>(k)</sup> · B<sup>k</sup>  (其中 |c₂<sup>(k)</sup>| &lt; B / 2)
+            </div>
+            <br>② <strong>同態替換降維</strong>：利用對應小基底的 RLK 分量進行加權內積求和：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              c<sub>relin</sub> = (c₀, c₁) + ∑<sub>k=0</sub><sup>d-1</sup> c₂<sup>(k)</sup> · RLK<sup>(k)</sup> mod q
+            </div>
+            將原本需要由二次私鑰 <span class="word-eq">(1, s, s²)</span> 解密的密文，重新轉化為僅需一次私鑰 <span class="word-eq">(1, s)</span> 即可正確解密的標準兩分量密文！
           </li>
           <li><strong>【優點與缺點】</strong>：
-            <br>• <strong>優點</strong>：解密僅涉及一次簡單的向量內積與純標量除法，演算法極為簡潔。
-            <br>• <strong>缺點</strong>：嚴格要求解密正確性邊界 <span class="word-eq">|e| &lt; Δ / 2</span>。一旦運算累積雜訊突破臨界點，捨入便會發生向相鄰明文格點的跳躍，產生解密錯誤。
+            <br>• <strong>優點</strong>：將密文維度恆定約束在 <span class="word-eq">n + 1</span>，使得任意深度的乘法電路在空間複雜度上具備可行性。
+            <br>• <strong>缺點</strong>：RLK 金鑰尺寸極度龐大（通常為數十 MB 至數百 MB），且重線性化過程本身會引入基底分解雜訊增益 <span class="word-eq">B · √d · σ</span>。
           </li>
         </ul>
+
         <div class="example-box">
-          <div class="example-title">🔢 具體算式範例：LWE 幾何捨入與解密濾除雜訊過程</div>
+          <div class="example-title">🔢 具體算式範例：基底 B=10 數位分解與 RLK 降維數值推導演練</div>
           <p style="font-size: 0.84rem; line-height: 1.7;">
-            設定密文模數 <span class="word-eq">q = 64</span>，明文空間 <span class="word-eq">p = 4</span>（明文 <span class="word-eq">m ∈ {0, 1, 2, 3}</span>）。
-            <br>計算縮放因子：<span class="word-eq">Δ = ⌊64 / 4⌉ = 16</span>。容許的雜訊最大半徑為 <span class="word-eq">Δ / 2 = 16 / 2 = 8</span>。
-            <br>設私鑰維度 <span class="word-eq">n = 2</span>，私鑰向量 <span class="word-eq">s = (2, 3)</span>。
-            <br>欲加密明文 <span class="word-eq">m = 2</span>，採樣隨機基底 <span class="word-eq">a = (5, 7)</span>，採樣高斯雜訊 <span class="word-eq">e = +3</span>（<span class="word-eq">3 &lt; 8</span>）。
-            <br>1. <strong>計算內積</strong>：<span class="word-eq">⟨a, s⟩ = 5·2 + 7·3 = 10 + 21 = 31 (mod 64)</span>。
-            <br>2. <strong>計算密文標量 b</strong>：<span class="word-eq">b = ⟨a, s⟩ + Δ·m + e = 31 + 16·2 + 3 = 31 + 32 + 3 = 66 ≡ 2 (mod 64)</span>。
-            <br>密文為 <span class="word-eq">ct = ((5, 7), 2)</span>。
-            <br>3. <strong>解密端計算相位</strong>：<span class="word-eq">phase = b − ⟨a, s⟩ = 2 − 31 = −29 ≡ 35 (mod 64)</span>。
-            <br>4. <strong>捨入還原</strong>：<span class="word-eq">m = ⌊35 / 16⌉ = ⌊2.1875⌉ = 2</span>。明文 <span class="word-eq">2</span> 100% 精確還原，雜訊 3 被徹底消滅！
+            設二次密文待消除之二次項係數為 <span class="word-eq">c₂ = 735</span>，模數 <span class="word-eq">q = 1000</span>。
+            <br>• <strong>基底選定</strong>：選取十進位數位分解基底 <span class="word-eq">B = 10</span>，分解階數為 3（<span class="word-eq">10⁰, 10¹, 10²</span>）。
+            <br>• <strong>數位切片</strong>：將 735 展開為低位元向量：<span class="word-eq">735 = 5 · 10⁰ + 3 · 10¹ + 7 · 10²</span> ⟹ 係數向量為 <span class="word-eq">[5, 3, 7]</span>，最大係數僅為 7！
+            <br>• <strong>降階求和</strong>：解密端不直接計算 <span class="word-eq">735 · s²</span>，而是調用預先公佈的三組金鑰：
+            <br><span class="word-eq">c<sub>relin</sub> = (c₀, c₁) + 5 · RLK⁽⁰⁾ + 3 · RLK⁽¹⁾ + 7 · RLK⁽²⁾ mod 1000</span>。
+            <br>由於每個乘數最大僅為 7，RLK 內部的高斯雜訊被放大的倍數不超過 7 倍，成功將雜訊增長完全控制在極微小的安全邊界內！
           </p>
         </div>
       </div>
 
-      <!-- 1.6 同態運算與重線性化金鑰 (RLK) -->
+      <!-- 2.3 雜訊控制機制一：TFHE 盲旋轉自舉 -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>1.6 同態運算中的雜訊增長機制與重線性化技術 (Homomorphic Addition, Multiplication &amp; RLK)</span>
-          <span class="badge badge-yellow">同態代數評估</span>
+          <span>2.3 雜訊控制機制一：TFHE / FHEW 盲旋轉自舉 (Blind Rotation Bootstrapping)</span>
+          <span class="badge badge-green">無限深度保證</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
-          同態加密允許在密文上直接評估加法與乘法電路，但不同運算的雜訊成長軌跡截然不同：
+          當同態乘法累積的雜訊逼近上限時，若無外部干預，下一次運算必將損壞明文。<strong>自舉（Bootstrapping）</strong>是 Craig Gentry 提出的全同態破局機制：<strong>在密文域內同態執行解密電路自身</strong>，輸出一個明文完全不變、但雜訊被重置為全新小常數雜訊的嶄新密文。現代實踐以 TFHE 盲旋轉最為卓越。
         </p>
+
         <ul class="bg-module-list">
-          <li><strong>【工具一：同態加法 (Homomorphic Addition)】</strong>：
-            <br>• <strong>【運作過程】</strong>：設兩組密文為 <span class="word-eq">ct₁ = (a₁, b₁)</span> 與 <span class="word-eq">ct₂ = (a₂, b₂)</span>，伺服器直接計算：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              ct<sub>add</sub> = (a₁ + a₂, b₁ + b₂) mod q
-            </div>
-            解密相位為：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              phase<sub>add</sub> = (b₁ + b₂) − ⟨a₁ + a₂, s⟩ = Δ · (m₁ + m₂) + (e₁ + e₂)  (mod q)
-            </div>
-            <br>• <strong>【優點與缺點】</strong>：加法雜訊僅為線性疊加 <span class="word-eq">e<sub>add</sub> = e₁ + e₂</span>，耗費雜訊預算微乎其微，可支援深層加法。
+          <li><strong>【工具定義：TFHE 盲旋轉 (Blind Rotation)】</strong>：
+            將 LWE 密文相位 <span class="word-eq">phase = b − ⟨a, s⟩</span> 作為環多項式單項式 <span class="word-eq">X<sup>−phase</sup></span> 的幾何旋轉角度，利用 GSW / RGSW 外積乘法同態旋轉環累加器多項式（Accumulator Poly），在密文內部盲查表（Programmable Bootstrapping, PBS）。
           </li>
-          <li><strong>【工具二：同態乘法與維度膨脹 (Homomorphic Multiplication)】</strong>：
-            <br>• <strong>【運作過程】</strong>：兩密文相位直接交乘：
+          <li><strong>【運作過程：自舉三階段流水線】</strong>：
+            <br>① <strong>模數切換降維 (Modulus Switching to 2N)</strong>：
+            將大模數 <span class="word-eq">q</span> 下的密文 <span class="word-eq">(a, b)</span> 線性縮放至小維度環模數 <span class="word-eq">2N</span>（如 <span class="word-eq">N = 1024</span>）：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              phase₁ · phase₂ = (b₁ − ⟨a₁, s⟩) · (b₂ − ⟨a₂, s⟩) = Δ² · (m₁ · m₂) + Δ · (m₁e₂ + m₂e₁) + e₁e₂
+              ã = ⌊ (2N / q) · a ⌉ ∈ ℤ₂<sub>N</sub><sup>n</sup>,  b̃ = ⌊ (2N / q) · b ⌉ ∈ ℤ₂<sub>N</sub>
             </div>
-            展開後出現了私鑰的二次交叉項 <span class="word-eq">s ⊗ s</span>，密文維度膨脹為 3 元素向量 <span class="word-eq">(c₀, c₁, c₂)</span>，其解密式變為：
+            <br>② <strong>盲旋轉累加器查表 (CMux &amp; Blind Rotation)</strong>：
+            以查表多項式 <span class="word-eq">v(X) ∈ R<sub>Q</sub></span> 為初始累加器（設定前 <span class="word-eq">N</span> 個係數為 <span class="word-eq">+Δ/2</span>，後 <span class="word-eq">N</span> 個為 <span class="word-eq">−Δ/2</span>）。透過自舉金鑰（BSK）進行連續 <span class="word-eq">n</span> 輪受控多項式單項式外積相乘（CMux 閘）：
             <div class="word-eq-block" style="margin: 0.4rem 0;">
-              c₀ + ⟨c₁, s⟩ + ⟨c₂, s ⊗ s⟩ = Δ² · m₁m₂ + 雜訊  (mod q)
+              ACC = ACC · X<sup>−b̃</sup> · ∏<sub>i=1</sub><sup>n</sup> [ 1 + (X<sup>ã<sub>i</sub></sup> − 1) · BSK<sub>i</sub> ] ∈ R<sub>Q</sub>
             </div>
+            <br>③ <strong>金鑰提取 (Sample Extract)</strong>：
+            從盲旋轉完畢的多項式提取常數項係數，得到全新的 LWE 密文。此時<strong>舊密文累積的所有雜訊在模數切換與查表中被徹底抹去</strong>，新密文僅包含單次金鑰提取的小雜訊！
           </li>
-          <li><strong>【工具三：重線性化金鑰 (Relinearization Key, RLK) 降維】</strong>：
-            <br>• <strong>【工具定義】</strong>：為了將 3-term 密文還原回標準的 2-term 密文，金鑰生成者發布評估輔助公鑰 RLK，將私鑰二次項偽裝加密：
-            <div class="word-eq-block" style="margin: 0.4rem 0;">
-              RLK = (a<sub>rlk</sub>,  b<sub>rlk</sub> = a<sub>rlk</sub> · s + P · s² + e<sub>rlk</sub>) mod P·q
-            </div>
-            其中 <span class="word-eq">P</span> 為輔助大模數。
-            <br>• <strong>【運作過程】</strong>：雲端伺服器計算 <span class="word-eq">c₂ · RLK</span> 並除以 <span class="word-eq">P</span> 縮放，將二次項 <span class="word-eq">s²</span> 投影替換消除，強行壓回標準 2 元素密文。
-            <br>• <strong>【優缺點】</strong>：重線性化成功鎖定維度不至發散；缺點是會引入額外的重線性化高斯誤差，且乘法雜訊大幅增長。
+          <li><strong>【優點與缺點】</strong>：
+            <br>• <strong>優點</strong>：支援<strong>無限深度</strong>（True FHE），單次自舉延遲在數十毫秒以內，可任意求值各類非線性活化函數（ReLU、Sigmoid、階躍函數）。
+            <br>• <strong>缺點</strong>：單個密文通常僅打包 1 個或少數幾個位元（Boolean/Integer），不擅長數千資料槽的大規模 SIMD 並行吞吐。
           </li>
         </ul>
+      </div>
+
+      <!-- 2.4 雜訊控制機制二：RNS-NTT 批次模數鏈與模數切換 -->
+      <div class="card" style="margin-bottom: 1.35rem;">
+        <div class="card-title">
+          <span>2.4 雜訊控制機制二：RNS-NTT 批次模數鏈與模數切換 (Leveled FHE)</span>
+          <span class="badge badge-yellow">超高吞吐批次流</span>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          在大型巨量資料庫檢索與高維向量同態推論中，自舉的逐點開銷過於高昂。<strong>階梯式分層同態加密（Leveled FHE，如 BGV、BFV、CKKS）</strong>採用完全不同的哲學：<strong>不執行自舉，而是透過階梯式模數鏈（Modulus Switching Chain）在同態乘法後主動除以質數模數，強行壓制雜訊！</strong>
+        </p>
+
+        <ul class="bg-module-list">
+          <li><strong>【工具定義：階梯式 RNS 模數鏈 (Modulus Chain)】</strong>：
+            系統初始化時預先設定一個超大模數，由 <span class="word-eq">L + 1</span> 個 60 位元質數乘積構成：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              Q<sub>L</sub> = ∏<sub>i=0</sub><sup>L</sup> q<sub>i</sub>  ⟹  Q<sub>L-1</sub> = ∏<sub>i=0</sub><sup>L-1</sup> q<sub>i</sub>  ⟹  …  ⟹  Q₀ = q₀
+            </div>
+            密文初始位於最高層級 <span class="word-eq">Q<sub>L</sub></span>。
+          </li>
+          <li><strong>【運作過程：模數切換除法 (Modulus Switching &amp; Rescaling)】</strong>：
+            <br>① 每執行一層同態乘法後，密文雜訊隨乘積擴大至 <span class="word-eq">e · q<sub>l</sub></span>。
+            <br>② 此時直接將密文在代數上除以最末端的質數 <span class="word-eq">q<sub>l</sub></span>，將密文空間切換至下一層模數 <span class="word-eq">Q<sub>l-1</sub></span>：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              c' = ⌊ (Q<sub>l-1</sub> / Q<sub>l</sub>) · c ⌉ = ⌊ c / q<sub>l</sub> ⌉ mod Q<sub>l-1</sub>
+            </div>
+            <br>③ <strong>雜訊同步等比例縮小</strong>：由於整個密文除以 <span class="word-eq">q<sub>l</sub></span>，雜訊亦被除以 <span class="word-eq">q<sub>l</sub></span>：
+            <div class="word-eq-block" style="margin: 0.4rem 0;">
+              e' ≈ (e / q<sub>l</sub>) + e<sub>round</sub>
+            </div>
+            原本乘法造成的雜訊膨脹被瞬間「壓制回基準大小」！
+          </li>
+          <li><strong>【NTT 與 SIMD 批次槽並行加速】</strong>：
+            每個質數 <span class="word-eq">q<sub>i</sub></span> 均選取為 NTT-friendly 素數（滿足 <span class="word-eq">q<sub>i</sub> ≡ 1 mod 2N</span>），配合數論變換在 <span class="word-eq">O(N log N)</span> 時間完成多項式乘法，並可同時在單一密文中打包高達 <span class="word-eq">N = 8192</span> 個獨立明文槽執行批次 SIMD 計算！
+          </li>
+          <li><strong>【優點與缺點】</strong>：
+            <br>• <strong>優點</strong>：單槽平攤計算時間小於 1 微秒，吞吐量驚人，矩陣相乘與張量機器學習推論效能無與倫比。
+            <br>• <strong>缺點</strong>：乘法深度嚴格受限於預設層級 <span class="word-eq">L</span>，當質數模數鏈消耗殆盡後便無法繼續執行乘法，無法達成真正無窮迴圈計算。
+          </li>
+        </ul>
+
         <div class="example-box">
-          <div class="example-title">🔢 具體算式範例：同態加法線性雜訊 vs. 同態乘法二次雜訊對比</div>
+          <div class="example-title">🔢 具體算式範例：模數切換除法雜訊縮減數值演練</div>
           <p style="font-size: 0.84rem; line-height: 1.7;">
-            設初始雜訊 <span class="word-eq">e₁ = 2, e₂ = 3</span>，明文 <span class="word-eq">m₁ = 1, m₂ = 2</span>，縮放因子 <span class="word-eq">Δ = 100</span>。
-            <br>• <strong>同態加法</strong>：新雜訊 <span class="word-eq">e<sub>add</sub> = 2 + 3 = 5</span>。雜訊僅增加 3，佔比極低。
-            <br>• <strong>同態乘法</strong>：交乘雜訊展開式為：
-            <br><span class="word-eq">Δ · (m₁e₂ + m₂e₁) + e₁e₂ = 100 · (1·3 + 2·2) + 2·3 = 100 · 7 + 6 = 706</span>。
-            <br>經模數縮放（除以 <span class="word-eq">Δ = 100</span>）還原後，殘存雜訊約為 <span class="word-eq">706 / 100 = 7.06</span>。
-            <br>單次乘法使雜訊增幅超過 350%，這直觀展示了為何全同態加密的深度受到乘法層數的極大制約。
+            設目前層級模數 <span class="word-eq">Q₁ = q₀ · q₁ = 100 · 11 = 1100</span>，目標縮小至 <span class="word-eq">Q₀ = q₀ = 100</span>。
+            <br>密文經歷乘法後，其解密相位值膨脹為 <span class="word-eq">phase = 2244</span>（其中明文項為 <span class="word-eq">2200</span>，膨脹雜訊為 <span class="word-eq">e = 44</span>）。
+            <br>• <strong>模數切換除以 q₁ = 11</strong>：
+            <br><span class="word-eq">phase' = ⌊ 2244 / 11 ⌉ = 204</span>。
+            <br>• <strong>在模數 Q₀ = 100 下解構</strong>：
+            <br><span class="word-eq">phase' = 200 + 4 = 100 · 2 + 4</span>。
+            <br>明文倍數精確維持為 2，而<strong>雜訊從 44 驟降至 4</strong>（整整縮小了 11 倍），成功消除乘法膨脹，延續同態計算生命力！
           </p>
         </div>
       </div>
 
-      <!-- 1.7 雜訊控制機制：TFHE 盲旋轉自舉 vs. RNS-NTT 批次模數鏈 -->
-      <div class="card">
+      <!-- 2.5 兩大機制深度橫向對比表 (Architecture Tradeoff Matrix) -->
+      <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>1.7 雜訊控制兩大機制：TFHE 盲旋轉自舉 vs. RNS-NTT 批次模數鏈</span>
-          <span class="badge badge-blue">雜訊管理工程</span>
+          <span>2.5 兩大機制深度橫向對比矩陣 (TFHE Bootstrapping vs. Leveled RNS-NTT)</span>
+          <span class="badge badge-blue">架構權衡全貌</span>
         </div>
-        <ul class="bg-module-list">
-          <li><strong>【機制 A：TFHE 盲旋轉自舉 (Blind Rotation Bootstrapping)】</strong>：
-            <br>• <strong>【定義】</strong>：在小模數下，當雜訊逼近臨界值時，利用密文相位作為單項多項式 <span class="word-eq">X<sup>−phase</sup></span> 的指數，以同態方式在環中旋轉預設的查表多項式（LUT）。
-            <br>• <strong>【運作過程】</strong>：在密文域內同態執行非線性符號函數與解密線路，直接產出一份包含相同明文、但雜訊被重置為全新小高斯雜訊的新密文。
-            <br>• <strong>【優點與缺點】</strong>：能達成無窮深度的任意布林閘運算；缺點是每次自舉需要數毫秒計算，開銷較大。
-          </li>
-          <li><strong>【機制 B：RNS 模數切換與 NTT 卷積 (Modulus Switching &amp; NTT)】</strong>：
-            <br>• <strong>【定義】</strong>：使用數百位元的階梯式模數鏈 <span class="word-eq">Q = q₁ · q₂ · … · q<sub>L</sub></span>。每執行一層同態乘法，直接將密文除以一個質數通道（Rescaling），將乘法帶來的膨脹雜訊等比例縮小。
-            <br>• <strong>【運作過程】</strong>：配合數論變換（NTT），在各質數通道上將多項式卷積複雜度由 <span class="word-eq">O(N²)</span> 降至 <span class="word-eq">O(N log N)</span>。
-            <br>• <strong>【優點與缺點】</strong>：支援高吞吐量 SIMD 向量批次打包計算；缺點是乘法深度有限，當模數鏈耗盡後便無法繼續計算。
-          </li>
-        </ul>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
+          在設計同態密碼系統時，兩種路線代表了兩種截然不同的架構哲學：
+        </p>
+        <div style="width: 100%; overflow-x: auto;">
+          <table class="arena-table" style="font-size: 0.82rem; width: 100%; min-width: 680px;">
+            <thead>
+              <tr style="background: rgba(30, 41, 59, 0.9);">
+                <th style="padding: 0.65rem 0.8rem; text-align: left;">比較維度</th>
+                <th style="padding: 0.65rem 0.8rem; text-align: left; color: #34d399;">TFHE / FHEW 盲旋轉自舉</th>
+                <th style="padding: 0.65rem 0.8rem; text-align: left; color: #fbbf24;">RNS-NTT 階梯模數鏈 (Leveled FHE)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight: 600;">核心數學依託</td>
+                <td>純量 LWE + 環 RGSW 外積盲旋轉 (PBS)</td>
+                <td>分圓多項式環 RLWE + 中國剩餘定理 (CRT/RNS)</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">雜訊管理哲學</td>
+                <td><strong>主動重置</strong>：在密文內部執行解密電路將雜訊歸零</td>
+                <td><strong>被動壓制</strong>：在乘法後除以質數模數（Rescaling）壓制雜訊</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">電路計算深度</td>
+                <td><span class="badge badge-green">無窮深度 (True FHE)</span>，任意迴圈無限制</td>
+                <td><span class="badge badge-yellow">固定有限深度</span>，受限於初始質數層級 L</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">單次運算延遲</td>
+                <td>毫秒級（單次自舉約 10~50 ms）</td>
+                <td>微秒級（純多項式 NTT 乘法約 0.05~0.5 ms）</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">並行吞吐能力</td>
+                <td>低（單密文通常對應 1 個 bit 或整數）</td>
+                <td><span class="badge badge-green">極高 (SIMD)</span>，單密文打包 4096~16384 個槽位</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">非線性函數求值</td>
+                <td>極佳（透過查表多項式 LUT 直接求值 ReLU/分段函數）</td>
+                <td>較差（必須透過高階多項式 Taylor/Chebyshev 逼近）</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">評估金鑰大小</td>
+                <td>數十 MB 至上百 MB（BSK 需大量 GSW 密文）</td>
+                <td>數 MB 至數十 MB（僅需重線性化 RLK 與旋轉金鑰）</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">最適合應用情境</td>
+                <td>即時布林電路、精準非線性活化神經網路、條件分支判斷</td>
+                <td>高維巨量矩陣運算、同態基因組比對、大規模隱私查詢 (PIR)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-        <div class="bg-nav-pager">
-          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5); margin-left: auto;" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">下一主題：二、門檻秘密分享機制 →</button>
-        </div>
+      <!-- 頁面切換導覽 -->
+      <div class="bg-nav-pager">
+        <button type="button" class="btn-pager" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">← 上一主題：一、LWE 晶格加密基礎</button>
+        <button type="button" class="btn-pager" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">下一主題：三、門檻秘密分享機制 →</button>
       </div>
     </section>
 
@@ -2153,11 +2393,11 @@
     <!-- ===================================================================== -->
     <section id="tab-bg-secretsharing" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
-        <h2 class="lab-hero-title">背景知識 (二) — 門檻秘密分享機制 (Secret Sharing Mechanisms)</h2>
+        <h2 class="lab-hero-title">背景知識 (三) — 門檻秘密分享機制 (Secret Sharing Mechanisms)</h2>
         <div class="lab-hero-sub">全門檻加法分享、質數體 Shamir 秘密分享與本地 Lagrange 轉換、Galois 環 GR(2^K, d) 與 Reed-Solomon 糾錯碼詳解</div>
         <div class="lab-hero-actions">
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">← 上一主題：一、LWE 晶格加密基礎</button>
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">下一主題：三、解密雜訊與 4 大隔離 →</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-homomorphic', document.getElementById('sidebar-btn-bg-homomorphic'))">← 上一主題：二、同態運算與雜訊控制</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">下一主題：四、解密雜訊與 4 大隔離 →</button>
         </div>
       </div>
 
@@ -2285,8 +2525,8 @@
         </ul>
 
         <div class="bg-nav-pager">
-          <button type="button" class="btn-pager" onclick="switchTab('bg-lwe', document.getElementById('sidebar-btn-bg-lwe'))">← 上一主題：一、LWE 晶格加密基礎</button>
-          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">下一主題：三、解密雜訊與 4 大隔離 →</button>
+          <button type="button" class="btn-pager" onclick="switchTab('bg-homomorphic', document.getElementById('sidebar-btn-bg-homomorphic'))">← 上一主題：二、同態運算與雜訊控制</button>
+          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">下一主題：四、解密雜訊與 4 大隔離 →</button>
         </div>
       </div>
     </section>
@@ -2301,7 +2541,7 @@
         <div class="lab-hero-sub">剖析雜訊線性聯立方程攻擊破口，深度比較統計雜訊淹沒、MPC 協同捨入、伺服器縮模填充與雙環遮罩消噪</div>
         <div class="lab-hero-actions">
           <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">← 上一主題：二、門檻秘密分享</button>
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">下一主題：四、主動防線與零知識證明 →</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">下一主題：五、主動防線與零知識證明 →</button>
         </div>
       </div>
 
@@ -2456,7 +2696,7 @@
 
         <div class="bg-nav-pager">
           <button type="button" class="btn-pager" onclick="switchTab('bg-secretsharing', document.getElementById('sidebar-btn-bg-secretsharing'))">← 上一主題：二、門檻秘密分享</button>
-          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">下一主題：四、主動防線與零知識證明 →</button>
+          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">下一主題：五、主動防線與零知識證明 →</button>
         </div>
       </div>
     </section>
@@ -2470,8 +2710,8 @@
         <h2 class="lab-hero-title">背景知識 (四) — 主動安全防線：晶格 NIZK、Ajtai 承諾與批次商數證明</h2>
         <div class="lab-hero-sub">非交互式零知識證明、拒絕取樣技術、Ajtai 承諾、零鬆弛三元約束與 BFS 二分批次快篩詳解</div>
         <div class="lab-hero-actions">
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">← 上一主題：三、解密雜訊與 4 大隔離</button>
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">下一主題：五、威脅模型與安全概念 →</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">← 上一主題：四、解密雜訊與 4 大隔離</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">下一主題：六、威脅模型與安全概念 →</button>
         </div>
       </div>
 
@@ -2587,8 +2827,8 @@
         </div>
 
         <div class="bg-nav-pager">
-          <button type="button" class="btn-pager" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">← 上一主題：三、解密雜訊與 4 大隔離</button>
-          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">下一主題：五、威脅模型與安全概念 →</button>
+          <button type="button" class="btn-pager" onclick="switchTab('bg-noise', document.getElementById('sidebar-btn-bg-noise'))">← 上一主題：四、解密雜訊與 4 大隔離</button>
+          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">下一主題：六、威脅模型與安全概念 →</button>
         </div>
       </div>
     </section>
@@ -2599,15 +2839,15 @@
     <!-- ===================================================================== -->
     <section id="tab-bg-security" class="tab-content">
       <div class="lab-hero-header" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));">
-        <h2 class="lab-hero-title">背景知識 (五) — 威脅模型與正式安全概念：CPA<sup>D</sup>、FuncCPA 與 UC 安全</h2>
+        <h2 class="lab-hero-title">背景知識 (六) — 威脅模型與正式安全概念：CPA<sup>D</sup>、FuncCPA 與 UC 安全</h2>
         <div class="lab-hero-sub">配合架構與流程圖解，深入解析半誠實與不誠實多數界限、解密預言機探測防禦、電路隱私與通用可組合 UC 模擬安全</div>
         <div class="lab-hero-actions">
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：四、主動防線與零知識證明</button>
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：六、實驗控制與評測指標 →</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：五、主動防線與零知識證明</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：七、全域控制與評測指標 →</button>
         </div>
       </div>
 
-      <!-- 5.1 威脅模型全景矩陣 (配合圖 1) -->
+      <!-- 6.1 威脅模型全景矩陣 (配合圖 1) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
           <span>5.1 敵手威脅模型全景矩陣 (Threat Models &amp; Corruption Boundaries)</span>
@@ -2700,10 +2940,10 @@
         </ul>
       </div>
 
-      <!-- 5.2 CPA^D 解密預言機安全 (配合圖 2) -->
+      <!-- 6.2 CPA^D 解密預言機安全 (配合圖 2) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>5.2 CPA<sup>D</sup> 安全概念：選擇明文與解密預言機攻擊 (CPA with Decryption Queries)</span>
+          <span>6.2 CPA<sup>D</sup> 安全概念：選擇明文與解密預言機攻擊 (CPA with Decryption Queries)</span>
           <span class="badge badge-yellow">解密預言機防護</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
@@ -2812,10 +3052,10 @@
         </div>
       </div>
 
-      <!-- 5.3 IND-FuncCPA 電路隱私 (配合圖 3) -->
+      <!-- 6.3 IND-FuncCPA 電路隱私 (配合圖 3) -->
       <div class="card" style="margin-bottom: 1.35rem;">
         <div class="card-title">
-          <span>5.3 IND-FuncCPA：電路隱私與專利演算法保護 (Circuit Privacy)</span>
+          <span>6.3 IND-FuncCPA：電路隱私與專利演算法保護 (Circuit Privacy)</span>
           <span class="badge badge-blue">計算拓樸保護</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
@@ -2885,10 +3125,10 @@
         </ul>
       </div>
 
-      <!-- 5.4 通用可組合性 UC (配合圖 4) -->
+      <!-- 6.4 通用可組合性 UC (配合圖 4) -->
       <div class="card">
         <div class="card-title">
-          <span>5.4 通用可組合性 (Universal Composability, UC) 與理想功能模擬</span>
+          <span>6.4 通用可組合性 (Universal Composability, UC) 與理想功能模擬</span>
           <span class="badge badge-purple">全域模組安全</span>
         </div>
         <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem;">
@@ -2977,8 +3217,8 @@
         </ul>
 
         <div class="bg-nav-pager">
-          <button type="button" class="btn-pager" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：四、主動防線與零知識證明</button>
-          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：六、實驗控制與評測指標 →</button>
+          <button type="button" class="btn-pager" onclick="switchTab('bg-zkp', document.getElementById('sidebar-btn-bg-zkp'))">← 上一主題：五、主動防線與零知識證明</button>
+          <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(16, 185, 129, 0.5);" onclick="switchTab('bg-params', document.getElementById('sidebar-btn-bg-params'))">下一主題：七、全域控制與評測指標 →</button>
         </div>
       </div>
     </section>
@@ -2992,7 +3232,7 @@
         <h2 class="lab-hero-title">背景知識 (六) — 全域實驗控制面板與 7 階段評測指標對照導覽</h2>
         <div class="lab-hero-sub">同軌公平基準理念、四大全域實驗控制參數剖析、七大端到端評測計時階段與競技場圖表解讀指南</div>
         <div class="lab-hero-actions">
-          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">← 上一主題：五、威脅模型與安全概念</button>
+          <button type="button" class="btn-lab-tutorial" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">← 上一主題：六、威脅模型與安全概念</button>
           <button type="button" class="btn-lab-manual" onclick="switchTab('arena', document.getElementById('sidebar-btn-arena'))">前往論文評測競技場 →</button>
         </div>
       </div>
@@ -3074,7 +3314,7 @@
         </ul>
 
         <div class="bg-nav-pager">
-          <button type="button" class="btn-pager" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">← 上一主題：五、威脅模型與安全概念</button>
+          <button type="button" class="btn-pager" onclick="switchTab('bg-security', document.getElementById('sidebar-btn-bg-security'))">← 上一主題：六、威脅模型與安全概念</button>
           <button type="button" class="btn-pager" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(59, 130, 246, 0.2)); border-color: rgba(245, 158, 11, 0.5);" onclick="switchTab('arena', document.getElementById('sidebar-btn-arena'))">前往論文評測競技場 →</button>
         </div>
       </div>
@@ -4817,7 +5057,8 @@
       const pill = document.getElementById('header-view-pill');
       if (pill) {
         const titles = {
-          'bg-lwe': '背景知識 — LWE / RLWE 晶格加密基礎',
+          'bg-lwe': '背景知識 — LWE 晶格加密基礎與矩陣運算',
+          'bg-homomorphic': '背景知識 — 同態運算、雜訊增長與重線性化技術',
           'bg-secretsharing': '背景知識 — 門檻秘密分享機制',
           'bg-noise': '背景知識 — 部分解密雜訊與 4 大隔離路線',
           'bg-zkp': '背景知識 — 主動安全防線與零知識證明',
